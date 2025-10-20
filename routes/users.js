@@ -35,7 +35,7 @@ function getUsers(req, res) {
   });
 }
 
-// Create new user
+// --- CREATE USER ---
 function createUser(req, res) {
   const form = new formidable.IncomingForm();
   form.multiples = false;
@@ -48,7 +48,6 @@ function createUser(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    // generate unique ID
     generateId(db, (err, id) => {
       if (err) {
         res.statusCode = 500;
@@ -59,34 +58,25 @@ function createUser(req, res) {
       let frontFile = null;
       let backFile = null;
 
-      // Profile Photo
       const photo = Array.isArray(files.photo) ? files.photo[0] : files.photo;
+      const front = Array.isArray(files.id_front_photo) ? files.id_front_photo[0] : files.id_front_photo;
+      const back = Array.isArray(files.id_back_photo) ? files.id_back_photo[0] : files.id_back_photo;
+
       if (photo && photo.filepath && photo.originalFilename && photo.size > 0) {
         const photoName = generatePhotoName(id, photo.originalFilename);
-        const newPath = path.join(UPLOAD_DIR, photoName);
-        fs.renameSync(photo.filepath, newPath);
+        fs.renameSync(photo.filepath, path.join(UPLOAD_DIR, photoName));
         photoFile = photoName;
       }
 
-      // Front Photo
-      const front = Array.isArray(files.id_front_photo)
-        ? files.id_front_photo[0]
-        : files.id_front_photo;
       if (front && front.filepath && front.originalFilename && front.size > 0) {
         const frontName = generateIdFrontPhotoName(id, front.originalFilename);
-        const newFrontPath = path.join(UPLOAD_DIR, frontName);
-        fs.renameSync(front.filepath, newFrontPath);
+        fs.renameSync(front.filepath, path.join(UPLOAD_DIR, frontName));
         frontFile = frontName;
       }
 
-      // Back Photo
-      const back = Array.isArray(files.id_back_photo)
-        ? files.id_back_photo[0]
-        : files.id_back_photo;
       if (back && back.filepath && back.originalFilename && back.size > 0) {
         const backName = generateIdBackPhotoName(id, back.originalFilename);
-        const newBackPath = path.join(UPLOAD_DIR, backName);
-        fs.renameSync(back.filepath, newBackPath);
+        fs.renameSync(back.filepath, path.join(UPLOAD_DIR, backName));
         backFile = backName;
       }
 
@@ -118,47 +108,47 @@ function createUser(req, res) {
         ],
         (err) => {
           if (err) {
-            console.error("Server error:", err);
-
+            console.error("Insert error:", err);
             if (err.code === "ER_DUP_ENTRY") {
-              if (err.message.includes("email")) {
-                res.statusCode = 400;
-                return res.end(JSON.stringify({ error: "Email already exists" }));
-              }
-              if (err.message.includes("phone")) {
-                res.statusCode = 400;
-                return res.end(JSON.stringify({ error: "Phone number already exists" }));
-              }
+              const msg = err.message.includes("email")
+                ? "Email already exists"
+                : err.message.includes("phone")
+                ? "Phone number already exists"
+                : "Duplicate entry";
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: msg }));
             }
-
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
           }
 
-          // send pending mail
-          sendMail(
-            fields.email,
-            fields.fullname,
-            "Account Pending",
-            "Your account is pending approval. We’ll notify you once it’s approved."
-          );
+          // Fetch full user
+          db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
+            if (err || rows.length === 0) {
+              return res.end(JSON.stringify({ message: "User created, but fetch failed" }));
+            }
 
-          res.end(
-            JSON.stringify({
-              message: "User created",
-              id,
-              photo: photoFile,
-              id_front_photo: frontFile,
-              id_back_photo: backFile,
-            })
-          );
+            const user = rows[0];
+            user.profile = user.photo ? `${filepath}${user.photo}` : null;
+            user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
+            user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
+
+            sendMail(
+              fields.email,
+              fields.fullname,
+              "Account Pending",
+              "Your account is pending approval. We’ll notify you once it’s approved."
+            );
+
+            res.end(JSON.stringify({ message: "User created", user }));
+          });
         }
       );
     });
   });
 }
 
-// Update user
+// --- UPDATE USER ---
 function updateUser(req, res) {
   const id = req.url.split("/")[2];
   const form = new formidable.IncomingForm();
@@ -173,16 +163,12 @@ function updateUser(req, res) {
     }
 
     const photo = Array.isArray(files.photo) ? files.photo[0] : files.photo;
-    const front = Array.isArray(files.id_front_photo)
-      ? files.id_front_photo[0]
-      : files.id_front_photo;
-    const back = Array.isArray(files.id_back_photo)
-      ? files.id_back_photo[0]
-      : files.id_back_photo;
+    const front = Array.isArray(files.id_front_photo) ? files.id_front_photo[0] : files.id_front_photo;
+    const back = Array.isArray(files.id_back_photo) ? files.id_back_photo[0] : files.id_back_photo;
 
     db.query("SELECT photo, id_front_photo, id_back_photo FROM users WHERE id=?", [id], (err, rows) => {
       if (err || rows.length === 0) {
-        res.statusCode = 500;
+        res.statusCode = 404;
         return res.end(JSON.stringify({ error: "User not found" }));
       }
 
@@ -190,34 +176,24 @@ function updateUser(req, res) {
       let frontFile = rows[0].id_front_photo;
       let backFile = rows[0].id_back_photo;
 
-      // Replace and delete old photo
       if (photo && photo.filepath && photo.originalFilename && photo.size > 0) {
-        if (photoFile && fs.existsSync(path.join(UPLOAD_DIR, photoFile))) {
-          fs.unlinkSync(path.join(UPLOAD_DIR, photoFile));
-        }
+        if (photoFile && fs.existsSync(path.join(UPLOAD_DIR, photoFile))) fs.unlinkSync(path.join(UPLOAD_DIR, photoFile));
         const photoName = generatePhotoName(id, photo.originalFilename);
-        const newPath = path.join(UPLOAD_DIR, photoName);
-        fs.renameSync(photo.filepath, newPath);
+        fs.renameSync(photo.filepath, path.join(UPLOAD_DIR, photoName));
         photoFile = photoName;
       }
 
       if (front && front.filepath && front.originalFilename && front.size > 0) {
-        if (frontFile && fs.existsSync(path.join(UPLOAD_DIR, frontFile))) {
-          fs.unlinkSync(path.join(UPLOAD_DIR, frontFile));
-        }
+        if (frontFile && fs.existsSync(path.join(UPLOAD_DIR, frontFile))) fs.unlinkSync(path.join(UPLOAD_DIR, frontFile));
         const frontName = generateIdFrontPhotoName(id, front.originalFilename);
-        const newFrontPath = path.join(UPLOAD_DIR, frontName);
-        fs.renameSync(front.filepath, newFrontPath);
+        fs.renameSync(front.filepath, path.join(UPLOAD_DIR, frontName));
         frontFile = frontName;
       }
 
       if (back && back.filepath && back.originalFilename && back.size > 0) {
-        if (backFile && fs.existsSync(path.join(UPLOAD_DIR, backFile))) {
-          fs.unlinkSync(path.join(UPLOAD_DIR, backFile));
-        }
+        if (backFile && fs.existsSync(path.join(UPLOAD_DIR, backFile))) fs.unlinkSync(path.join(UPLOAD_DIR, backFile));
         const backName = generateIdBackPhotoName(id, back.originalFilename);
-        const newBackPath = path.join(UPLOAD_DIR, backName);
-        fs.renameSync(back.filepath, newBackPath);
+        fs.renameSync(back.filepath, path.join(UPLOAD_DIR, backName));
         backFile = backName;
       }
 
@@ -250,14 +226,20 @@ function updateUser(req, res) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
           }
-          res.end(
-            JSON.stringify({
-              message: "User updated",
-              photo: photoFile,
-              id_front_photo: frontFile,
-              id_back_photo: backFile,
-            })
-          );
+
+          // Fetch full updated record
+          db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
+            if (err || rows.length === 0) {
+              return res.end(JSON.stringify({ message: "User updated, but fetch failed" }));
+            }
+
+            const user = rows[0];
+            user.profile = user.photo ? `${filepath}${user.photo}` : null;
+            user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
+            user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
+
+            res.end(JSON.stringify({ message: "User updated", user }));
+          });
         }
       );
     });
