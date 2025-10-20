@@ -89,6 +89,12 @@ const server = http.createServer(async (req, res) => {
     users.rejectUser(req, res, id);
   }
 
+  // --- Users PATCH routes ---
+  else if (pathName.startsWith("/users/") && method === "PATCH") {
+    const id = pathName.split("/")[2]; // /users/:id
+    users.patchUserPasscode(req, res, id);
+  }
+
   // --- 404 fallback ---
   else {
     res.writeHead(404, { "Content-Type": "application/json" });

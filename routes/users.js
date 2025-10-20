@@ -365,6 +365,45 @@ function loginUser(req, res, body) {
   }
 }
 
+// --- PATCH: Update user passcode only ---
+function updatePasscode(req, res, id) {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { passcode } = fields;
+
+    if (!passcode) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "Passcode is required" }));
+    }
+
+    db.query(
+      "UPDATE users SET passcode=? WHERE id=?",
+      [passcode, id],
+      (err) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
+          if (err || rows.length === 0) {
+            return res.end(JSON.stringify({ message: "Passcode updated, but fetch failed" }));
+          }
+
+          const user = rows[0];
+          res.end(JSON.stringify({ message: "Passcode updated", user }));
+        });
+      }
+    );
+  });
+}
+
 module.exports = {
   getUsers,
   createUser,
@@ -373,4 +412,5 @@ module.exports = {
   approveUser,
   rejectUser,
   loginUser,
+  updatePasscode
 };
