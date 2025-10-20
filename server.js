@@ -92,7 +92,7 @@ const server = http.createServer(async (req, res) => {
   // --- Users PATCH routes ---
   else if (pathName.startsWith("/users/") && method === "PATCH") {
     const id = pathName.split("/")[2]; // /users/:id
-    users.patchUserPasscode(req, res, id);
+    users.updatePasscode(req, res, id);
   }
 
   // --- 404 fallback ---
