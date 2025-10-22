@@ -83,13 +83,13 @@ function createSale(req, res) {
                 INSERT INTO sales (id, userid, type, gold, price, photos)
                 VALUES (?, ?, ?, ?, ?, ?)
                 `;
-                db.query(sql, [id, userid, type, gold, price, JSON.stringify(photoArray)], (err, result) => {
-                if (err) {
-                    res.statusCode = 500;
-                    return res.end(JSON.stringify({ error: err.message }));
-                }
-                res.setHeader('Content-Type', 'application/json; charset=utf-8');
-                res.end(JSON.stringify({ success: true}));
+                db.query(sql, [id, userid, type, parseFloat(gold), price, JSON.stringify(photoArray)], (err, result) => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                    res.end(JSON.stringify({ success: true}));
                 });
             });
         });
