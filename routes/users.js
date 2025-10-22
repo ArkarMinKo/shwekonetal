@@ -116,7 +116,7 @@ function createUser(req, res) {
               const msg = err.message.includes("email")
                 ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
                 : err.message.includes("phone")
-                ? "ဤ phone သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
+                ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
                 : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်။";
               res.statusCode = 400;
               return res.end(JSON.stringify({ error: msg }));
@@ -128,7 +128,7 @@ function createUser(req, res) {
           // Fetch full user
           db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
             if (err || rows.length === 0) {
-              return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် ဆွဲယူခြင်း မအောင်မြင်ပါ။" }));
+              return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် မအောင်မြင်ပါ။" }));
             }
 
             const user = rows[0];
