@@ -10,7 +10,7 @@ const sendMail = require("../utils/mailer");
 const { generateEmailCode, getExpiryTime } = require("../utils/emailCodeGenerator");
 const { saveCode, verifyCode } = require("../utils/codeStore");
 
-const filepath = 'http://localhost:3000/uploads/'
+const filepath = 'http://38.60.244.74:3000/uploads/'
 // Ensure uploads folder exists
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
