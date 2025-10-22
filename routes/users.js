@@ -114,10 +114,10 @@ function createUser(req, res) {
             console.error("Insert error:", err);
             if (err.code === "ER_DUP_ENTRY") {
               const msg = err.message.includes("email")
-                ? "Email already exists"
+                ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
                 : err.message.includes("phone")
-                ? "Phone number already exists"
-                : "Duplicate entry";
+                ? "ဤ phone သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
+                : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်။";
               res.statusCode = 400;
               return res.end(JSON.stringify({ error: msg }));
             }
