@@ -346,14 +346,14 @@ function loginUser(req, res, body) {
 
       const user = rows[0];
 
-      if (user.status !== "approved") {
-        res.writeHead(403, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး။" }));
-      }
-
       if (user.password !== password) {
         res.writeHead(401, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ။" }));
+      }
+      
+      if (user.status !== "approved") {
+        res.writeHead(403, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး။" }));
       }
 
       res.writeHead(200, { "Content-Type": "application/json" });
