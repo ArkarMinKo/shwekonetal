@@ -333,7 +333,7 @@ function loginUser(req, res, body) {
       return res.end(JSON.stringify({ message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး။" }));
     }
 
-    db.query("SELECT id, email, password, status FROM users WHERE email=?", [email], (err, rows) => {
+    db.query("SELECT id, fullname, email, password, status FROM users WHERE email=?", [email], (err, rows) => {
       if (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "Server error" }));
