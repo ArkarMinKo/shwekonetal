@@ -168,4 +168,17 @@ function getAllSales(req, res) {
   });
 }
 
-module.exports = { createSale, approveSale, rejectSale, getApprovedSales, getAllSales };
+function getPendingSales(req, res) {
+  const sql = "SELECT * FROM sales WHERE status = 'pending' ORDER BY created_at DESC";
+  db.query(sql, (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ success: true, data: rows }));
+  });
+}
+
+module.exports = { createSale, approveSale, rejectSale, getApprovedSales, getAllSales, getPendingSales };

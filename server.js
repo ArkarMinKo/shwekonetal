@@ -144,6 +144,9 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/sales/approve" && method === "GET") {
     sales.getApprovedSales(req,res)
   }
+  else if (pathName === "/sales/pending" && method === "GET") {
+    sales.getPendingSales(req,res)
+  }
   else if (pathName === "/sales" && method === "GET") {
     sales.getAllSales(req,res)
   }
