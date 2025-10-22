@@ -88,7 +88,7 @@ function createSale(req, res) {
                     res.statusCode = 500;
                     return res.end(JSON.stringify({ error: err.message }));
                 }
-                res.setHeader("Content-Type", "application/json");
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');;
                 res.end(JSON.stringify({ success: true}));
                 });
             });
@@ -114,7 +114,7 @@ function approveSale(req, res, saleId) {
             return res.end(JSON.stringify({ error: "Sale not found" }));
         }
 
-        res.setHeader("Content-Type", "application/json");
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');;
         res.end(JSON.stringify({ success: true, saleId, status: "approved" }));
     });
 }
@@ -137,7 +137,7 @@ function rejectSale(req, res, saleId) {
             return res.end(JSON.stringify({ error: "Sale not found" }));
         }
 
-        res.setHeader("Content-Type", "application/json");
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');;
         res.end(JSON.stringify({ success: true, saleId, status: "rejected" }));
     });
 }
@@ -150,7 +150,7 @@ function getApprovedSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader("Content-Type", "application/json");
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
@@ -163,7 +163,7 @@ function getAllSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader("Content-Type", "application/json");
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
@@ -176,7 +176,7 @@ function getPendingSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader("Content-Type", "application/json");
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }

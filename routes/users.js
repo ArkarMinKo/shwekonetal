@@ -119,6 +119,7 @@ function createUser(req, res) {
                 ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
                 : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်။";
               res.statusCode = 400;
+              res.writeHead(400, { "Content-Type": "application/json" })
               return res.end(JSON.stringify({ error: msg }));
             }
             res.statusCode = 500;
@@ -128,6 +129,7 @@ function createUser(req, res) {
           // Fetch full user
           db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
             if (err || rows.length === 0) {
+              res.writeHead(203, { "Content-Type": "application/json" })
               return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် မအောင်မြင်ပါ။" }));
             }
 
@@ -141,7 +143,7 @@ function createUser(req, res) {
               fields.fullname,
               "pending"
             );
-
+            res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ", user }));
           });
         }
