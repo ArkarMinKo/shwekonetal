@@ -13,6 +13,8 @@ fs.mkdirSync(USER_UPLOAD_DIR, { recursive: true });
 
 // Routes
 const users = require("./routes/users");
+const goldPrices = require("./routes/goldPrices"); 
+const sales = require("./routes/sales")
 
 
 // CORS helper
@@ -65,13 +67,20 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // -- email confrimation ---
+
+  else if(pathName === "/request-email-confirmation" && method === "POST"){
+    users.requestEmailConfirmation(req, res);
+  }
+
+  else if(pathName === "/verify-email-code" && method === "POST"){
+    users.verifyEmailCodeBeforeCreate(req, res);
+  }
+
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
   else if (pathName === "/users" && method === "GET") users.getUsers(req, res);
-  else if (pathName.startsWith("/users/") && method === "GET") {
-    const id = pathName.split("/")[2];
-    users.getUser(req, res, id);
-  }
+  
   else if (pathName.startsWith("/users/") && method === "PUT") {
     const id = pathName.split("/")[2];
     users.updateUser(req, res, id);
@@ -89,10 +98,71 @@ const server = http.createServer(async (req, res) => {
     users.rejectUser(req, res, id);
   }
 
-  // --- Users PATCH routes ---
-  else if (pathName.startsWith("/users/") && method === "PATCH") {
-    const id = pathName.split("/")[2]; // /users/:id
+  // --- Users PATCH update passcode routes ---
+  else if (pathName.startsWith("/users/update-passcode/") && method === "PATCH") {
+    const id = pathName.split("/")[3];
     users.updatePasscode(req, res, id);
+  }
+
+  // --- Users POST check passcode routes ---
+  else if (pathName.startsWith("/users/check-passcode/") && method === "POST") {
+    const id = pathName.split("/")[3];
+    users.verifyPasscode(req, res, id);
+  }
+
+  // --- Getting All Selling Price ---
+  else if (pathName === "/selling-prices" && method === "GET") {
+    goldPrices.getAllSellingPrices(req, res);
+  }
+
+  // --- Getting Latest Selling Price ---
+  else if (pathName === "/selling-prices/latest" && method === "GET") {
+    goldPrices.getLatestSellingPrice(req, res);
+  }
+
+  // --- Selling Price Update ---
+  else if (pathName === "/selling-prices" && method === "POST") {
+    goldPrices.insertSellingPrice(req, res);
+  }
+
+  // --- Getting All Buying Price ---
+  else if (pathName === "/buying-prices" && method === "GET") {
+    goldPrices.getAllBuyingPrices(req, res);
+  }
+
+  // --- Getting Latest Buying Price ---
+  else if (pathName === "/buying-prices/latest" && method === "GET") {
+    goldPrices.getLatestBuyingPrice(req, res);
+  }
+
+  // --- Buying Price Update ---
+  else if (pathName === "/buying-prices" && method === "POST") {
+    goldPrices.insertBuyingPrice(req, res);
+  }
+
+  // --- Get Sales ---
+  else if (pathName === "/sales/approve" && method === "GET") {
+    sales.getApprovedSales(req,res)
+  }
+  else if (pathName === "/sales" && method === "GET") {
+    sales.getAllSales(req,res)
+  }
+
+  // --- Create Sales ---
+  else if (pathName === "/sales" && method === "POST") {
+    sales.createSale(req,res)
+  }
+
+  // --- Approve Sales ---
+  else if (pathName.startsWith("/sales/approve/") && method === "PATCH") {
+    const id = pathName.split("/")[3];
+    sales.approveSale(req, res, id);
+  }
+
+  // --- Reject Sales ---
+  else if (pathName.startsWith("/sales/reject/") && method === "PATCH") {
+    const id = pathName.split("/")[3];
+    sales.rejectSale(req, res, id);
   }
 
   // --- 404 fallback ---

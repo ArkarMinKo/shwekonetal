@@ -7,7 +7,10 @@ const { generatePhotoName } = require("../utils/photoNameGenerator");
 const { generateIdFrontPhotoName } = require("../utils/idFrontPhotoNameGenerator");
 const { generateIdBackPhotoName } = require("../utils/idBackPhotoNameGenerator");
 const sendMail = require("../utils/mailer");
-const filepath = 'http://38.60.244.74:3000/uploads/'
+const { generateEmailCode, getExpiryTime } = require("../utils/emailCodeGenerator");
+const { saveCode, verifyCode } = require("../utils/codeStore");
+
+const filepath = 'http://localhost:3000/uploads/'
 // Ensure uploads folder exists
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
@@ -103,7 +106,7 @@ function createUser(req, res) {
           fields.gold || 0,
           fields.member_point || 0,
           fields.passcode || null,
-          fields.level || null,
+          fields.level || "level1",
           fields.promoter || "Normal",
         ],
         (err) => {
@@ -136,8 +139,7 @@ function createUser(req, res) {
             sendMail(
               fields.email,
               fields.fullname,
-              "Account Pending",
-              "Your account is pending approval. We’ll notify you once it’s approved."
+              "pending"
             );
 
             res.end(JSON.stringify({ message: "User created", user }));
@@ -214,7 +216,7 @@ function updateUser(req, res) {
           fields.gold || 0,
           fields.member_point || 0,
           fields.passcode || null,
-          fields.level || null,
+          fields.level || "level1",
           fields.promoter || "Normal",
           photoFile,
           frontFile,
@@ -290,8 +292,7 @@ function approveUser(req, res, idParam) {
       sendMail(
         email,
         fullname,
-        "Account Approved",
-        `Your account has been approved. You can now login to Shwe Kone Tal application.`
+        "approved"
       );
 
       res.end(JSON.stringify({ message: "User approved" }));
@@ -314,8 +315,7 @@ function rejectUser(req, res, idParam) {
       sendMail(
         email,
         fullname,
-        "Account Rejected",
-        `We regret to inform you that your account request has been rejected. Please contact support if you believe this was a mistake.`
+        "rejected"
       );
 
       res.end(JSON.stringify({ message: "User rejected" }));
@@ -330,7 +330,7 @@ function loginUser(req, res, body) {
 
     if (!email || !password) {
       res.writeHead(400, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Email and password are required" }));
+      return res.end(JSON.stringify({ message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး။" }));
     }
 
     db.query("SELECT id, email, password, status FROM users WHERE email=?", [email], (err, rows) => {
@@ -341,23 +341,23 @@ function loginUser(req, res, body) {
 
       if (rows.length === 0) {
         res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Email not found" }));
+        return res.end(JSON.stringify({ message: "ဒီ Email နဲ့အကောင့် မတွေ့ပါ။" }));
       }
 
       const user = rows[0];
 
       if (user.status !== "approved") {
         res.writeHead(403, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Account not approved" }));
+        return res.end(JSON.stringify({ message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး။" }));
       }
 
       if (user.password !== password) {
         res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Incorrect password" }));
+        return res.end(JSON.stringify({ message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ။" }));
       }
 
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "Login successful", user }));
+      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်။"}));
     });
   } catch (e) {
     res.writeHead(400, { "Content-Type": "application/json" });
@@ -404,6 +404,99 @@ function updatePasscode(req, res, id) {
   });
 }
 
+// --- POST: Verify user's passcode ---
+function verifyPasscode(req, res, id) {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { passcode } = fields;
+
+    if (!passcode) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "Passcode is required" }));
+    }
+
+    db.query("SELECT passcode FROM users WHERE id=?", [id], (err, rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      if (rows.length === 0) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ message: "User not found" }));
+      }
+
+      const userPasscode = rows[0].passcode;
+
+      if (userPasscode === passcode) {
+        return res.end(JSON.stringify({ message: "Passcode matched" }));
+      } else {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ message: "Incorrect passcode" }));
+      }
+    });
+  });
+}
+
+function requestEmailConfirmation(req, res) {
+  const form = new formidable.IncomingForm();
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { email } = fields;
+    if (!email) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ message: "Email is required" }));
+    }
+
+    const code = generateEmailCode();
+    const expiresAt = getExpiryTime();
+    saveCode(email, code, expiresAt);
+
+    sendMail(
+      email,
+      "Customer",
+      "confirmation",
+      { code: `${code}`}
+    );
+
+    res.end(JSON.stringify({ message: "Confirmation code sent", email }));
+  });
+}
+
+function verifyEmailCodeBeforeCreate(req, res) {
+  const form = new formidable.IncomingForm();
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { email, code } = fields;
+    if (!email || !code) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ message: "Email and code are required" }));
+    }
+
+    const result = verifyCode(email, code);
+    if (!result.success) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ message: result.message }));
+    }
+
+    res.end(JSON.stringify({ message: "Email confirmed, proceed to create user" }));
+  });
+}
+
 module.exports = {
   getUsers,
   createUser,
@@ -412,5 +505,8 @@ module.exports = {
   approveUser,
   rejectUser,
   loginUser,
-  updatePasscode
+  updatePasscode,
+  verifyPasscode,
+  requestEmailConfirmation,
+  verifyEmailCodeBeforeCreate
 };
