@@ -357,7 +357,7 @@ function loginUser(req, res, body) {
       }
 
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်။"}));
+      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်။", id: user.id}));
     });
   } catch (e) {
     res.writeHead(400, { "Content-Type": "application/json" });
