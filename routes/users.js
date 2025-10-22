@@ -128,7 +128,7 @@ function createUser(req, res) {
           // Fetch full user
           db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
             if (err || rows.length === 0) {
-              return res.end(JSON.stringify({ message: "အသုံးပြုသူကို ဖန်တီးပြီးပြီ၊ သို့သော် ဆွဲယူခြင်း မအောင်မြင်ပါ" }));
+              return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် ဆွဲယူခြင်း မအောင်မြင်ပါ။" }));
             }
 
             const user = rows[0];
@@ -142,7 +142,7 @@ function createUser(req, res) {
               "pending"
             );
 
-            res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပပပြီ", user }));
+            res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ", user }));
           });
         }
       );
