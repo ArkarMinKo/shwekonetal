@@ -117,7 +117,7 @@ function approveSale(req, res, saleId) {
         const sale = salesResult[0];
 
         const updateSaleSql = "UPDATE sales SET status = 'approved' WHERE id = ?";
-        db.query(updateSaleSql, [saleId], (err, updateResult) => {
+        db.query(updateSaleSql, [saleId], (err) => {
             if (err) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
@@ -139,6 +139,7 @@ function approveSale(req, res, saleId) {
                 let newGold = parseFloat(user.gold || 0);
                 let newPoint = parseInt(user.member_point || 0);
 
+                // Gold calculation (keep decimal)
                 if (sale.type === "buy") {
                     newGold += parseFloat(sale.gold);
                 } else if (sale.type === "sell") {
@@ -146,9 +147,11 @@ function approveSale(req, res, saleId) {
                     if (newGold < 0) newGold = 0;
                 }
 
-                const pointAdd = Math.floor(parseFloat(sale.gold));
+                // Point calculation (integer part only)
+                const pointAdd = Math.floor(parseFloat(sale.gold)); 
                 newPoint += pointAdd;
 
+                // Level update logic
                 let newLevel = "level1";
                 if (newPoint >= 200) newLevel = "level4";
                 else if (newPoint >= 150) newLevel = "level3";
@@ -159,7 +162,7 @@ function approveSale(req, res, saleId) {
                     SET gold = ?, member_point = ?, level = ?
                     WHERE id = ?
                 `;
-                db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], (err, result) => {
+                db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], (err) => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
@@ -179,7 +182,6 @@ function approveSale(req, res, saleId) {
         });
     });
 }
-
 
 function rejectSale(req, res, saleId) {
     if (!saleId) {
