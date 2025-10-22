@@ -109,7 +109,7 @@ function getAllBuyingPrices(req, res) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.end(JSON.stringify(results));
   });
 }
@@ -122,7 +122,7 @@ function getLatestBuyingPrice(req, res) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.end(JSON.stringify(results[0] || {}));
   });
 }

@@ -88,7 +88,7 @@ function createSale(req, res) {
                     res.statusCode = 500;
                     return res.end(JSON.stringify({ error: err.message }));
                 }
-                res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
                 res.end(JSON.stringify({ success: true}));
                 });
             });
@@ -102,22 +102,84 @@ function approveSale(req, res, saleId) {
         return res.end(JSON.stringify({ error: "saleId is required" }));
     }
 
-    const sql = "UPDATE sales SET status = 'approved' WHERE id = ?";
-    db.query(sql, [saleId], (err, result) => {
+    const getSaleSql = "SELECT * FROM sales WHERE id = ?";
+    db.query(getSaleSql, [saleId], (err, salesResult) => {
         if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        if (result.affectedRows === 0) {
+        if (salesResult.length === 0) {
             res.statusCode = 404;
             return res.end(JSON.stringify({ error: "Sale not found" }));
         }
 
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');;
-        res.end(JSON.stringify({ success: true, saleId, status: "approved" }));
+        const sale = salesResult[0];
+
+        const updateSaleSql = "UPDATE sales SET status = 'approved' WHERE id = ?";
+        db.query(updateSaleSql, [saleId], (err, updateResult) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            const getUserSql = "SELECT gold, member_point, level FROM users WHERE id = ?";
+            db.query(getUserSql, [sale.userid], (err, userResult) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+
+                if (userResult.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "User not found" }));
+                }
+
+                let user = userResult[0];
+                let newGold = parseFloat(user.gold || 0);
+                let newPoint = parseInt(user.member_point || 0);
+
+                if (sale.type === "buy") {
+                    newGold += parseFloat(sale.gold);
+                } else if (sale.type === "sell") {
+                    newGold -= parseFloat(sale.gold);
+                    if (newGold < 0) newGold = 0;
+                }
+
+                const pointAdd = Math.floor(parseFloat(sale.gold));
+                newPoint += pointAdd;
+
+                let newLevel = "level1";
+                if (newPoint >= 200) newLevel = "level4";
+                else if (newPoint >= 150) newLevel = "level3";
+                else if (newPoint >= 100) newLevel = "level2";
+
+                const updateUserSql = `
+                    UPDATE users 
+                    SET gold = ?, member_point = ?, level = ?
+                    WHERE id = ?
+                `;
+                db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], (err, result) => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+
+                    res.setHeader("Content-Type", "application/json");
+                    res.end(
+                        JSON.stringify({
+                            success: true,
+                            saleId,
+                            saleType: sale.type,
+                            status: "approved",
+                        })
+                    );
+                });
+            });
+        });
     });
 }
+
 
 function rejectSale(req, res, saleId) {
     if (!saleId) {
@@ -137,7 +199,7 @@ function rejectSale(req, res, saleId) {
             return res.end(JSON.stringify({ error: "Sale not found" }));
         }
 
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ success: true, saleId, status: "rejected" }));
     });
 }
@@ -150,7 +212,7 @@ function getApprovedSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
@@ -163,7 +225,7 @@ function getAllSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
@@ -176,7 +238,7 @@ function getPendingSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
