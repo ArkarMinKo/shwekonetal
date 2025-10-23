@@ -30,21 +30,22 @@ function createSale(req, res) {
         }
 
         const { userid, type, gold } = fields;
-            if (!userid || !type || !gold) {
-                res.statusCode = 400;
+        if (!userid || !type || !gold) {
+            res.statusCode = 400;
             return res.end(JSON.stringify({ error: "userid, type, and gold are required" }));
         }
 
-        // First, get user level
-        db.query("SELECT level FROM users WHERE id = ?", [userid], (err, rows) => {
+        // First, get user level and gold
+        db.query("SELECT level, gold AS user_gold FROM users WHERE id = ?", [userid], (err, rows) => {
             if (err || rows.length === 0) {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
 
             const userLevel = rows[0].level;
-            // Get latest price
+            const userGold = parseFloat(rows[0].user_gold || 0);
             const saleType = Array.isArray(type) ? type[0] : type;
+            const requestedGold = parseFloat(gold);
 
             // Define max gold per level (string keys)
             const levelLimits = {
@@ -56,19 +57,28 @@ function createSale(req, res) {
 
             const maxGold = levelLimits[userLevel] || 0;
 
-            if (saleType === "buy" && parseFloat(gold) > maxGold) {
+            // Validation for buy
+            if (saleType === "buy" && requestedGold > maxGold) {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({
                     error: `Your level (${userLevel}) allows a maximum of ${maxGold} gold per purchase`
                 }));
             }
 
-            const id = generateSaleId(userid, type);
+            // Validation for sell
+            if (saleType === "sell" && requestedGold > userGold) {
+                res.statusCode = 400;
+                return res.end(JSON.stringify({
+                    error: `You only have ${userGold} gold, so you cannot sell ${requestedGold} gold`
+                }));
+            }
+
+            const id = generateSaleId(userid, saleType);
 
             getLatestPrice(saleType, (err, price) => {
                 if (err || !price) {
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: "Could not get latest price" }));
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: "Could not get latest price" }));
                 }
 
                 // Handle uploaded photos
@@ -86,21 +96,22 @@ function createSale(req, res) {
                 }
 
                 const sql = `
-                INSERT INTO sales (id, userid, type, gold, price, photos)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO sales (id, userid, type, gold, price, photos)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 `;
-                db.query(sql, [id, userid, type, parseFloat(gold), price, JSON.stringify(photoArray)], (err, result) => {
+                db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray)], (err) => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
                     }
                     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-                    res.end(JSON.stringify({ success: true}));
+                    res.end(JSON.stringify({ success: true }));
                 });
             });
         });
     });
 }
+
 
 function approveSale(req, res, saleId) {
     if (!saleId) {
@@ -148,14 +159,13 @@ function approveSale(req, res, saleId) {
                 // Gold calculation (keep decimal)
                 if (sale.type === "buy") {
                     newGold += parseFloat(sale.gold);
+                    newPoint += Math.floor(parseFloat(sale.gold))
                 } else if (sale.type === "sell") {
                     newGold -= parseFloat(sale.gold);
+                    newPoint -= Math.floor(parseFloat(sale.gold))
                     if (newGold < 0) newGold = 0;
+                    if (newPoint < 0) newPoint = 0;
                 }
-
-                // Point calculation (integer part only)
-                const pointAdd = Math.floor(parseFloat(sale.gold)); 
-                newPoint += pointAdd;
 
                 // Level update logic
                 let newLevel = "level1";
