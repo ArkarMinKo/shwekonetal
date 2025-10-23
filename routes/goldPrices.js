@@ -3,6 +3,8 @@ const formidable = require("formidable");
 
 const { sellingPriceIdGenerator, buyingPriceIdGenerator } = require("../utils/priceIdGenerator");
 
+const { sellingPriceIdGenerator } = require("../utils/sellingPriceIdGenerator");
+
 function insertSellingPrice(req, res) {
   const form = new formidable.IncomingForm();
 
@@ -33,8 +35,42 @@ function insertSellingPrice(req, res) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
       }
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify({ message: "Selling price added successfully", id, price, time, date }));
+
+      // ---------- PROFIT UPDATE LOGIC START ----------
+      const getOwnGoldSql = "SELECT * FROM own_gold";
+      db.query(getOwnGoldSql, (err, goldResults) => {
+        if (err) {
+          console.error("own_gold fetch error:", err);
+          return;
+        }
+
+        if (goldResults.length === 0) return;
+
+        // Loop and update each own_gold row's profit
+        goldResults.forEach((goldRow) => {
+          const goldQty = parseFloat(goldRow.gold);
+          const profit = (price * goldQty) - (goldRow.price * goldQty);
+
+          const updateProfitSql = `
+            UPDATE own_gold
+            SET profit = ?
+            WHERE id = ?
+          `;
+          db.query(updateProfitSql, [profit, goldRow.id], (err) => {
+            if (err) console.error(`Error updating profit for ${goldRow.id}:`, err);
+          });
+        });
+      });
+      // ---------- PROFIT UPDATE LOGIC END ----------
+
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({
+        message: "Selling price added successfully",
+        id,
+        price,
+        time,
+        date
+      }));
     });
   });
 }

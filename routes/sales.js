@@ -4,6 +4,7 @@ const formidable = require("formidable");
 const db = require("../db");
 const { generateSaleId } = require("../utils/saleHistoryIdGenerator");
 const { generatePhotoName } = require("../utils/photoNameGenerator");
+const { generateOwnGoldId } = require("../utils/idOwnGoldGenerator");
 
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -167,6 +168,91 @@ function approveSale(req, res, saleId) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
                     }
+
+                    // ---------- OWN_GOLD LOGIC START ----------
+                    if (sale.type === "buy") {
+                        const ownGoldId = generateOwnGoldId(sale.userid, sale.created_at);
+
+                        const getLatestPriceSql = `
+                            SELECT price FROM selling_prices 
+                            ORDER BY date DESC, time DESC 
+                            LIMIT 1
+                        `;
+                        db.query(getLatestPriceSql, (err, priceResult) => {
+                            if (err) {
+                                console.error("Price fetch error:", err);
+                                return;
+                            }
+                            const latestPrice = priceResult[0]?.price || 0;
+                            const profit = (latestPrice * sale.gold) - (sale.price * sale.gold);
+
+                            const insertOwnGoldSql = `
+                                INSERT INTO own_gold (id, userid, gold, price, profit)
+                                VALUES (?, ?, ?, ?, ?)
+                            `;
+                            db.query(insertOwnGoldSql, [ownGoldId, sale.userid, sale.gold, sale.price, profit], (err) => {
+                                if (err) console.error("Insert own_gold error:", err);
+                            });
+                        });
+                    }
+
+                    else if (sale.type === "sell") {
+                        const getOwnGoldSql = `
+                            SELECT * FROM own_gold 
+                            WHERE userid = ? 
+                            ORDER BY created_at DESC
+                        `;
+                        db.query(getOwnGoldSql, [sale.userid], (err, goldResults) => {
+                            if (err) {
+                                console.error("own_gold fetch error:", err);
+                                return;
+                            }
+
+                            let remainingGold = parseFloat(sale.gold);
+
+                            // Get latest selling price once
+                            const getLatestPriceSql = `
+                                SELECT price FROM selling_prices 
+                                ORDER BY date DESC, time DESC 
+                                LIMIT 1
+                            `;
+                            db.query(getLatestPriceSql, (err, priceResult) => {
+                                if (err) {
+                                    console.error("Price fetch error:", err);
+                                    return;
+                                }
+
+                                const latestPrice = priceResult[0]?.price || 0;
+
+                                for (let goldRow of goldResults) {
+                                    if (remainingGold <= 0) break;
+
+                                    let availableGold = parseFloat(goldRow.gold);
+                                    let deductGold = Math.min(availableGold, remainingGold);
+                                    availableGold -= deductGold;
+                                    remainingGold -= deductGold;
+
+                                    // Calculate profit for this sold portion
+                                    const profit = (latestPrice * deductGold) - (goldRow.price * deductGold);
+
+                                    if (availableGold <= 0) {
+                                        // delete if gold becomes zero
+                                        const deleteSql = "DELETE FROM own_gold WHERE id = ?";
+                                        db.query(deleteSql, [goldRow.id]);
+                                    } else {
+                                        // update remaining gold and profit
+                                        const updateSql = `
+                                            UPDATE own_gold 
+                                            SET gold = ?, profit = ? 
+                                            WHERE id = ?
+                                        `;
+                                        db.query(updateSql, [availableGold, profit, goldRow.id]);
+                                    }
+                                }
+                            });
+                        });
+                    }
+                    // ---------- OWN_GOLD LOGIC END ----------
 
                     res.setHeader("Content-Type", "application/json");
                     res.end(
