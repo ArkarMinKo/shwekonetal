@@ -29,10 +29,10 @@ function createSale(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        const { userid, type, gold } = fields;
-        if (!userid || !type || !gold) {
+        const { userid, type, gold, method } = fields;
+        if (!userid || !type || !gold || !method) {
             res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "userid, type, and gold are required" }));
+            return res.end(JSON.stringify({ error: "userid, type, gold and method are required" }));
         }
 
         // First, get user level and gold
@@ -96,10 +96,10 @@ function createSale(req, res) {
                 }
 
                 const sql = `
-                    INSERT INTO sales (id, userid, type, gold, price, photos)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO sales (id, userid, type, gold, price, photos, method)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 `;
-                db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray)], (err) => {
+                db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method], (err) => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
@@ -327,7 +327,13 @@ function getApprovedSales(req, res, userid) {
 }
 
 function getAllSales(req, res) {
-  const sql = "SELECT * FROM sales ORDER BY created_at DESC";
+  const sql = `
+    SELECT s.*, u.fullname 
+    FROM sales s
+    LEFT JOIN users u ON s.userid = u.id
+    ORDER BY s.created_at DESC
+  `;
+
   db.query(sql, (err, rows) => {
     if (err) {
       res.statusCode = 500;
