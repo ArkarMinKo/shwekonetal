@@ -202,7 +202,7 @@ function approveSale(req, res, saleId) {
                         const getOwnGoldSql = `
                             SELECT * FROM own_gold 
                             WHERE userid = ? 
-                            ORDER BY created_at DESC
+                            ORDER BY created_at
                         `;
                         db.query(getOwnGoldSql, [sale.userid], (err, goldResults) => {
                             if (err) {
