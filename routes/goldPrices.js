@@ -3,8 +3,6 @@ const formidable = require("formidable");
 
 const { sellingPriceIdGenerator, buyingPriceIdGenerator } = require("../utils/priceIdGenerator");
 
-const { sellingPriceIdGenerator } = require("../utils/sellingPriceIdGenerator");
-
 function insertSellingPrice(req, res) {
   const form = new formidable.IncomingForm();
 
