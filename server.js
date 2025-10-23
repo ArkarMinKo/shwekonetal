@@ -81,6 +81,11 @@ const server = http.createServer(async (req, res) => {
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
   else if (pathName === "/users" && method === "GET") users.getUsers(req, res);
+
+  else if (pathName.startsWith("/users/") && method === "GET") {
+    const userid = pathName.split("/")[2];
+    users.getUserById(req, res, id);
+  }
   
   else if (pathName.startsWith("/users/") && method === "PUT") {
     const id = pathName.split("/")[2];
