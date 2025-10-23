@@ -38,6 +38,32 @@ function getUsers(req, res) {
   });
 }
 
+function getUserById(req, res, userid) {
+  const sql = "SELECT * FROM users WHERE userid = ?";
+  db.query(sql, [userid], (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    if (rows.length === 0) {
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ error: "User not found" }));
+    }
+
+    const r = rows[0];
+    const result = {
+      ...r,
+      profile: r.photo ? `${filepath}${r.photo}` : null,
+      id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
+      id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
+    };
+
+    res.end(JSON.stringify(result));
+  });
+}
+
+
 // --- CREATE USER ---
 function createUser(req, res) {
   const form = new formidable.IncomingForm();
@@ -470,8 +496,8 @@ function requestEmailConfirmation(req, res) {
       "confirmation",
       { code: `${code}`}
     );
-
-    res.end(JSON.stringify({ message: "Confirmation code sent", email }));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပီ။ ၁၀ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ။", email }));
   });
 }
 
@@ -495,7 +521,7 @@ function verifyEmailCodeBeforeCreate(req, res) {
       return res.end(JSON.stringify({ message: result.message }));
     }
 
-    res.end(JSON.stringify({ message: "Email confirmed, proceed to create user" }));
+    res.end(JSON.stringify({ message: "email " }));
   });
 }
 
@@ -510,5 +536,6 @@ module.exports = {
   updatePasscode,
   verifyPasscode,
   requestEmailConfirmation,
-  verifyEmailCodeBeforeCreate
+  verifyEmailCodeBeforeCreate,
+  getUserById
 };
