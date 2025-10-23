@@ -168,6 +168,12 @@ const server = http.createServer(async (req, res) => {
     sales.rejectSale(req, res, id);
   }
 
+  // --- Get Own Gold ---
+  else if (pathName.startsWith("/own_gold/") && method === "GET") {
+    const userid = pathName.split("/")[2];
+    ownGold.getOwnGold(req, res, userid);
+  }
+
   // --- 404 fallback ---
   else {
     res.writeHead(404, { "Content-Type": "application/json" });
