@@ -11,7 +11,7 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Helper: Get latest price
 function getLatestPrice(type, callback) {
-    console.log("Sale type:", type, "Price fetched:", price);
+    console.log("Sale type:", type);
     const table = type === "buy" ? "buying_prices" : "selling_prices";
     const query = `SELECT price FROM ${table} ORDER BY date DESC, time DESC LIMIT 1`;
     db.query(query, (err, rows) => {
