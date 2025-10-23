@@ -14,7 +14,8 @@ fs.mkdirSync(USER_UPLOAD_DIR, { recursive: true });
 // Routes
 const users = require("./routes/users");
 const goldPrices = require("./routes/goldPrices"); 
-const sales = require("./routes/sales")
+const sales = require("./routes/sales");
+const ownGold = require("./routes/getOwnGold");
 
 
 // CORS helper
