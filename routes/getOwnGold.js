@@ -8,7 +8,7 @@ function getOwnGold(req, res, userid) {
     return res.end(JSON.stringify({ error: "userid is required" }));
   }
 
-  const sql = "SELECT * FROM own_gold WHERE userid = ?";
+  const sql = "SELECT * FROM own_gold WHERE userid = ? ORDER BY created_at DESC";
 
   db.query(sql, [userid], (err, results) => {
     if (err) {
