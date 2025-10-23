@@ -91,9 +91,10 @@ function insertBuyingPrice(req, res) {
 
     // Generate ID, current date & time
     const id = buyingPriceIdGenerator();
+    // Use local timezone
     const now = new Date();
-    const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    const time = now.toTimeString().split(" ")[0]; // HH:MM:SS
+    const date = now.toLocaleDateString("en-CA"); // YYYY-MM-DD (Canada locale uses ISO format)
+    const time = now.toLocaleTimeString("en-GB", { hour12: false }); // HH:MM:SS (24-hour)
 
     const sql = "INSERT INTO buying_prices (id, price, time, date) VALUES (?, ?, ?, ?)";
     const values = [id, price, time, date];
