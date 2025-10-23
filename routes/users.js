@@ -39,7 +39,7 @@ function getUsers(req, res) {
 }
 
 function getUserById(req, res, userid) {
-  const sql = "SELECT * FROM users WHERE userid = ?";
+  const sql = "SELECT * FROM users WHERE id = ?";
   db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
