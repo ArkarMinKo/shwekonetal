@@ -43,6 +43,8 @@ function createSale(req, res) {
             }
 
             const userLevel = rows[0].level;
+            // Get latest price
+            const saleType = Array.isArray(type) ? type[0] : type;
 
             // Define max gold per level (string keys)
             const levelLimits = {
@@ -54,7 +56,7 @@ function createSale(req, res) {
 
             const maxGold = levelLimits[userLevel] || 0;
 
-            if (type === "buy" && parseFloat(gold) > maxGold) {
+            if (saleType === "buy" && parseFloat(gold) > maxGold) {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({
                     error: `Your level (${userLevel}) allows a maximum of ${maxGold} gold per purchase`
@@ -62,9 +64,6 @@ function createSale(req, res) {
             }
 
             const id = generateSaleId(userid, type);
-
-            // Get latest price
-            const saleType = Array.isArray(type) ? type[0] : type;
 
             getLatestPrice(saleType, (err, price) => {
                 if (err || !price) {
@@ -74,13 +73,17 @@ function createSale(req, res) {
 
                 // Handle uploaded photos
                 let photoArray = [];
-                const uploadedFiles = Array.isArray(files.photos) ? files.photos : [files.photos];
-                uploadedFiles.forEach((file, index) => {
-                    const photoName = generatePhotoName(`${id}_${index}`, file.originalFilename);
-                    const newPath = path.join(UPLOAD_DIR, photoName);
-                    fs.renameSync(file.filepath, newPath);
-                    photoArray.push(photoName);
-                });
+                if (saleType === "buy" && files.photos) {
+                    const uploadedFiles = Array.isArray(files.photos) ? files.photos : [files.photos];
+                    uploadedFiles
+                        .filter(f => f && f.originalFilename)
+                        .forEach((file, index) => {
+                            const photoName = generatePhotoName(`${id}_${index}`, file.originalFilename);
+                            const newPath = path.join(UPLOAD_DIR, photoName);
+                            fs.renameSync(file.filepath, newPath);
+                            photoArray.push(photoName);
+                        });
+                }
 
                 const sql = `
                 INSERT INTO sales (id, userid, type, gold, price, photos)
@@ -294,15 +297,21 @@ function rejectSale(req, res, saleId) {
     });
 }
 
-function getApprovedSales(req, res) {
-  const sql = "SELECT * FROM sales WHERE status = 'approved' ORDER BY created_at DESC";
-  db.query(sql, (err, rows) => {
+function getApprovedSales(req, res, userid) {
+  if (!userid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "userid is required" }));
+  }
+
+  const sql = "SELECT * FROM sales WHERE status = 'approved' AND userid = ? ORDER BY created_at DESC";
+
+  db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
