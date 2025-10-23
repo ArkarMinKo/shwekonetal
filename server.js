@@ -147,9 +147,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Get Sales ---
-  else if (pathName === "/sales/approve" && method === "GET") {
-    sales.getApprovedSales(req,res)
+  else if (pathName.startsWith("/sales/approve/") && method === "GET") {
+    const userid = pathName.split("/")[2];
+    sales.getApprovedSales(req, res, userid);
   }
+
   else if (pathName === "/sales/pending" && method === "GET") {
     sales.getPendingSales(req,res)
   }
