@@ -83,7 +83,7 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/users" && method === "GET") users.getUsers(req, res);
 
   else if (pathName.startsWith("/users/") && method === "GET") {
-    const userid = pathName.split("/")[2];
+    const id = pathName.split("/")[2];
     users.getUserById(req, res, id);
   }
   
