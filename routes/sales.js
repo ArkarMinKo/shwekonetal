@@ -183,14 +183,14 @@ function approveSale(req, res, saleId) {
                                 console.error("Price fetch error:", err);
                                 return;
                             }
-                            const latestPrice = priceResult[0]?.price || 0;
-                            const profit = (latestPrice * sale.gold) - (sale.price * sale.gold);
+                            const latestPrice = parseInt(priceResult[0]?.price) || 0;
+                            const profit = (latestPrice * parseFloat(sale.gold)) - (parseInt(sale.price) * parseFloat(sale.gold));
 
                             const insertOwnGoldSql = `
                                 INSERT INTO own_gold (id, userid, gold, price, profit)
                                 VALUES (?, ?, ?, ?, ?)
                             `;
-                            db.query(insertOwnGoldSql, [ownGoldId, sale.userid, sale.gold, sale.price, profit], (err) => {
+                            db.query(insertOwnGoldSql, [ownGoldId, sale.userid, sale.gold, sale.price, parseInt(profit)], (err) => {
                                 if (err) console.error("Insert own_gold error:", err);
                             });
                         });
@@ -222,7 +222,7 @@ function approveSale(req, res, saleId) {
                                     return;
                                 }
 
-                                const latestPrice = priceResult[0]?.price || 0;
+                                const latestPrice = parseInt(priceResult[0]?.price) || 0;
 
                                 for (let goldRow of goldResults) {
                                     if (remainingGold <= 0) break;
@@ -246,7 +246,7 @@ function approveSale(req, res, saleId) {
                                             SET gold = ?, profit = ? 
                                             WHERE id = ?
                                         `;
-                                        db.query(updateSql, [availableGold, profit, goldRow.id]);
+                                        db.query(updateSql, [availableGold, parseInt(profit), goldRow.id]);
                                     }
                                 }
                             });
