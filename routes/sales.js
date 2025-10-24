@@ -358,21 +358,21 @@ function getApprovedSales(req, res, userid) {
   });
 }
 
-function getAllSales(req, res) {
-  const sql = `
-    SELECT s.*, u.fullname 
-    FROM sales s
-    LEFT JOIN users u ON s.userid = u.id
-    ORDER BY s.created_at DESC
-  `;
+function getAllSales(req, res, userid) {
+  if (!userid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "userid is required" }));
+  }
 
-  db.query(sql, (err, rows) => {
+  const sql = "SELECT * FROM sales WHERE status = 'pending' AND userid = ? ORDER BY created_at DESC";
+
+  db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(JSON.stringify({ success: true, data: rows }));
   });
 }
