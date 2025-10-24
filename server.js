@@ -182,6 +182,21 @@ const server = http.createServer(async (req, res) => {
     ownGold.getOwnGold(req, res, userid);
   }
 
+  // --- Insert Formula ---
+  else if (pathName === "/formula" && method === "POST"){
+    goldPrices.insertFormula(req, res);
+  }
+
+  // --- Get All Formula ---
+  else if (pathName === "/formula" && method === "GET") {
+    goldPrices.getAllFormula(req, res);
+  }
+
+  // --- Get Latest Formula ---
+  else if (pathName === "/formula/latest" && method === "GET") {
+    goldPrices.getLatestFormula(req, res);
+  }
+
   // --- 404 fallback ---
   else {
     res.writeHead(404, { "Content-Type": "application/json" });

@@ -265,6 +265,10 @@ function approveSale(req, res, saleId) {
                                         return;
                                     }
                                     const latestPrice = parseInt(priceResult[0]?.price) || 0;
+                                    const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+
+                                    const latestYwayPrice = latestPrice / latestyway;
+                                    const salesYwayPrice =  sale.price / latestyway;
 
                                     for (let goldRow of goldResults) {
                                         if (remainingGold <= 0) break;
@@ -275,7 +279,7 @@ function approveSale(req, res, saleId) {
                                         remainingGold -= deductGold;
 
                                         // Calculate profit for this sold portion
-                                        const profit = (latestPrice * deductGold) - (goldRow.price * deductGold);
+                                        const profit = (deductGold * salesYwayPrice) - (deductGold * latestYwayPrice);
 
                                         if (availableGold <= 0) {
                                             // delete if gold becomes zero
