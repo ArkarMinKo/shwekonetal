@@ -140,10 +140,10 @@ function createUser(req, res) {
             console.error("Insert error:", err);
             if (err.code === "ER_DUP_ENTRY") {
               const msg = err.message.includes("email")
-                ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
+                ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
                 : err.message.includes("phone")
-                ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်။"
-                : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်။";
+                ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
+                : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါတယ်";
               res.statusCode = 400;
               res.writeHead(400, { "Content-Type": "application/json" })
               return res.end(JSON.stringify({ error: msg }));
@@ -156,7 +156,7 @@ function createUser(req, res) {
           db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
             if (err || rows.length === 0) {
               res.writeHead(203, { "Content-Type": "application/json" })
-              return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် မအောင်မြင်ပါ။" }));
+              return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် ဆွဲယူခြင်း မအောင်မြင်ပါ" }));
             }
 
             const user = rows[0];
@@ -358,7 +358,7 @@ function loginUser(req, res, body) {
 
     if (!email || !password) {
       res.writeHead(400, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး။" }));
+      return res.end(JSON.stringify({ message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး" }));
     }
 
     db.query("SELECT id, fullname, email, password, status FROM users WHERE email=?", [email], (err, rows) => {
@@ -369,23 +369,23 @@ function loginUser(req, res, body) {
 
       if (rows.length === 0) {
         res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "ဒီ Email နဲ့အကောင့် မတွေ့ပါ။" }));
+        return res.end(JSON.stringify({ message: "ဒီ Email နဲ့အကောင့် မတွေ့ပါ" }));
       }
 
       const user = rows[0];
 
       if (user.password !== password) {
         res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ။" }));
+        return res.end(JSON.stringify({ message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ" }));
       }
       
       if (user.status !== "approved") {
         res.writeHead(403, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး။" }));
+        return res.end(JSON.stringify({ message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး" }));
       }
 
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်။", id: user.id, fullname: user.fullname}));
+      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်", id: user.id, fullname: user.fullname}));
     });
   } catch (e) {
     res.writeHead(400, { "Content-Type": "application/json" });
@@ -497,7 +497,7 @@ function requestEmailConfirmation(req, res) {
       { code: `${code}`}
     );
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပီ။ ၁၀ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ။", email }));
+    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပီ။ ၁၀ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ", email }));
   });
 }
 

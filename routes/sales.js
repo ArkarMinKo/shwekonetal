@@ -59,17 +59,17 @@ function createSale(req, res) {
 
             // Validation for buy
             if (saleType === "buy" && requestedGold > maxGold) {
-                res.statusCode = 400;
+                res.writeHead(400, { "Content-Type": "application/json" });
                 return res.end(JSON.stringify({
-                    error: `Your level (${userLevel}) allows a maximum of ${maxGold} gold per purchase`
+                    error: `သင့်အဆင့် (${userLevel}) ဖြင့် တစ်ကြိမ် အများဆုံး ${maxGold} ရွှေ ဝယ်ယူနိုင်ပါသည်`
                 }));
             }
 
             // Validation for sell
             if (saleType === "sell" && requestedGold > userGold) {
-                res.statusCode = 400;
+                res.writeHead(400, { "Content-Type": "application/json" });
                 return res.end(JSON.stringify({
-                    error: `You only have ${userGold} gold, so you cannot sell ${requestedGold} gold`
+                    error: `သင့်တွင် ရှိသော ရွှေပမာဏသည် ${userGold} ရွေးသာ ရှိသောကြောင့် ${requestedGold} ရွေးကို ရောင်းရန် မဖြစ်နိုင်ပါ`
                 }));
             }
 
@@ -104,8 +104,12 @@ function createSale(req, res) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
                     }
-                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-                    res.end(JSON.stringify({ success: true }));
+                    res.writeHead(200, { "Content-Type": "application/json" });
+                    if(saleType === 'buy'){
+                        res.end(JSON.stringify({ success: true, message: `‌ေရွှ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
+                    }else{
+                        res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ရောင်းချခြင်းအောင်မြင်ပါသည် ငွေဖြည့်သွင်းပေးရန် ခနစောင့်ပါ` }));
+                    }
                 });
             });
         });
