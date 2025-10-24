@@ -157,7 +157,7 @@ function insertFormula(req, res) {
         return res.end(JSON.stringify({ error: err.message }));
       }
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify({ message: "Buying price added successfully", id, yway, time, date }));
+      res.end(JSON.stringify({ message: "Formula added successfully", id, yway, time, date }));
     });
   }); 
 }
