@@ -97,7 +97,7 @@ function createSale(req, res) {
 
                 const sql = `
                     INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null], (err) => {
                     if (err) {
