@@ -36,28 +36,42 @@ function insertSellingPrice(req, res) {
 
       // ---------- PROFIT UPDATE LOGIC START ----------
       const getOwnGoldSql = "SELECT * FROM own_gold";
+      const getLatestFormulaSql = `
+        SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+      `;
       db.query(getOwnGoldSql, (err, goldResults) => {
         if (err) {
           console.error("own_gold fetch error:", err);
           return;
         }
 
-        if (goldResults.length === 0) return;
+        db.query(getLatestFormulaSql, (err, formulaResult) => {
+          if (err) {
+            console.error("Formula fetch error:", err);
+            return;
+          }
+          if (goldResults.length === 0) return;
 
-        // Loop and update each own_gold row's profit
-        goldResults.forEach((goldRow) => {
-          const goldQty = parseFloat(goldRow.gold);
-          const profit = (price * goldQty) - (goldRow.price * goldQty);
+          // Loop and update each own_gold row's profit
+          goldResults.forEach((goldRow) => {
+            const goldQty = parseFloat(goldRow.gold);
+            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
 
-          const updateProfitSql = `
-            UPDATE own_gold
-            SET profit = ?
-            WHERE id = ?
-          `;
-          db.query(updateProfitSql, [profit, goldRow.id], (err) => {
-            if (err) console.error(`Error updating profit for ${goldRow.id}:`, err);
+            const latestYwayPrice = goldRow.price / latestyway;
+            const salesYwayPrice =  price / latestyway;
+
+            const profit = (salesYwayPrice * goldQty) - (latestYwayPrice * goldQty);
+
+            const updateProfitSql = `
+              UPDATE own_gold
+              SET profit = ?
+              WHERE id = ?
+            `;
+            db.query(updateProfitSql, [profit, goldRow.id], (err) => {
+              if (err) console.error(`Error updating profit for ${goldRow.id}:`, err);
+            });
           });
-        });
+        })
       });
       // ---------- PROFIT UPDATE LOGIC END ----------
 

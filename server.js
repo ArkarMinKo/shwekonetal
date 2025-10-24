@@ -148,7 +148,7 @@ const server = http.createServer(async (req, res) => {
 
   // --- Get Sales ---
   else if (pathName.startsWith("/sales/approve/") && method === "GET") {
-    const userid = pathName.split("/")[2];
+    const userid = pathName.split("/")[3];
     sales.getApprovedSales(req, res, userid);
   }
 

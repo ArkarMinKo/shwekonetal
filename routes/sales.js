@@ -29,7 +29,7 @@ function createSale(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        const { userid, type, gold, method } = fields;
+        const { userid, type, gold, method, Payment_name, payment_phone } = fields;
         if (!userid || !type || !gold || !method) {
             res.statusCode = 400;
             return res.end(JSON.stringify({ error: "userid, type, gold and method are required" }));
@@ -96,10 +96,10 @@ function createSale(req, res) {
                 }
 
                 const sql = `
-                    INSERT INTO sales (id, userid, type, gold, price, photos, method)
+                    INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 `;
-                db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method], (err) => {
+                db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null], (err) => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
@@ -197,21 +197,37 @@ function approveSale(req, res, saleId) {
                             ORDER BY date DESC, time DESC 
                             LIMIT 1
                         `;
+
+                        const getLatestFormulaSql = `
+                            SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+                        `;
+
                         db.query(getLatestPriceSql, (err, priceResult) => {
                             if (err) {
                                 console.error("Price fetch error:", err);
                                 return;
                             }
-                            const latestPrice = parseInt(priceResult[0]?.price) || 0;
-                            const profit = (latestPrice * parseFloat(sale.gold)) - (parseInt(sale.price) * parseFloat(sale.gold));
+                            db.query(getLatestFormulaSql, (err, formulaResult) => {
+                                if (err) {
+                                    console.error("Formula fetch error:", err);
+                                    return;
+                                }
+                                const latestPrice = parseInt(priceResult[0]?.price) || 0;
+                                const latestyway = parseInt(formulaResult[0]?.yway) || 128;
 
-                            const insertOwnGoldSql = `
-                                INSERT INTO own_gold (id, userid, gold, price, profit)
-                                VALUES (?, ?, ?, ?, ?)
-                            `;
-                            db.query(insertOwnGoldSql, [ownGoldId, sale.userid, sale.gold, sale.price, parseInt(profit)], (err) => {
-                                if (err) console.error("Insert own_gold error:", err);
-                            });
+                                const latestYwayPrice = latestPrice / latestyway;
+                                const salesYwayPrice =  sale.price / latestyway;
+                                
+                                const profit = (sale.gold * salesYwayPrice) - (sale.gold * latestYwayPrice);
+
+                                const insertOwnGoldSql = `
+                                    INSERT INTO own_gold (id, userid, gold, price, profit)
+                                    VALUES (?, ?, ?, ?, ?)
+                                `;
+                                db.query(insertOwnGoldSql, [ownGoldId, sale.userid, sale.gold, sale.price, parseInt(profit)], (err) => {
+                                    if (err) console.error("Insert own_gold error:", err);
+                                });
+                            })
                         });
                     }
 
@@ -235,39 +251,47 @@ function approveSale(req, res, saleId) {
                                 ORDER BY date DESC, time DESC 
                                 LIMIT 1
                             `;
+                            const getLatestFormulaSql = `
+                                SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+                            `;
                             db.query(getLatestPriceSql, (err, priceResult) => {
                                 if (err) {
                                     console.error("Price fetch error:", err);
                                     return;
                                 }
-
-                                const latestPrice = parseInt(priceResult[0]?.price) || 0;
-
-                                for (let goldRow of goldResults) {
-                                    if (remainingGold <= 0) break;
-
-                                    let availableGold = parseFloat(goldRow.gold);
-                                    let deductGold = Math.min(availableGold, remainingGold);
-                                    availableGold -= deductGold;
-                                    remainingGold -= deductGold;
-
-                                    // Calculate profit for this sold portion
-                                    const profit = (latestPrice * deductGold) - (goldRow.price * deductGold);
-
-                                    if (availableGold <= 0) {
-                                        // delete if gold becomes zero
-                                        const deleteSql = "DELETE FROM own_gold WHERE id = ?";
-                                        db.query(deleteSql, [goldRow.id]);
-                                    } else {
-                                        // update remaining gold and profit
-                                        const updateSql = `
-                                            UPDATE own_gold 
-                                            SET gold = ?, profit = ? 
-                                            WHERE id = ?
-                                        `;
-                                        db.query(updateSql, [availableGold, parseInt(profit), goldRow.id]);
+                                db.query(getLatestFormulaSql, (err, formulaResult) => {
+                                    if (err) {
+                                        console.error("Formula fetch error:", err);
+                                        return;
                                     }
-                                }
+                                    const latestPrice = parseInt(priceResult[0]?.price) || 0;
+
+                                    for (let goldRow of goldResults) {
+                                        if (remainingGold <= 0) break;
+
+                                        let availableGold = parseFloat(goldRow.gold);
+                                        let deductGold = Math.min(availableGold, remainingGold);
+                                        availableGold -= deductGold;
+                                        remainingGold -= deductGold;
+
+                                        // Calculate profit for this sold portion
+                                        const profit = (latestPrice * deductGold) - (goldRow.price * deductGold);
+
+                                        if (availableGold <= 0) {
+                                            // delete if gold becomes zero
+                                            const deleteSql = "DELETE FROM own_gold WHERE id = ?";
+                                            db.query(deleteSql, [goldRow.id]);
+                                        } else {
+                                            // update remaining gold and profit
+                                            const updateSql = `
+                                                UPDATE own_gold 
+                                                SET gold = ?, profit = ? 
+                                                WHERE id = ?
+                                            `;
+                                            db.query(updateSql, [availableGold, parseInt(profit), goldRow.id]);
+                                        }
+                                    }
+                                })
                             });
                         });
                     }
