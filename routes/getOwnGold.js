@@ -17,19 +17,12 @@ function getOwnGold(req, res, userid) {
     }
 
     let total = 0;
+    let formattedTotal;
 
     const formattedResults = results.map(data => {
       const profit = parseFloat(data.profit) || 0;
-      let formattedtotal;
-      total += profit;
 
-      if(total > 0){
-        formattedtotal = `+ ${total}` 
-      }else if(total < 0){
-        formattedtotal = `- ${Math.abs(total)}`
-      }else{
-        formattedtotal = '0'
-      }
+      total += profit;
 
       let formattedProfit;
       if (profit > 0) {
@@ -46,9 +39,17 @@ function getOwnGold(req, res, userid) {
       };
     });
 
+    if(total > 0){
+      formattedTotal = `+ ${total}`
+    }else if(total < 0){
+      formattedTotal = `- ${Math.abs(total)}`
+    }else{
+      formattedTotal = "0"
+    }
+
     res.statusCode = 200;
     res.end(JSON.stringify({ 
-      total: formattedtotal,
+      total: formattedTotal,
       data: formattedResults
     }));
   });
