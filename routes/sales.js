@@ -168,11 +168,11 @@ function approveSale(req, res, saleId) {
                     res.statusCode = 500;
                     return res.end(JSON.stringify({ error: err.message }));
                 }
-                let updateGold = stockResult[0].gold;
+                let updateGold = parseFloat(stockResult[0].gold);
                 const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
 
                 if(sale.type === 'buy'){
-                    updateGold -= sale.gold;
+                    updateGold -= parseFloat(sale.gold);
 
                     db.query(updateStockSql, updateGold, err => {
                         if (err) {
@@ -181,7 +181,7 @@ function approveSale(req, res, saleId) {
                         }
                     })
                 }else if(sale.type === 'sell'){
-                    updateGold += sale.gold;
+                    updateGold += parseFloat(sale.gold);
 
                     db.query(updateStockSql, updateGold, err => {
                         if (err) {
