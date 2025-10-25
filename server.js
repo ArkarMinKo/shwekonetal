@@ -209,7 +209,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Get Filter Date ---
-  else if (pathName.startsWith("/own_gold/" && method === "POST")){
+  else if (pathName.startsWith("/own_gold/") && method === "POST"){
     const userid = pathName.split("/")[2];
     ownGold.getFilterDate(req, res, userid)
   }
