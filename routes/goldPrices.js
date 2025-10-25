@@ -46,7 +46,7 @@ function postOpenStock(req, res){
         const sql = `UPDATE stock SET gold = ? WHERE id = 1`
         let updateGold;
 
-        updateGold = rows[0].gold + gold;
+        updateGold = parseFloat(rows[0].gold) + parseFloat(gold);
         db.query(sql, updateGold, err => {
           if (err) {
             res.statusCode = 500;
