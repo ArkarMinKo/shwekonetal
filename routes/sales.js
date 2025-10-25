@@ -501,6 +501,7 @@ function getAllSales(req, res) {
             const basePrice = parseFloat(r.price);
 
             total = addDecimals(total, goldFloat, 2);
+            console.log(total);
 
             // calculate new price
             const calculatedPrice = goldFloat * basePrice / latestyway;
@@ -522,7 +523,6 @@ function getAllSales(req, res) {
             ...r,
             gold: goldString.trim(),
             price: calculatedPrice,
-            yway: goldFloat
             };
         });
 
