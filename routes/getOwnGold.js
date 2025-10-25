@@ -1,4 +1,5 @@
 const db = require("../db");
+const formidable = require("formidable");
 
 function getOwnGold(req, res, userid) {
   res.setHeader("Content-Type", "application/json");
@@ -55,4 +56,80 @@ function getOwnGold(req, res, userid) {
   });
 }
 
-module.exports = { getOwnGold };
+function getFilterDate(req, res, userid) {
+  res.setHeader("Content-Type", "application/json");
+
+  if (!userid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "Userid is required" }));
+  }
+
+  const form = new formidable.IncomingForm({ multiples: true });
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { startDate, endDate } = fields;
+
+    if (!startDate || !endDate) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "Start date and end date are required" }));
+    }
+
+    const sql = `
+      SELECT * FROM own_gold
+      WHERE userid = ? 
+      AND DATE(created_at) BETWEEN ? AND ?
+      ORDER BY created_at DESC
+    `;
+
+    db.query(sql, [userid, startDate, endDate], (err, results) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      let total = 0;
+      let formattedTotal;
+
+      const formattedResults = results.map(data => {
+        const profit = parseFloat(data.profit) || 0;
+
+        total += profit;
+
+        let formattedProfit;
+        if (profit > 0) {
+          formattedProfit = `+ ${profit}`;
+        } else if (profit < 0) {
+          formattedProfit = `- ${Math.abs(profit)}`;
+        } else {
+          formattedProfit = "0";
+        }
+
+        return {
+          ...data,
+          profit: formattedProfit
+        };
+      });
+
+      if (total > 0) {
+        formattedTotal = `+ ${total}`;
+      } else if (total < 0) {
+        formattedTotal = `- ${Math.abs(total)}`;
+      } else {
+        formattedTotal = "0";
+      }
+
+      res.statusCode = 200;
+      res.end(JSON.stringify({
+        total: formattedTotal,
+        data: formattedResults
+      }));
+    });
+  });
+}
+
+module.exports = { getOwnGold, getFilterDate };

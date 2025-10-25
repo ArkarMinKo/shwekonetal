@@ -208,6 +208,12 @@ const server = http.createServer(async (req, res) => {
     ownGold.getOwnGold(req, res, userid);
   }
 
+  // --- Get Filter Date ---
+  else if (pathName.startsWith("/own_gold/" && method === "POST")){
+    const userid = pathName.split("/")[2];
+    ownGold.getFilterDate(req, res, userid)
+  }
+
   // --- Insert Formula ---
   else if (pathName === "/formula" && method === "POST"){
     goldPrices.insertFormula(req, res);

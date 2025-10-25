@@ -485,7 +485,7 @@ function getAllSales(req, res) {
 
       // English → Myanmar number converter
       const toMyanmarNumber = (num) => {
-        const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉" };
+        const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
         return num.toString().split("").map(d => map[d] || d).join("");
       };
 
@@ -500,7 +500,7 @@ function getAllSales(req, res) {
         const kyat = Math.floor(goldFloat / latestyway);
         const palbyyway = goldFloat / ywaybypal;
         const pal = Math.floor(palbyyway % 16);
-        const yway = Math.round(goldFloat % ywaybypal);
+        const yway = goldFloat % ywaybypal;
 
         let goldString = "";
         if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
@@ -513,10 +513,11 @@ function getAllSales(req, res) {
           ...r,
           gold: goldString.trim(),
           price: calculatedPrice,
+          yway: goldFloat
         };
       });
 
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.writeHead(400, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true, data: formattedRows }));
     });
   });
