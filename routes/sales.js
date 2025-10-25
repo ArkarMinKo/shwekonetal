@@ -692,7 +692,7 @@ function getDateFilterByUser(req, res, userid) {
         ];
         }
 
-        db.query(sql, [userid, start, end], (err, results) => {
+        db.query(sql, params, (err, results) => {
             if (err) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
