@@ -16,8 +16,16 @@ function getOwnGold(req, res, userid) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
+    let total;
+    results.forEach(data => {
+      total += data.profit;
+    })
+
     res.statusCode = 200;
-    res.end(JSON.stringify({ data: results }));
+    res.end(JSON.stringify({ 
+      total: total,
+      data: results
+    }));
   });
 }
 
