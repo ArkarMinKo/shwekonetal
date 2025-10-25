@@ -99,14 +99,12 @@ function getFilterDate(req, res, userid) {
       sql = `
         SELECT * FROM own_gold
         WHERE userid = ?
-        AND created_at >= ? 
-        AND created_at <= ?
+        AND DATE(created_at) = ?
         ORDER BY created_at DESC
       `;
       params = [
         userid,
-        startDate + "T00:00:00.000Z",
-        startDate + "T23:59:59.000Z"
+        startDate,
       ];
     }
 
