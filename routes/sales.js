@@ -436,25 +436,6 @@ function rejectSale(req, res, saleId) {
     });
 }
 
-function getApprovedSales(req, res, userid) {
-  if (!userid) {
-    res.statusCode = 400;
-    return res.end(JSON.stringify({ error: "userid is required" }));
-  }
-
-  const sql = "SELECT * FROM sales WHERE status = 'approved' AND userid = ? ORDER BY created_at DESC";
-
-  db.query(sql, [userid], (err, rows) => {
-    if (err) {
-      res.statusCode = 500;
-      return res.end(JSON.stringify({ error: err.message }));
-    }
-
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ success: true, data: rows }));
-  });
-}
-
 function getAllSales(req, res) {
   const sql = `
     SELECT s.*, u.fullname 
@@ -469,10 +450,59 @@ function getAllSales(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.end(JSON.stringify({ success: true, data: rows }));
+    const getLatestFormulaSql = `
+      SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+    `;
+
+    db.query(getLatestFormulaSql, (err, formulaResult) => {
+      if (err) {
+        console.error("Price fetch error:", err);
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+      const ywaybypal = latestyway / 16;
+
+      // English → Myanmar number converter
+      const toMyanmarNumber = (num) => {
+        const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉" };
+        return num.toString().split("").map(d => map[d] || d).join("");
+      };
+
+      const formattedRows = rows.map((r) => {
+        const goldFloat = parseFloat(r.gold);
+        const basePrice = parseFloat(r.price);
+
+        // calculate new price
+        const calculatedPrice = goldFloat * basePrice / latestyway;
+
+        // convert gold to kyat-pal-yway string
+        const kyat = Math.floor(goldFloat / latestyway);
+        const palbyyway = goldFloat / ywaybypal;
+        const pal = Math.floor(palbyyway % 16);
+        const yway = Math.round(goldFloat % ywaybypal);
+
+        let goldString = "";
+        if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+        if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+        if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+
+        if (!goldString.trim()) goldString = "၀";
+
+        return {
+          ...r,
+          gold: goldString.trim(),
+          price: calculatedPrice,
+        };
+      });
+
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({ success: true, data: formattedRows }));
+    });
   });
 }
+
 
 function getTimesSalesByDay(req, res) {
   const now = new Date();
