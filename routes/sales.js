@@ -629,7 +629,7 @@ function getAllSalesByUser(req, res, userid) {
     return res.end(JSON.stringify({ error: "userid is required" }));
   }
 
-  const sql = "SELECT * FROM sales userid = ? ORDER BY created_at DESC";
+  const sql = "SELECT * FROM sales WHERE userid = ? ORDER BY created_at DESC";
 
   db.query(sql, [userid], (err, rows) => {
     if (err) {
