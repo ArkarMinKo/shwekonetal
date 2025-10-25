@@ -72,12 +72,16 @@ function getFilterDate(req, res, userid) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    const { startDate, endDate } = fields;
-
-    if (!startDate || !endDate) {
+    if (!startDate) {
       res.statusCode = 400;
-      return res.end(JSON.stringify({ error: "Start date and end date are required" }));
+      return res.end(JSON.stringify({ error: "Start date is required" }));
     }
+
+    if (!endDate) {
+      endDate = startDate;
+    }
+
+    const { startDate, endDate } = fields;
 
     const sql = `
       SELECT * FROM own_gold

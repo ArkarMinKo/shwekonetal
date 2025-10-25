@@ -623,6 +623,68 @@ function getPendingSales(req, res, userid) {
   });
 }
 
+function getAllSalesByUser(req, res, userid) {
+  if (!userid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "userid is required" }));
+  }
+
+  const sql = "SELECT * FROM sales userid = ? ORDER BY created_at DESC";
+
+  db.query(sql, [userid], (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ success: true, data: rows }));
+  });
+}
+
+function getDateFilterByUser(req, res, userid) {
+    if (!userid) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "userid is required" }));
+    }
+
+    const form = new formidable.IncomingForm({ multiples: true });
+
+    form.parse(req, (err, fields) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const { startDate, endDate } = fields;
+
+        if (!startDate || !endDate) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Start date and end date are required" }));
+        }
+
+        const sql = `
+            SELECT * FROM sales
+            WHERE userid = ? 
+            AND created_at >= ? AND created_at <= ?
+            ORDER BY created_at DESC
+        `;
+
+        const start = startDate + " 00:00:00";
+        const end = endDate + " 23:59:59";
+
+        db.query(sql, [userid, start, end], (err, results) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ success: true, data: results }));
+        })
+    })
+}
+
 module.exports = {
         createSale,
         approveSale,
@@ -631,5 +693,7 @@ module.exports = {
         getRejectedSales,
         getAllSales, 
         getPendingSales,
-        getTimesSalesByDay
+        getTimesSalesByDay,
+        getAllSalesByUser,
+        getDateFilterByUser
     };
