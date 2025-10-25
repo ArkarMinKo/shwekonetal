@@ -490,7 +490,7 @@ function getAllSales(req, res) {
         };
 
         function addDecimals(a, b, precision = 2) {
-            const factor = Math.pow(10, precision); // 10^2 = 100
+            const factor = Math.pow(10, precision);
             return (Math.round(a * factor) + Math.round(b * factor)) / factor;
         }
 
