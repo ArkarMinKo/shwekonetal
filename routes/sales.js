@@ -419,7 +419,7 @@ function rejectSale(req, res, saleId) {
 
                 const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
                 
-                db.query(updateStockSql, [updateGold], err => {
+                db.query(updateStockSql, parseFloat(updateGold), err => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ 
