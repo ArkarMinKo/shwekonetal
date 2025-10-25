@@ -170,7 +170,7 @@ function approveSale(req, res, saleId) {
                 }
                 let updateGold = parseFloat(stockResult[0].gold);
                 const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
-
+                console.log(sale.gold)
                 if(sale.type === 'buy'){
                     updateGold -= parseFloat(sale.gold);
 
