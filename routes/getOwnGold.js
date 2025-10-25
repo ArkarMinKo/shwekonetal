@@ -82,7 +82,7 @@ function getFilterDate(req, res, userid) {
     const sql = `
       SELECT * FROM own_gold
       WHERE userid = ? 
-      AND created_at >= ? AND created_at < ?
+      AND created_at >= ? AND created_at <= ?
       ORDER BY created_at DESC
     `;
 
