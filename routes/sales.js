@@ -436,6 +436,25 @@ function rejectSale(req, res, saleId) {
     });
 }
 
+function getApprovedSales(req, res, userid) {
+  if (!userid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "userid is required" }));
+  }
+
+  const sql = "SELECT * FROM sales WHERE status = 'approved' AND userid = ? ORDER BY created_at DESC";
+
+  db.query(sql, [userid], (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ success: true, data: rows }));
+  });
+}
+
 function getAllSales(req, res) {
   const sql = `
     SELECT s.*, u.fullname 
@@ -502,7 +521,6 @@ function getAllSales(req, res) {
     });
   });
 }
-
 
 function getTimesSalesByDay(req, res) {
   const now = new Date();
