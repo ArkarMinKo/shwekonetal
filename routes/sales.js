@@ -123,7 +123,7 @@ function createSale(req, res) {
                         }
                         res.writeHead(200, { "Content-Type": "application/json" });
                         if(saleType === 'buy'){
-                            res.end(JSON.stringify({ success: true, message: `‌ေရွှ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
+                            res.end(JSON.stringify({ success: true, message: `‌ရွှေ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
                         }else{
                             res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ရောင်းချခြင်းအောင်မြင်ပါသည် ငွေဖြည့်သွင်းပေးရန် ခနစောင့်ပါ` }));
                         }
