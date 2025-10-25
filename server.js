@@ -163,6 +163,12 @@ const server = http.createServer(async (req, res) => {
     sales.getApprovedSales(req, res, userid);
   }
 
+  // --- Get reject Sales By User ---
+  else if (pathName.startsWith("/sales/reject/") && method === "GET") {
+    const userid = pathName.split("/")[3];
+    sales.getRejectedSales(req, res, userid);
+  }
+
   // --- Get pending Sales By User ---
   else if (pathName.startsWith("/sales/pending/") && method === "GET") {
     const userid = pathName.split("/")[3];
