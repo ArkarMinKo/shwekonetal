@@ -52,85 +52,85 @@ function createSale(req, res) {
                     error: `ရောင်းချပေးနိုင်သော ရွှေအရေအတွက်ထက် ကျော်လွန်နေသောကြောင့် ဝယ်ယူ၍ မရနိုင်ပါ`
                 }));
             }
-        })
 
-        // First, get user level and gold
-        db.query("SELECT level, gold AS user_gold FROM users WHERE id = ?", [userid], (err, rows) => {
-            if (err || rows.length === 0) {
-                res.statusCode = 400;
-                return res.end(JSON.stringify({ error: "User not found" }));
-            }
-
-            const userLevel = rows[0].level;
-            const userGold = parseFloat(rows[0].user_gold || 0);
-            const requestedGold = parseFloat(gold);
-
-            // Define max gold per level (string keys)
-            const levelLimits = {
-                level1: 120,
-                level2: 240,
-                level3: 600,
-                level4: 1200
-            };
-
-            const maxGold = levelLimits[userLevel] || 0;
-
-            // Validation for buy
-            if (saleType === "buy" && requestedGold > maxGold) {
-                res.writeHead(400, { "Content-Type": "application/json" });
-                return res.end(JSON.stringify({
-                    error: `သင့်အဆင့် (${userLevel}) ဖြင့် တစ်ကြိမ် အများဆုံး ${maxGold} ရွှေ ဝယ်ယူနိုင်ပါသည်`
-                }));
-            }
-
-            // Validation for sell
-            if (saleType === "sell" && requestedGold > userGold) {
-                res.writeHead(400, { "Content-Type": "application/json" });
-                return res.end(JSON.stringify({
-                    error: `သင့်တွင် ရှိသော ရွှေပမာဏသည် ${userGold} ရွေးသာ ရှိသောကြောင့် ${requestedGold} ရွေးကို ရောင်းရန် မဖြစ်နိုင်ပါ`
-                }));
-            }
-
-            const id = generateSaleId(userid, saleType);
-
-            getLatestPrice(saleType, (err, price) => {
-                if (err || !price) {
-                    res.statusCode = 500;
-                    return res.end(JSON.stringify({ error: "Could not get latest price" }));
+            // First, get user level and gold
+            db.query("SELECT level, gold AS user_gold FROM users WHERE id = ?", [userid], (err, rows) => {
+                if (err || rows.length === 0) {
+                    res.statusCode = 400;
+                    return res.end(JSON.stringify({ error: "User not found" }));
                 }
 
-                // Handle uploaded photos
-                let photoArray = [];
-                if (saleType === "buy" && files.photos) {
-                    const uploadedFiles = Array.isArray(files.photos) ? files.photos : [files.photos];
-                    uploadedFiles
-                        .filter(f => f && f.originalFilename)
-                        .forEach((file, index) => {
-                            const photoName = generatePhotoName(`${id}_${index}`, file.originalFilename);
-                            const newPath = path.join(UPLOAD_DIR, photoName);
-                            fs.renameSync(file.filepath, newPath);
-                            photoArray.push(photoName);
-                        });
+                const userLevel = rows[0].level;
+                const userGold = parseFloat(rows[0].user_gold || 0);
+                const requestedGold = parseFloat(gold);
+
+                // Define max gold per level (string keys)
+                const levelLimits = {
+                    level1: 120,
+                    level2: 240,
+                    level3: 600,
+                    level4: 1200
+                };
+
+                const maxGold = levelLimits[userLevel] || 0;
+
+                // Validation for buy
+                if (saleType === "buy" && requestedGold > maxGold) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({
+                        error: `သင့်အဆင့် (${userLevel}) ဖြင့် တစ်ကြိမ် အများဆုံး ${maxGold} ရွှေ ဝယ်ယူနိုင်ပါသည်`
+                    }));
                 }
 
-                const sql = `
-                    INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `;
-                db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null], (err) => {
-                    if (err) {
+                // Validation for sell
+                if (saleType === "sell" && requestedGold > userGold) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({
+                        error: `သင့်တွင် ရှိသော ရွှေပမာဏသည် ${userGold} ရွေးသာ ရှိသောကြောင့် ${requestedGold} ရွေးကို ရောင်းရန် မဖြစ်နိုင်ပါ`
+                    }));
+                }
+
+                const id = generateSaleId(userid, saleType);
+
+                getLatestPrice(saleType, (err, price) => {
+                    if (err || !price) {
                         res.statusCode = 500;
-                        return res.end(JSON.stringify({ error: err.message }));
+                        return res.end(JSON.stringify({ error: "Could not get latest price" }));
                     }
-                    res.writeHead(200, { "Content-Type": "application/json" });
-                    if(saleType === 'buy'){
-                        res.end(JSON.stringify({ success: true, message: `‌ေရွှ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
-                    }else{
-                        res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ရောင်းချခြင်းအောင်မြင်ပါသည် ငွေဖြည့်သွင်းပေးရန် ခနစောင့်ပါ` }));
+
+                    // Handle uploaded photos
+                    let photoArray = [];
+                    if (saleType === "buy" && files.photos) {
+                        const uploadedFiles = Array.isArray(files.photos) ? files.photos : [files.photos];
+                        uploadedFiles
+                            .filter(f => f && f.originalFilename)
+                            .forEach((file, index) => {
+                                const photoName = generatePhotoName(`${id}_${index}`, file.originalFilename);
+                                const newPath = path.join(UPLOAD_DIR, photoName);
+                                fs.renameSync(file.filepath, newPath);
+                                photoArray.push(photoName);
+                            });
                     }
+
+                    const sql = `
+                        INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null], (err) => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: err.message }));
+                        }
+                        res.writeHead(200, { "Content-Type": "application/json" });
+                        if(saleType === 'buy'){
+                            res.end(JSON.stringify({ success: true, message: `‌ေရွှ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
+                        }else{
+                            res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ရောင်းချခြင်းအောင်မြင်ပါသည် ငွေဖြည့်သွင်းပေးရန် ခနစောင့်ပါ` }));
+                        }
+                    });
                 });
             });
-        });
+        })
     });
 }
 
