@@ -28,7 +28,7 @@ function postOpenStock(req, res){
       }
 
       if(rows.length === 0) {
-        const sql = `INSERT TABLE stock (gold) VALUES (?)`;
+        const sql = `INSERT INTO stock (gold) VALUES (?)`;
 
         db.query(sql, gold, err => {
           if (err) {
@@ -43,7 +43,7 @@ function postOpenStock(req, res){
           }));
         })
       }else{
-        const sql = `UPDATE TABLE stock SET gold = ? WHERE id = 1`
+        const sql = `UPDATE stock SET gold = ? WHERE id = 1`
         
         db.query(sql, gold, err => {
           if (err) {
