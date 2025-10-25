@@ -44,8 +44,10 @@ function postOpenStock(req, res){
         })
       }else{
         const sql = `UPDATE stock SET gold = ? WHERE id = 1`
-        
-        db.query(sql, gold, err => {
+        let updateGold;
+
+        updateGold = rows[0].gold + gold;
+        db.query(sql, updateGold, err => {
           if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
@@ -54,7 +56,7 @@ function postOpenStock(req, res){
           res.setHeader("Content-Type", "application/json; charset=utf-8");
           res.end(JSON.stringify({
             message: "Update gold to stock successfully",
-            data: gold
+            data: updateGold
           }));
         })
       }
