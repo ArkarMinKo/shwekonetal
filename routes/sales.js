@@ -538,7 +538,7 @@ function getAllSales(req, res) {
 
         if (!goldString.trim()) goldString = "၀";
 
-        res.writeHead(400, { "Content-Type": "application/json" });
+        res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
     });
   });
