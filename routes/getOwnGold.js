@@ -79,17 +79,31 @@ function getFilterDate(req, res, userid) {
       return res.end(JSON.stringify({ error: "Start date is required" }));
     }
 
-    const start = startDate + " 00:00:00";
-    const end = (endDate ? endDate : startDate) + " 23:59:59";
+    let sql;
+    let params;
 
-    const sql = `
-      SELECT * FROM own_gold
-      WHERE userid = ? 
-      AND created_at >= ? AND created_at <= ?
-      ORDER BY created_at DESC
-    `;
+    // ✅ endDate ပါရင် date range query
+    if (endDate) {
+      sql = `
+        SELECT * FROM own_gold
+        WHERE userid = ? 
+        AND created_at >= ? AND created_at <= ?
+        ORDER BY created_at DESC
+      `;
+      params = [userid, startDate + " 00:00:00", endDate + " 23:59:59"];
+    } 
+    // ✅ endDate မပါရင် တစ်နေ့စာပဲ ထုတ်မယ်
+    else {
+      sql = `
+        SELECT * FROM own_gold
+        WHERE userid = ? 
+        AND DATE(created_at) = ?
+        ORDER BY created_at DESC
+      `;
+      params = [userid, startDate];
+    }
 
-    db.query(sql, [userid, start, end], (err, results) => {
+    db.query(sql, params, (err, results) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -100,17 +114,12 @@ function getFilterDate(req, res, userid) {
 
       const formattedResults = results.map(data => {
         const profit = parseFloat(data.profit) || 0;
-
         total += profit;
 
         let formattedProfit;
-        if (profit > 0) {
-          formattedProfit = `+ ${profit}`;
-        } else if (profit < 0) {
-          formattedProfit = `- ${Math.abs(profit)}`;
-        } else {
-          formattedProfit = "0";
-        }
+        if (profit > 0) formattedProfit = `+ ${profit}`;
+        else if (profit < 0) formattedProfit = `- ${Math.abs(profit)}`;
+        else formattedProfit = "0";
 
         return {
           ...data,
@@ -118,13 +127,9 @@ function getFilterDate(req, res, userid) {
         };
       });
 
-      if (total > 0) {
-        formattedTotal = `+ ${total}`;
-      } else if (total < 0) {
-        formattedTotal = `- ${Math.abs(total)}`;
-      } else {
-        formattedTotal = "0";
-      }
+      if (total > 0) formattedTotal = `+ ${total}`;
+      else if (total < 0) formattedTotal = `- ${Math.abs(total)}`;
+      else formattedTotal = "0";
 
       res.statusCode = 200;
       res.end(JSON.stringify({
