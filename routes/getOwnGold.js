@@ -82,25 +82,32 @@ function getFilterDate(req, res, userid) {
     let sql;
     let params;
 
-    // ✅ endDate ပါရင် date range query
     if (endDate) {
       sql = `
         SELECT * FROM own_gold
         WHERE userid = ? 
-        AND created_at >= ? AND created_at <= ?
+        AND created_at >= ? 
+        AND created_at <= ?
         ORDER BY created_at DESC
       `;
-      params = [userid, startDate + " 00:00:00", endDate + " 23:59:59"];
-    } 
-    // ✅ endDate မပါရင် တစ်နေ့စာပဲ ထုတ်မယ်
-    else {
+      params = [
+        userid,
+        startDate + " 00:00:00",
+        endDate + " 23:59:59"
+      ];
+    } else {
       sql = `
         SELECT * FROM own_gold
-        WHERE userid = ? 
-        AND DATE(created_at) = ?
+        WHERE userid = ?
+        AND created_at >= ? 
+        AND created_at <= ?
         ORDER BY created_at DESC
       `;
-      params = [userid, startDate];
+      params = [
+        userid,
+        startDate + " 00:00:00",
+        startDate + " 23:59:59"
+      ];
     }
 
     db.query(sql, params, (err, results) => {
@@ -110,32 +117,35 @@ function getFilterDate(req, res, userid) {
       }
 
       let total = 0;
-      let formattedTotal;
-
       const formattedResults = results.map(data => {
         const profit = parseFloat(data.profit) || 0;
         total += profit;
 
-        let formattedProfit;
-        if (profit > 0) formattedProfit = `+ ${profit}`;
-        else if (profit < 0) formattedProfit = `- ${Math.abs(profit)}`;
-        else formattedProfit = "0";
-
         return {
           ...data,
-          profit: formattedProfit
+          profit:
+            profit > 0
+              ? `+ ${profit}`
+              : profit < 0
+              ? `- ${Math.abs(profit)}`
+              : "0"
         };
       });
 
-      if (total > 0) formattedTotal = `+ ${total}`;
-      else if (total < 0) formattedTotal = `- ${Math.abs(total)}`;
-      else formattedTotal = "0";
+      const formattedTotal =
+        total > 0
+          ? `+ ${total}`
+          : total < 0
+          ? `- ${Math.abs(total)}`
+          : "0";
 
       res.statusCode = 200;
-      res.end(JSON.stringify({
-        total: formattedTotal,
-        data: formattedResults
-      }));
+      res.end(
+        JSON.stringify({
+          total: formattedTotal,
+          data: formattedResults
+        })
+      );
     });
   });
 }
