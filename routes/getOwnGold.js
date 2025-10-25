@@ -20,7 +20,14 @@ function getOwnGold(req, res, userid) {
 
     const formattedResults = results.map(data => {
       const profit = parseFloat(data.profit) || 0;
+      let formattedtotal;
       total += profit;
+
+      if(total > 0){
+        formattedtotal = `+ ${total}` 
+      }else{
+        formattedtotal = `- ${total}`
+      }
 
       let formattedProfit;
       if (profit > 0) {
@@ -39,7 +46,7 @@ function getOwnGold(req, res, userid) {
 
     res.statusCode = 200;
     res.end(JSON.stringify({ 
-      total: total,
+      total: formattedtotal,
       data: formattedResults
     }));
   });
