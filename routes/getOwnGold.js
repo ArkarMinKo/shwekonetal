@@ -87,7 +87,7 @@ function getFilterDate(req, res, userid) {
     `;
 
     const start = startDate + " 00:00:00";
-    const end = endDate + "23:59:59";
+    const end = endDate + " 23:59:59";
 
     db.query(sql, [userid, start, end], (err, results) => {
       if (err) {
