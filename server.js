@@ -159,6 +159,11 @@ const server = http.createServer(async (req, res) => {
     sales.getPendingSales(req, res, userid);
   }
 
+  // --- Get buying gold buy by times today ---
+  else if (pathName === "/sales/gold-times-today" && method === "GET") {
+    sales.getTimesSalesByDay(req, res)
+  }
+
   // --- Get All Sales
   else if (pathName === "/sales" && method === "GET") {
     sales.getAllSales(req,res)
