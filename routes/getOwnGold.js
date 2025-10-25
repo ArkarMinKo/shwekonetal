@@ -82,11 +82,14 @@ function getFilterDate(req, res, userid) {
     const sql = `
       SELECT * FROM own_gold
       WHERE userid = ? 
-      AND DATE(created_at) BETWEEN ? AND ?
+      AND created_at >= ? AND created_at < ?
       ORDER BY created_at DESC
     `;
 
-    db.query(sql, [userid, startDate, endDate], (err, results) => {
+    const start = startDate + " 00:00:00";
+    const end = new Date(new Date(endDate).getTime() + 24*60*60*1000).toISOString().split("T")[0] + " 00:00:00";
+
+    db.query(sql, [userid, start, end], (err, results) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
