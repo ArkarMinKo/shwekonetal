@@ -25,8 +25,10 @@ function getOwnGold(req, res, userid) {
 
       if(total > 0){
         formattedtotal = `+ ${total}` 
+      }else if(total < 0){
+        formattedtotal = `- ${Math.abs(total)}`
       }else{
-        formattedtotal = `- ${total}`
+        formattedtotal = '0'
       }
 
       let formattedProfit;
