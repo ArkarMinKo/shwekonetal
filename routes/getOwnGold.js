@@ -92,8 +92,8 @@ function getFilterDate(req, res, userid) {
       `;
       params = [
         userid,
-        startDate + " 00:00:00",
-        endDate + " 23:59:59"
+        startDate + "T00:00:00.000Z",
+        endDate + "T23:59:59.000Z"
       ];
     } else {
       sql = `
@@ -105,8 +105,8 @@ function getFilterDate(req, res, userid) {
       `;
       params = [
         userid,
-        startDate + " 00:00:00",
-        startDate + " 23:59:59"
+        startDate + "T00:00:00.000Z",
+        startDate + "T23:59:59.000Z"
       ];
     }
 
