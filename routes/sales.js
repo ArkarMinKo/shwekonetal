@@ -489,9 +489,13 @@ function getAllSales(req, res) {
         return num.toString().split("").map(d => map[d] || d).join("");
       };
 
+      let total;
+
       const formattedRows = rows.map((r) => {
         const goldFloat = parseFloat(r.gold);
         const basePrice = parseFloat(r.price);
+
+        total += goldFloat;
 
         // calculate new price
         const calculatedPrice = goldFloat * basePrice / latestyway;
@@ -517,8 +521,21 @@ function getAllSales(req, res) {
         };
       });
 
+        // convert gold to kyat-pal-yway string
+        const kyat = Math.floor(total / latestyway);
+        const palbyyway = total / ywaybypal;
+        const pal = Math.floor(palbyyway % 16);
+        const yway = goldFloat % ywaybypal;
+
+        let goldString = "";
+        if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+        if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+        if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+
+        if (!goldString.trim()) goldString = "၀";
+
       res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, data: formattedRows }));
+      res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
     });
   });
 }
