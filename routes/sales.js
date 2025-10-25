@@ -45,12 +45,31 @@ function createSale(req, res) {
 
             const stockGold = stockResult[0].gold;
             const saleType = Array.isArray(type) ? type[0] : type;
+            const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
 
             if(saleType === "buy" && gold > stockGold){
                 res.writeHead(400, { "Content-Type": "application/json" });
                 return res.end(JSON.stringify({
                     error: `ရောင်းချပေးနိုင်သော ရွှေအရေအတွက်ထက် ကျော်လွန်နေသောကြောင့် ဝယ်ယူ၍ မရနိုင်ပါ`
                 }));
+            }
+            else if(saleType === "buy" && gold < stockGold){
+                const updateGold = stockGold - gold;
+                db.query(updateStockSql, updateGold, err => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+                })
+            }
+            else if(saleType === "sell"){
+                const updateGold = stockGold + gold;
+                db.query(updateStockSql, updateGold, err => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+                })
             }
 
             // First, get user level and gold
@@ -340,21 +359,67 @@ function rejectSale(req, res, saleId) {
         return res.end(JSON.stringify({ error: "saleId is required" }));
     }
 
-    const sql = "UPDATE sales SET status = 'rejected' WHERE id = ?";
-    db.query(sql, [saleId], (err, result) => {
+    const getSaleSql = "SELECT gold, type FROM sales WHERE id = ?";
+    db.query(getSaleSql, [saleId], (err, salesResult) => {
         if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        if (result.affectedRows === 0) {
+        if (salesResult.length === 0) {
             res.statusCode = 404;
             return res.end(JSON.stringify({ error: "Sale not found" }));
         }
 
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(JSON.stringify({ success: true, saleId, status: "rejected" }));
-    });
+        const sale = salesResult[0];
+
+        const sql = "UPDATE sales SET status = 'rejected' WHERE id = ?";
+        db.query(sql, [saleId], (err, result) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            if (result.affectedRows === 0) {
+                res.statusCode = 404;
+                return res.end(JSON.stringify({ error: "Sale not found" }));
+            }
+
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ success: true, saleId, status: "rejected" }));
+        });
+
+        const getOpenStock = `SELECT * FROM stock`;
+
+        db.query(getOpenStock, (err, stockResult) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            const stockGold = stockResult[0].gold;
+
+            const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
+            if(sale.type === "buy"){
+                const updateGold = stockGold + sale.gold;
+                db.query(updateStockSql, updateGold, err => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+                })
+            }
+            else if(sale.type === "sell"){
+                const updateGold = stockGold - sale.gold;
+                db.query(updateStockSql, updateGold, err => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+                })
+            }
+        })
+    })
 }
 
 function getApprovedSales(req, res, userid) {
