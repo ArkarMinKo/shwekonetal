@@ -132,10 +132,10 @@ function insertSellingPrice(req, res) {
             const goldQty = parseFloat(goldRow.gold);
             const latestyway = parseInt(formulaResult[0]?.yway) || 128;
 
-            const latestYwayPrice = goldRow.price / latestyway;
-            const salesYwayPrice =  price / latestyway;
+            const salesYwayPrice = goldRow.price / latestyway;
+            const latestYwayPrice =  price / latestyway;
 
-            const profit = (salesYwayPrice * goldQty) - (latestYwayPrice * goldQty);
+            const profit = (latestYwayPrice * goldQty) - (salesYwayPrice * goldQty);
 
             const updateProfitSql = `
               UPDATE own_gold

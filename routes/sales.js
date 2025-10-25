@@ -162,36 +162,6 @@ function approveSale(req, res, saleId) {
                 return res.end(JSON.stringify({ error: err.message }));
             }
 
-            const getStockSql = `SELECT * FROM stock`;
-            db.query(getStockSql, (req, stockResult) => {
-                if (err) {
-                    res.statusCode = 500;
-                    return res.end(JSON.stringify({ error: err.message }));
-                }
-                let updateGold = parseFloat(stockResult[0].gold);
-                const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
-                console.log(sale.gold)
-                if(sale.type === 'buy'){
-                    updateGold -= parseFloat(sale.gold);
-
-                    db.query(updateStockSql, updateGold, err => {
-                        if (err) {
-                            res.statusCode = 500;
-                            return res.end(JSON.stringify({ error: err.message }));
-                        }
-                    })
-                }else if(sale.type === 'sell'){
-                    updateGold += parseFloat(sale.gold);
-
-                    db.query(updateStockSql, updateGold, err => {
-                        if (err) {
-                            res.statusCode = 500;
-                            return res.end(JSON.stringify({ error: err.message }));
-                        }
-                    })
-                }
-            })
-
             const getUserSql = "SELECT gold, member_point, level FROM users WHERE id = ?";
             db.query(getUserSql, [sale.userid], (err, userResult) => {
                 if (err) {
@@ -266,7 +236,7 @@ function approveSale(req, res, saleId) {
                                 const latestYwayPrice = latestPrice / latestyway;
                                 const salesYwayPrice =  sale.price / latestyway;
                                 
-                                const profit = (sale.gold * salesYwayPrice) - (sale.gold * latestYwayPrice);
+                                const profit = (sale.gold * latestYwayPrice) - (sale.gold * salesYwayPrice);
 
                                 const insertOwnGoldSql = `
                                     INSERT INTO own_gold (id, userid, gold, price, profit)
@@ -327,7 +297,7 @@ function approveSale(req, res, saleId) {
                                         remainingGold -= deductGold;
 
                                         // Calculate profit for this sold portion
-                                        const profit = (deductGold * salesYwayPrice) - (deductGold * latestYwayPrice);
+                                        const profit = (deductGold * latestYwayPrice) - (deductGold * salesYwayPrice);
 
                                         if (availableGold <= 0) {
                                             // delete if gold becomes zero

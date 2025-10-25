@@ -17,14 +17,30 @@ function getOwnGold(req, res, userid) {
     }
 
     let total = 0;
-    results.forEach(data => {
-      total += data.profit;
-    })
+
+    const formattedResults = results.map(data => {
+      const profit = parseFloat(data.profit) || 0;
+      total += profit;
+
+      let formattedProfit;
+      if (profit > 0) {
+        formattedProfit = `+${profit}`;
+      } else if (profit < 0) {
+        formattedProfit = `${profit}`;
+      } else {
+        formattedProfit = "0";
+      }
+
+      return {
+        ...data,
+        profit: formattedProfit
+      };
+    });
 
     res.statusCode = 200;
     res.end(JSON.stringify({ 
       total: total,
-      data: results
+      data: formattedResults
     }));
   });
 }
