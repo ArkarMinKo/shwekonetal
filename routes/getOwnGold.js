@@ -17,7 +17,10 @@ function getOwnGold(req, res, userid) {
     }
 
     let total;
+    console.log(results);
     results.forEach(data => {
+      console.log(data.profit)
+      console.log(typeof(data.profit))
       total += data.profit;
     })
 
