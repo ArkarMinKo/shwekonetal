@@ -16,7 +16,7 @@ function getOwnGold(req, res, userid) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    let total;
+    let total = 0;
     console.log(results);
     results.forEach(data => {
       console.log(data.profit)
