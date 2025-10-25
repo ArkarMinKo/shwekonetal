@@ -35,6 +35,25 @@ function createSale(req, res) {
             return res.end(JSON.stringify({ error: "userid, type, gold and method are required" }));
         }
 
+        const getOpenStock = `SELECT * FROM stock`;
+
+        db.query(getOpenStock, (err, stockResult) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            const stockGold = stockResult[0].gold;
+            const saleType = Array.isArray(type) ? type[0] : type;
+
+            if(saleType === "buy" && gold > stockGold){
+                res.writeHead(400, { "Content-Type": "application/json" });
+                return res.end(JSON.stringify({
+                    error: `ရောင်းချပေးနိုင်သော ရွှေအရေအတွက်ထက် ကျော်လွန်နေသောကြောင့် ဝယ်ယူ၍ မရနိုင်ပါ`
+                }));
+            }
+        })
+
         // First, get user level and gold
         db.query("SELECT level, gold AS user_gold FROM users WHERE id = ?", [userid], (err, rows) => {
             if (err || rows.length === 0) {
@@ -44,7 +63,6 @@ function createSale(req, res) {
 
             const userLevel = rows[0].level;
             const userGold = parseFloat(rows[0].user_gold || 0);
-            const saleType = Array.isArray(type) ? type[0] : type;
             const requestedGold = parseFloat(gold);
 
             // Define max gold per level (string keys)
@@ -143,6 +161,36 @@ function approveSale(req, res, saleId) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
             }
+
+            const getStockSql = `SELECT * FROM stock`;
+            db.query(getStockSql, (req, stockResult) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+                let updateGold = stockResult[0].gold;
+                const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
+
+                if(sale.type === 'buy'){
+                    updateGold -= sale.gold;
+
+                    db.query(updateStockSql, updateGold, err => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: err.message }));
+                        }
+                    })
+                }else if(sale.type === 'sell'){
+                    updateGold += sale.gold;
+
+                    db.query(updateStockSql, updateGold, err => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: err.message }));
+                        }
+                    })
+                }
+            })
 
             const getUserSql = "SELECT gold, member_point, level FROM users WHERE id = ?";
             db.query(getUserSql, [sale.userid], (err, userResult) => {
