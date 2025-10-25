@@ -157,6 +157,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Get Sales ---
+  // --- Get all Sales By User ---
+  else if (pathName.startsWith("/sales/") && method === "GET") {
+    const userid = pathName.split("/")[2];
+    sales.getAllSalesByUser(req, res, userid);
+  }
+
+  // --- Get Date Filter Sales By User ---
+  else if (pathName.startsWith("/sales/") && method === "POST") {
+    const userid = pathName.split("/")[2];
+    sales.getDateFilterByUser(req, res, userid);
+  }
+
   // --- Get approve Sales By User ---
   else if (pathName.startsWith("/sales/approve/") && method === "GET") {
     const userid = pathName.split("/")[3];

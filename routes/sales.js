@@ -658,20 +658,39 @@ function getDateFilterByUser(req, res, userid) {
 
         const { startDate, endDate } = fields;
 
-        if (!startDate || !endDate) {
-            res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "Start date and end date are required" }));
+        if (!startDate) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "Start date is required" }));
         }
 
-        const sql = `
-            SELECT * FROM sales
+        let sql;
+        let params;
+
+        if (endDate) {
+        sql = `
+            SELECT * FROM own_gold
             WHERE userid = ? 
-            AND created_at >= ? AND created_at <= ?
+            AND created_at >= ? 
+            AND created_at <= ?
             ORDER BY created_at DESC
         `;
-
-        const start = startDate + " 00:00:00";
-        const end = endDate + " 23:59:59";
+        params = [
+            userid,
+            startDate + "T00:00:00.000Z",
+            endDate + "T23:59:59.000Z"
+        ];
+        } else {
+        sql = `
+            SELECT * FROM own_gold
+            WHERE userid = ?
+            AND DATE(created_at) = ?
+            ORDER BY created_at DESC
+        `;
+        params = [
+            userid,
+            startDate,
+        ];
+        }
 
         db.query(sql, [userid, start, end], (err, results) => {
             if (err) {
