@@ -24,9 +24,9 @@ function getOwnGold(req, res, userid) {
 
       let formattedProfit;
       if (profit > 0) {
-        formattedProfit = `+${profit}`;
+        formattedProfit = `+ ${profit}`;
       } else if (profit < 0) {
-        formattedProfit = `${profit}`;
+        formattedProfit = `- ${Math.abs(profit)}`;
       } else {
         formattedProfit = "0";
       }
