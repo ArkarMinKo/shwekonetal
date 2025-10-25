@@ -43,18 +43,18 @@ function createSale(req, res) {
                 return res.end(JSON.stringify({ error: err.message }));
             }
 
-            const stockGold = stockResult[0].gold;
+            const stockGold = parseFloat(stockResult[0].gold);
             const saleType = Array.isArray(type) ? type[0] : type;
             const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
 
-            if(saleType === "buy" && gold > stockGold){
+            if(saleType === "buy" && parseFloat(gold) > stockGold){
                 res.writeHead(400, { "Content-Type": "application/json" });
                 return res.end(JSON.stringify({
                     error: `ရောင်းချပေးနိုင်သော ရွှေအရေအတွက်ထက် ကျော်လွန်နေသောကြောင့် ဝယ်ယူ၍ မရနိုင်ပါ`
                 }));
             }
-            else if(saleType === "buy" && gold < stockGold){
-                const updateGold = stockGold - gold;
+            else if(saleType === "buy" && parseFloat(gold) < stockGold){
+                const updateGold = stockGold - parseFloat(gold);
                 db.query(updateStockSql, updateGold, err => {
                     if (err) {
                         res.statusCode = 500;
@@ -63,7 +63,7 @@ function createSale(req, res) {
                 })
             }
             else if(saleType === "sell"){
-                const updateGold = stockGold + gold;
+                const updateGold = stockGold + parseFloat(gold);
                 db.query(updateStockSql, updateGold, err => {
                     if (err) {
                         res.statusCode = 500;
@@ -404,13 +404,13 @@ function rejectSale(req, res, saleId) {
                     }));
                 }
 
-                const stockGold = stockResult[0].gold;
+                const stockGold = parseFloat(stockResult[0].gold);
                 let updateGold;
 
                 if (sale.type === "buy") {
-                    updateGold = stockGold + sale.gold;
+                    updateGold = stockGold + parseFloat(sale.gold);
                 } else if (sale.type === "sell") {
-                    updateGold = stockGold - sale.gold;
+                    updateGold = stockGold - parseFloat(sale.gold);
                 } else {
                     // Handle unknown sale type if necessary, and skip stock update.
                     res.setHeader('Content-Type', 'application/json; charset=utf-8');

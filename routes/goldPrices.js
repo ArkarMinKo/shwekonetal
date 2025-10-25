@@ -30,7 +30,7 @@ function postOpenStock(req, res){
       if(rows.length === 0) {
         const sql = `INSERT INTO stock (gold) VALUES (?)`;
 
-        db.query(sql, gold, err => {
+        db.query(sql, parseFloat(gold), err => {
           if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
