@@ -474,52 +474,52 @@ function getAllSales(req, res) {
     `;
 
     db.query(getLatestFormulaSql, (err, formulaResult) => {
-      if (err) {
-        console.error("Price fetch error:", err);
-        res.statusCode = 500;
-        return res.end(JSON.stringify({ error: err.message }));
-      }
+        if (err) {
+            console.error("Price fetch error:", err);
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
 
-      const latestyway = parseInt(formulaResult[0]?.yway) || 128;
-      const ywaybypal = latestyway / 16;
+        const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+        const ywaybypal = latestyway / 16;
 
-      // English → Myanmar number converter
-      const toMyanmarNumber = (num) => {
-        const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
-        return num.toString().split("").map(d => map[d] || d).join("");
-      };
-
-      let total;
-
-      const formattedRows = rows.map((r) => {
-        const goldFloat = parseFloat(r.gold);
-        const basePrice = parseFloat(r.price);
-
-        total += goldFloat;
-
-        // calculate new price
-        const calculatedPrice = goldFloat * basePrice / latestyway;
-
-        // convert gold to kyat-pal-yway string
-        const kyat = Math.floor(goldFloat / latestyway);
-        const palbyyway = goldFloat / ywaybypal;
-        const pal = Math.floor(palbyyway % 16);
-        const yway = goldFloat % ywaybypal;
-
-        let goldString = "";
-        if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-        if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-        if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
-
-        if (!goldString.trim()) goldString = "၀";
-
-        return {
-          ...r,
-          gold: goldString.trim(),
-          price: calculatedPrice,
-          yway: goldFloat
+        // English → Myanmar number converter
+        const toMyanmarNumber = (num) => {
+            const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
+            return num.toString().split("").map(d => map[d] || d).join("");
         };
-      });
+
+        let total = 0;
+
+        const formattedRows = rows.map((r) => {
+            const goldFloat = parseFloat(r.gold);
+            const basePrice = parseFloat(r.price);
+
+            total += goldFloat;
+
+            // calculate new price
+            const calculatedPrice = goldFloat * basePrice / latestyway;
+
+            // convert gold to kyat-pal-yway string
+            const kyat = Math.floor(goldFloat / latestyway);
+            const palbyyway = goldFloat / ywaybypal;
+            const pal = Math.floor(palbyyway % 16);
+            const yway = goldFloat % ywaybypal;
+
+            let goldString = "";
+            if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+            if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+            if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+
+            if (!goldString.trim()) goldString = "၀";
+
+            return {
+            ...r,
+            gold: goldString.trim(),
+            price: calculatedPrice,
+            yway: goldFloat
+            };
+        });
 
         // convert gold to kyat-pal-yway string
         const kyat = Math.floor(total / latestyway);
@@ -534,8 +534,8 @@ function getAllSales(req, res) {
 
         if (!goldString.trim()) goldString = "၀";
 
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
     });
   });
 }
