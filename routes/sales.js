@@ -153,7 +153,7 @@ function createSale(req, res) {
     });
 }
 
-
+// --- Approve Sales ---
 function approveSale(req, res, saleId) {
     if (!saleId) {
         res.statusCode = 400;
@@ -353,6 +353,7 @@ function approveSale(req, res, saleId) {
     });
 }
 
+// --- Reject Sales ---
 function rejectSale(req, res, saleId) {
     if (!saleId) {
         res.statusCode = 400;
@@ -373,8 +374,8 @@ function rejectSale(req, res, saleId) {
 
         const sale = salesResult[0];
 
-        const sql = "UPDATE sales SET status = 'rejected' WHERE id = ?";
-        db.query(sql, [saleId], (err, result) => {
+        const updateSaleSql = "UPDATE sales SET status = 'rejected' WHERE id = ?";
+        db.query(updateSaleSql, [saleId], (err, result) => {
             if (err) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
@@ -382,44 +383,57 @@ function rejectSale(req, res, saleId) {
 
             if (result.affectedRows === 0) {
                 res.statusCode = 404;
-                return res.end(JSON.stringify({ error: "Sale not found" }));
+                return res.end(JSON.stringify({ error: "Sale not found for update" }));
             }
 
-            res.setHeader('Content-Type', 'application/json; charset=utf-8');
-            res.end(JSON.stringify({ success: true, saleId, status: "rejected" }));
+            const getOpenStockSql = `SELECT gold FROM stock WHERE id = 1`;
+            
+            db.query(getOpenStockSql, (err, stockResult) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ 
+                        error: "Failed to update stock after rejecting sale. Data is inconsistent.", 
+                        detail: err.message 
+                    }));
+                }
+                
+                if (stockResult.length === 0) {
+                     res.statusCode = 500;
+                     return res.end(JSON.stringify({ 
+                        error: "Stock record not found. Data is inconsistent.",
+                    }));
+                }
+
+                const stockGold = stockResult[0].gold;
+                let updateGold;
+
+                if (sale.type === "buy") {
+                    updateGold = stockGold + sale.gold;
+                } else if (sale.type === "sell") {
+                    updateGold = stockGold - sale.gold;
+                } else {
+                    // Handle unknown sale type if necessary, and skip stock update.
+                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                    return res.end(JSON.stringify({ success: true, saleId, status: "rejected (no stock update due to unknown sale type)" }));
+                }
+
+                const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
+                
+                db.query(updateStockSql, [updateGold], err => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ 
+                            error: "Failed to update stock after rejecting sale. Data is inconsistent.", 
+                            detail: err.message 
+                        }));
+                    }
+
+                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                    res.end(JSON.stringify({ success: true, saleId, status: "rejected", stockUpdated: true }));
+                });
+            });
         });
-
-        const getOpenStock = `SELECT * FROM stock`;
-
-        db.query(getOpenStock, (err, stockResult) => {
-            if (err) {
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: err.message }));
-            }
-
-            const stockGold = stockResult[0].gold;
-
-            const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
-            if(sale.type === "buy"){
-                const updateGold = stockGold + sale.gold;
-                db.query(updateStockSql, updateGold, err => {
-                    if (err) {
-                        res.statusCode = 500;
-                        return res.end(JSON.stringify({ error: err.message }));
-                    }
-                })
-            }
-            else if(sale.type === "sell"){
-                const updateGold = stockGold - sale.gold;
-                db.query(updateStockSql, updateGold, err => {
-                    if (err) {
-                        res.statusCode = 500;
-                        return res.end(JSON.stringify({ error: err.message }));
-                    }
-                })
-            }
-        })
-    })
+    });
 }
 
 function getApprovedSales(req, res, userid) {
