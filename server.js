@@ -116,6 +116,16 @@ const server = http.createServer(async (req, res) => {
     users.verifyPasscode(req, res, id);
   }
 
+  // --- Get Open Stock ---
+  else if (pathName === "/open-stock" && method === "GET"){
+    goldPrices.getOpenStock(req, res);
+  }
+
+  // --- Post Open Stock ---
+  else if (pathName === "/open-stock" && method === "POST") {
+    goldPrices.postOpenStock(req, res);
+  }
+
   // --- Getting All Selling Price ---
   else if (pathName === "/selling-prices" && method === "GET") {
     goldPrices.getAllSellingPrices(req, res);

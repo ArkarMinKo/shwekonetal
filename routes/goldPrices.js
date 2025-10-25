@@ -3,6 +3,79 @@ const formidable = require("formidable");
 
 const { sellingPriceIdGenerator, buyingPriceIdGenerator, formulaIdGenerator } = require("../utils/priceIdGenerator");
 
+function postOpenStock(req, res){
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const {gold} = fields;
+
+    if (!gold) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "Gold is required" }));
+    }
+
+    const sql = `SELECT * FROM stock`;
+
+    db.query(sql, (err,rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      if(rows.length === 0) {
+        const sql = `INSERT TABLE stock (gold) VALUES (?)`;
+
+        db.query(sql, gold, err => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
+
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({
+            message: "Insert gold to stock successfully",
+            data: gold
+          }));
+        })
+      }else{
+        const sql = `UPDATE TABLE stock SET gold = ? WHERE id = 1`
+        
+        db.query(sql, gold, err => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
+
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({
+            message: "Update gold to stock successfully",
+            data: gold
+          }));
+        })
+      }
+    })
+  })
+}
+
+function getOpenStock(req, res){
+  const sql = `SELECT * FROM stock`;
+
+  db.query(sql, (err,rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ success: true, data: rows }));
+  })
+}
+
 function insertSellingPrice(req, res) {
   const form = new formidable.IncomingForm();
 
@@ -250,5 +323,7 @@ module.exports = {
     getLatestBuyingPrice,
     insertFormula,
     getAllFormula,
-    getLatestFormula
+    getLatestFormula,
+    postOpenStock,
+    getOpenStock
 };
