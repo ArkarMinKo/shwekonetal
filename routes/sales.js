@@ -489,13 +489,18 @@ function getAllSales(req, res) {
             return num.toString().split("").map(d => map[d] || d).join("");
         };
 
+        function addDecimals(a, b, precision = 2) {
+            const factor = Math.pow(10, precision); // 10^2 = 100
+            return (Math.round(a * factor) + Math.round(b * factor)) / factor;
+        }
+
         let total = 0;
 
         const formattedRows = rows.map((r) => {
             const goldFloat = parseFloat(r.gold);
             const basePrice = parseFloat(r.price);
 
-            total += goldFloat;
+            total = addDecimals(total, goldFloat, 2);
 
             // calculate new price
             const calculatedPrice = goldFloat * basePrice / latestyway;
