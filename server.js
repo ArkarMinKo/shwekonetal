@@ -170,26 +170,26 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Get approve Sales By User ---
-  else if (pathName.startsWith("/sales/approve/") && method === "GET") {
-    const userid = pathName.split("/")[3];
+  else if (pathName.startsWith("/approve/") && method === "GET") {
+    const userid = pathName.split("/")[2];
     sales.getApprovedSales(req, res, userid);
   }
 
   // --- Get reject Sales By User ---
-  else if (pathName.startsWith("/sales/reject/") && method === "GET") {
-    const userid = pathName.split("/")[3];
+  else if (pathName.startsWith("/reject/") && method === "GET") {
+    const userid = pathName.split("/")[2];
     sales.getRejectedSales(req, res, userid);
   }
 
   // --- Get pending Sales By User ---
-  else if (pathName.startsWith("/sales/pending/") && method === "GET") {
-    const userid = pathName.split("/")[3];
+  else if (pathName.startsWith("/pending/") && method === "GET") {
+    const userid = pathName.split("/")[2];
     sales.getPendingSales(req, res, userid);
   }
 
   // --- Get buying gold buy by times today ---
   else if (pathName === "/gold-times-today" && method === "GET") {
-    goldPrices.getTimesSalesByToday(req,res);
+    sales.getTimesSalesByToday(req,res);
   }
 
   // --- Get All Sales

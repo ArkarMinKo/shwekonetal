@@ -316,47 +316,6 @@ function getLatestFormula(req, res) {
   });
 }
 
-// --- From sales.js ---
-function getTimesSalesByToday(req, res){
-    const date = new Date().toLocaleDateString("en-CA");
-    
-    const sql = `
-        SELECT gold, created_at
-        FROM sales
-        WHERE status = 'approved'
-        AND type = 'buy'
-        AND DATE(created_at) = ?
-    `;
-
-    db.query(sql, [date], (err, rows) => {
-        if (err) {
-        res.statusCode = 500;
-        return res.end(JSON.stringify({ error: err.message }));
-        }
-
-        // Time slots (09:00, 10:00 ... etc)
-        const timeSlots = [
-        "00:00", "01:00", "02:00", "03:00", "04:00",
-        "05:00", "06:00", "07:00", "08:00", "09:00",
-        "10:00", "11:00", "12:00", "13:00", "14:00",
-        "15:00", "16:00", "17:00", "18:00", "19:00",
-        "20:00", "21:00", "22:00", "23:00"
-        ];
-
-        const results = timeSlots.map(slot => ({ date: slot, value: 0 }));
-
-        rows.forEach(row => {
-        const time = new Date(row.created_at);
-        const hour = time.getHours(); // 0 - 23
-        const gold = parseFloat(row.gold) || 0;
-        results[hour].value += gold;
-        });
-
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
-        res.end(JSON.stringify({ success: true, message: "Ma Noe", data: results }));
-    });
-}
-
 module.exports = {
     insertSellingPrice,
     insertBuyingPrice,
@@ -368,6 +327,5 @@ module.exports = {
     getAllFormula,
     getLatestFormula,
     postOpenStock,
-    getOpenStock,
-    getTimesSalesByToday
+    getOpenStock
 };
