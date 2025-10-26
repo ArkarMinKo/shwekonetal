@@ -544,7 +544,7 @@ function getAllSales(req, res) {
   });
 }
 
-function getTimesSalesByDay(req, res) {
+function getTimesSales(req, res) {
     const date = new Date().toLocaleDateString("en-CA");
     console.log("======== [getTimesSalesByDay] called ========");
     console.log("Today date =>", date);
@@ -714,7 +714,7 @@ module.exports = {
         getRejectedSales,
         getAllSales, 
         getPendingSales,
-        getTimesSalesByDay,
+        getTimesSales,
         getAllSalesByUser,
         getDateFilterByUser
     };
