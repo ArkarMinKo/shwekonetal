@@ -547,7 +547,7 @@ function getAllSales(req, res) {
 function getTimesSalesByDay(req, res) {
   const now = new Date();
 //   const date = now.toLocaleDateString("en-CA"); // e.g. 2025-10-24
-  const date = `2025-10-26`
+  const date = `2025-10-27`
   const sql = `
     SELECT gold, created_at
     FROM sales
