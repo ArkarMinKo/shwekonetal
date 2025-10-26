@@ -188,8 +188,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Get buying gold buy by times today ---
-  else if (pathName === "/sales/gold-times-by-today" && method === "GET") {
-    sales.getTimesSalesByToday(req, res)
+  else if (pathName === "/gold-times-today" && method === "GET") {
+    goldPrices.getTimesSalesByToday(req,res);
   }
 
   // --- Get All Sales
