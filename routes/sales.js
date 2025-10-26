@@ -545,10 +545,9 @@ function getAllSales(req, res) {
 }
 
 function getTimesSalesByDay(req, res) {
-    const now = new Date();
-    console.log(now.toString());     // Local time
-    console.log(now.toISOString());  // UTC time
-    const date = now.toString().slice(0, 10); // e.g. 2025-10-24
+    const date = new Date().toLocaleDateString("en-CA");
+
+    console.log(date)
     const sql = `
         SELECT gold, created_at
         FROM sales
