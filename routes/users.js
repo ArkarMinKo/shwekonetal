@@ -497,7 +497,7 @@ function requestEmailConfirmation(req, res) {
       { code: `${code}`}
     );
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပီ။ ၁၀ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ", email }));
+    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပီ။ ၃ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ", email }));
   });
 }
 
@@ -518,6 +518,7 @@ function verifyEmailCodeBeforeCreate(req, res) {
     const result = verifyCode(email, code);
     if (!result.success) {
       res.statusCode = 400;
+      res.writeHead(400, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: result.message }));
     }
 
