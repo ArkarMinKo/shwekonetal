@@ -1,12 +1,12 @@
 // utils/emailCodeGenerator.js
 function generateEmailCode() {
-  // 8-digit numeric code
-  return Math.floor(10000000 + Math.random() * 90000000).toString();
+  // 6-digit numeric code
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 function getExpiryTime() {
-  // 10 minutes from now
-  return Date.now() + 10 * 60 * 1000;
+  // 3 minutes from now
+  return Date.now() + 3 * 60 * 1000;
 }
 
 module.exports = { generateEmailCode, getExpiryTime };
