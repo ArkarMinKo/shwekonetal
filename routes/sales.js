@@ -521,10 +521,21 @@ function getAllSales(req, res) {
             if (!goldString.trim()) goldString = "၀";
 
             let photoList = [];
-
-            const rawPhotos = JSON.parse(r.photos || "[]");
-            if (Array.isArray(rawPhotos)) {
-                photoList = rawPhotos.map(p => photoBaseURL + p);
+            try {
+                    if (r.photos) {
+                        if (r.photos.trim().startsWith("[")) {
+                        // Valid JSON array
+                        const rawPhotos = JSON.parse(r.photos);
+                        if (Array.isArray(rawPhotos)) {
+                            photoList = rawPhotos.map(p => photoBaseURL + p);
+                        }
+                        } else {
+                        // Plain string (single filename)
+                        photoList = [photoBaseURL + r.photos.trim()];
+                        }
+                    }
+            } catch {
+                photoList = [];
             }
 
             return {
