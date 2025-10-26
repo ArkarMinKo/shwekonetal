@@ -496,8 +496,6 @@ function getAllSales(req, res) {
 
         let total = 0;
 
-        const photoBaseURL = "http://38.60.244.74:3000/uploads/";
-
         const formattedRows = rows.map((r) => {
             const goldFloat = parseFloat(r.gold);
             const basePrice = parseFloat(r.price);
@@ -520,29 +518,10 @@ function getAllSales(req, res) {
 
             if (!goldString.trim()) goldString = "၀";
 
-            let photoList = [];
-            try {
-                    if (r.photos) {
-                        if (r.photos.trim().startsWith("[")) {
-                        // Valid JSON array
-                        const rawPhotos = JSON.parse(r.photos);
-                        if (Array.isArray(rawPhotos)) {
-                            photoList = rawPhotos.map(p => photoBaseURL + p);
-                        }
-                        } else {
-                        // Plain string (single filename)
-                        photoList = [photoBaseURL + r.photos.trim()];
-                        }
-                    }
-            } catch {
-                photoList = [];
-            }
-
             return {
                 ...r,
                 gold: goldString.trim(),
                 price: calculatedPrice,
-                photos: photoList
             };
         });
 
