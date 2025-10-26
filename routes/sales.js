@@ -463,6 +463,8 @@ function getAllSales(req, res) {
     ORDER BY s.created_at DESC
   `;
 
+  console.log("Hi Hello")
+
   db.query(sql, (err, rows) => {
     if (err) {
       res.statusCode = 500;
