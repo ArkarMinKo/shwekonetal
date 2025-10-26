@@ -546,6 +546,8 @@ function getAllSales(req, res) {
 
 function getTimesSalesByDay(req, res) {
     const date = new Date().toLocaleDateString("en-CA");
+    console.log("======== [getTimesSalesByDay] called ========");
+    console.log("Today date =>", date);
 
     console.log(date)
     const sql = `
