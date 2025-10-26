@@ -319,10 +319,7 @@ function getLatestFormula(req, res) {
 // --- From sales.js ---
 function getTimesSalesByToday(req, res){
     const date = new Date().toLocaleDateString("en-CA");
-    console.log("======== [getTimesSalesByDay] called ========");
-    console.log("Today date =>", date);
-
-    console.log(date)
+    
     const sql = `
         SELECT gold, created_at
         FROM sales
