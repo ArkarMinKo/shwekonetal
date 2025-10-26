@@ -456,99 +456,97 @@ function getApprovedSales(req, res, userid) {
 }
 
 function getAllSales(req, res) {
-    console.log("Chin Kite Tal")
+  const sql = `
+    SELECT s.*, u.fullname 
+    FROM sales s
+    LEFT JOIN users u ON s.userid = u.id
+    ORDER BY s.created_at DESC
+  `;
 
-//   const sql = `
-//     SELECT s.*, u.fullname 
-//     FROM sales s
-//     LEFT JOIN users u ON s.userid = u.id
-//     ORDER BY s.created_at DESC
-//   `;
+  db.query(sql, (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
 
-//   db.query(sql, (err, rows) => {
-//     if (err) {
-//       res.statusCode = 500;
-//       return res.end(JSON.stringify({ error: err.message }));
-//     }
+    const getLatestFormulaSql = `
+      SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+    `;
 
-//     const getLatestFormulaSql = `
-//       SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
-//     `;
+    db.query(getLatestFormulaSql, (err, formulaResult) => {
+        if (err) {
+            console.error("Price fetch error:", err);
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
 
-//     db.query(getLatestFormulaSql, (err, formulaResult) => {
-//         if (err) {
-//             console.error("Price fetch error:", err);
-//             res.statusCode = 500;
-//             return res.end(JSON.stringify({ error: err.message }));
-//         }
+        const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+        const ywaybypal = latestyway / 16;
 
-//         const latestyway = parseInt(formulaResult[0]?.yway) || 128;
-//         const ywaybypal = latestyway / 16;
+        // English → Myanmar number converter
+        const toMyanmarNumber = (num) => {
+            const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
+            return num.toString().split("").map(d => map[d] || d).join("");
+        };
 
-//         // English → Myanmar number converter
-//         const toMyanmarNumber = (num) => {
-//             const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
-//             return num.toString().split("").map(d => map[d] || d).join("");
-//         };
+        function addDecimals(a, b, precision = 2) {
+            const factor = Math.pow(10, precision);
+            return (Math.round(a * factor) + Math.round(b * factor)) / factor;
+        }
 
-//         function addDecimals(a, b, precision = 2) {
-//             const factor = Math.pow(10, precision);
-//             return (Math.round(a * factor) + Math.round(b * factor)) / factor;
-//         }
+        let total = 0;
 
-//         let total = 0;
+        const formattedRows = rows.map((r) => {
+            const goldFloat = parseFloat(r.gold);
+            const basePrice = parseFloat(r.price);
 
-//         const formattedRows = rows.map((r) => {
-//             const goldFloat = parseFloat(r.gold);
-//             const basePrice = parseFloat(r.price);
+            total = addDecimals(total, goldFloat, 2);
 
-//             total = addDecimals(total, goldFloat, 2);
+            // calculate new price
+            const calculatedPrice = goldFloat * basePrice / latestyway;
 
-//             // calculate new price
-//             const calculatedPrice = goldFloat * basePrice / latestyway;
+            // convert gold to kyat-pal-yway string
+            const kyat = Math.floor(goldFloat / latestyway);
+            const palbyyway = goldFloat / ywaybypal;
+            const pal = Math.floor(palbyyway % 16);
+            const yway = goldFloat % ywaybypal;
 
-//             // convert gold to kyat-pal-yway string
-//             const kyat = Math.floor(goldFloat / latestyway);
-//             const palbyyway = goldFloat / ywaybypal;
-//             const pal = Math.floor(palbyyway % 16);
-//             const yway = goldFloat % ywaybypal;
+            let goldString = "";
+            if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+            if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+            if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
 
-//             let goldString = "";
-//             if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-//             if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-//             if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+            if (!goldString.trim()) goldString = "၀";
 
-//             if (!goldString.trim()) goldString = "၀";
+            return {
+            ...r,
+            gold: goldString.trim(),
+            price: calculatedPrice,
+            };
+        });
 
-//             return {
-//             ...r,
-//             gold: goldString.trim(),
-//             price: calculatedPrice,
-//             };
-//         });
+        // convert gold to kyat-pal-yway string
+        const kyat = Math.floor(total / latestyway);
+        const palbyyway = total / ywaybypal;
+        const pal = Math.floor(palbyyway % 16);
+        const yway = (total % ywaybypal).toFixed(2);
 
-//         // convert gold to kyat-pal-yway string
-//         const kyat = Math.floor(total / latestyway);
-//         const palbyyway = total / ywaybypal;
-//         const pal = Math.floor(palbyyway % 16);
-//         const yway = (total % ywaybypal).toFixed(2);
+        let goldString = "";
+        if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+        if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+        if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
 
-//         let goldString = "";
-//         if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-//         if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-//         if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+        if (!goldString.trim()) goldString = "၀";
 
-//         if (!goldString.trim()) goldString = "၀";
-
-//         res.writeHead(200, { "Content-Type": "application/json" });
-//         res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
-//     });
-//   });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
+    });
+  });
 }
 
 function getTimesSales(req, res) {
     // const date = new Date().toLocaleDateString("en-CA");
-    console.log("======== [getTimesSalesByDay] called ========");
+    // console.log("======== [getTimesSalesByDay] called ========");
     // console.log("Today date =>", date);
 
     // console.log(date)
@@ -587,6 +585,93 @@ function getTimesSales(req, res) {
     //     res.setHeader("Content-Type", "application/json; charset=utf-8");
     //     res.end(JSON.stringify({ success: true, data: results }));
     // });
+
+    const sql = `
+    SELECT s.*, u.fullname 
+    FROM sales s
+    LEFT JOIN users u ON s.userid = u.id
+    ORDER BY s.created_at DESC
+  `;
+
+  db.query(sql, (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const getLatestFormulaSql = `
+      SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+    `;
+
+    db.query(getLatestFormulaSql, (err, formulaResult) => {
+        if (err) {
+            console.error("Price fetch error:", err);
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+        const ywaybypal = latestyway / 16;
+
+        // English → Myanmar number converter
+        const toMyanmarNumber = (num) => {
+            const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
+            return num.toString().split("").map(d => map[d] || d).join("");
+        };
+
+        function addDecimals(a, b, precision = 2) {
+            const factor = Math.pow(10, precision);
+            return (Math.round(a * factor) + Math.round(b * factor)) / factor;
+        }
+
+        let total = 0;
+
+        const formattedRows = rows.map((r) => {
+            const goldFloat = parseFloat(r.gold);
+            const basePrice = parseFloat(r.price);
+
+            total = addDecimals(total, goldFloat, 2);
+
+            // calculate new price
+            const calculatedPrice = goldFloat * basePrice / latestyway;
+
+            // convert gold to kyat-pal-yway string
+            const kyat = Math.floor(goldFloat / latestyway);
+            const palbyyway = goldFloat / ywaybypal;
+            const pal = Math.floor(palbyyway % 16);
+            const yway = goldFloat % ywaybypal;
+
+            let goldString = "";
+            if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+            if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+            if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+
+            if (!goldString.trim()) goldString = "၀";
+
+            return {
+            ...r,
+            gold: goldString.trim(),
+            price: calculatedPrice,
+            };
+        });
+
+        // convert gold to kyat-pal-yway string
+        const kyat = Math.floor(total / latestyway);
+        const palbyyway = total / ywaybypal;
+        const pal = Math.floor(palbyyway % 16);
+        const yway = (total % ywaybypal).toFixed(2);
+
+        let goldString = "";
+        if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
+        if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
+        if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+
+        if (!goldString.trim()) goldString = "၀";
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
+    });
+  });
 }
 
 function getRejectedSales(req, res, userid) {
