@@ -65,10 +65,10 @@ function getUserById(req, res, userid) {
         let ppn = 0;
         let ppnTotal;
 
-        const formattedResults = results.map(data => {
+        const formattedResults = profitResult.map(data => {
           const profit = parseFloat(data.profit) || 0;
 
-          total += profit;
+          ppn += profit;
 
           let formattedProfit;
           if (profit > 0) {
