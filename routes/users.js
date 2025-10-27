@@ -47,13 +47,13 @@ function getUserById(req, res, userid) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    db.query(openStockSql, (err, gold) => {
+    db.query(openStockSql, (err, goldResult) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
       }
 
-      const openStock = gold[0];
+      const openStock = goldResult[0].gold;
 
       if (rows.length === 0) {
         res.statusCode = 404;
