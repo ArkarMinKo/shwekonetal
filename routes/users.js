@@ -85,9 +85,9 @@ function getUserById(req, res, userid) {
           };
         });
 
-        if(total > 0){
+        if(ppn > 0){
           ppnTotal = `+ ${total}`
-        }else if(total < 0){
+        }else if(ppn < 0){
           ppnTotal = `- ${Math.abs(total)}`
         }else{
           ppnTotal = "0"
