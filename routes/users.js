@@ -42,6 +42,8 @@ function getUserById(req, res, userid) {
   const sql = "SELECT * FROM users WHERE id = ?";
   const openStockSql = "SELECT gold FROM stock WHERE id = 1";
 
+  const profitSql = "SELECT * FROM own_gold WHERE userid = ? ORDER BY created_at DESC";
+
   db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
@@ -54,28 +56,66 @@ function getUserById(req, res, userid) {
         return res.end(JSON.stringify({ error: err.message }));
       }
 
-      const openStock = goldResult[0].gold;
+      db.query(profitSql, userid, (err, profitResult) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
 
-      if (rows.length === 0) {
-        res.statusCode = 404;
-        return res.end(JSON.stringify({ error: "User not found" }));
-      }
+        let ppn = 0;
+        let ppnTotal;
 
-      const r = rows[0];
+        const formattedResults = results.map(data => {
+          const profit = parseFloat(data.profit) || 0;
 
-      // remove "level" word from level value
-      const cleanLevel = r.level ? r.level.replace("level", "") : null;
+          total += profit;
 
-      const result = {
-        ...r,
-        level: cleanLevel, // updated field
-        profile: r.photo ? `${filepath}${r.photo}` : null,
-        id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
-        id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
-        open_stock: openStock
-      };
+          let formattedProfit;
+          if (profit > 0) {
+            formattedProfit = `+ ${profit}`;
+          } else if (profit < 0) {
+            formattedProfit = `- ${Math.abs(profit)}`;
+          } else {
+            formattedProfit = "0";
+          }
 
-      res.end(JSON.stringify(result));
+          return {
+            ...data,
+            profit: formattedProfit
+          };
+        });
+
+        if(total > 0){
+          ppnTotal = `+ ${total}`
+        }else if(total < 0){
+          ppnTotal = `- ${Math.abs(total)}`
+        }else{
+          ppnTotal = "0"
+        }
+
+        const openStock = goldResult[0].gold;
+
+        if (rows.length === 0) {
+          res.statusCode = 404;
+          return res.end(JSON.stringify({ error: "User not found" }));
+        }
+
+        const r = rows[0];
+
+        // remove "level" word from level value
+        const cleanLevel = r.level ? r.level.replace("level", "") : null;
+
+        const result = {
+          ...r,
+          level: cleanLevel, // updated field
+          profile: r.photo ? `${filepath}${r.photo}` : null,
+          id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
+          id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
+          open_stock: openStock, ppnTotal: ppnTotal
+        };
+
+        res.end(JSON.stringify(result));
+      })
     });
   });
 }
