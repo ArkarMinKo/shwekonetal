@@ -700,7 +700,7 @@ function getDateFilterByUser(req, res, userid) {
 
         if (endDate) {
         sql = `
-            SELECT * FROM own_gold
+            SELECT * FROM sales 
             WHERE userid = ? 
             AND created_at >= ? 
             AND created_at <= ?
@@ -708,12 +708,12 @@ function getDateFilterByUser(req, res, userid) {
         `;
         params = [
             userid,
-            startDate + "T00:00:00.000Z",
-            endDate + "T23:59:59.000Z"
+            startDate + " 00:00:00",
+            endDate + " 23:59:59"
         ];
         } else {
         sql = `
-            SELECT * FROM own_gold
+            SELECT * FROM sales 
             WHERE userid = ?
             AND DATE(created_at) = ?
             ORDER BY created_at DESC
