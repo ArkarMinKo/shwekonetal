@@ -40,7 +40,8 @@ function getUsers(req, res) {
 
 function getUserById(req, res, userid) {
   const sql = "SELECT * FROM users WHERE id = ?";
-  const openStockSql = "SELECT gold FROM stock WHERE id = 1"
+  const openStockSql = "SELECT gold FROM stock WHERE id = 1";
+
   db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
@@ -61,8 +62,13 @@ function getUserById(req, res, userid) {
       }
 
       const r = rows[0];
+
+      // remove "level" word from level value
+      const cleanLevel = r.level ? r.level.replace("level", "") : null;
+
       const result = {
         ...r,
+        level: cleanLevel, // updated field
         profile: r.photo ? `${filepath}${r.photo}` : null,
         id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
         id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
@@ -70,7 +76,7 @@ function getUserById(req, res, userid) {
       };
 
       res.end(JSON.stringify(result));
-    })
+    });
   });
 }
 
