@@ -86,9 +86,9 @@ function getUserById(req, res, userid) {
         });
 
         if(ppn > 0){
-          ppnTotal = `+ ${total}`
+          ppnTotal = `+ ${ppn}`
         }else if(ppn < 0){
-          ppnTotal = `- ${Math.abs(total)}`
+          ppnTotal = `- ${Math.abs(ppn)}`
         }else{
           ppnTotal = "0"
         }
