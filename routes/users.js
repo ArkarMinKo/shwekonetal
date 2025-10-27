@@ -189,9 +189,9 @@ function createUser(req, res) {
   });
 }
 
-// --- UPDATE USER ---
-function updateUser(req, res) {
-  const id = req.url.split("/")[2];
+// --- UPDATE USER (fullname, phone, email, photo only) ---
+function updateUser(req, res, id) {
+  const id = id;
   const form = new formidable.IncomingForm();
   form.multiples = false;
   form.uploadDir = UPLOAD_DIR;
@@ -204,85 +204,76 @@ function updateUser(req, res) {
     }
 
     const photo = Array.isArray(files.photo) ? files.photo[0] : files.photo;
-    const front = Array.isArray(files.id_front_photo) ? files.id_front_photo[0] : files.id_front_photo;
-    const back = Array.isArray(files.id_back_photo) ? files.id_back_photo[0] : files.id_back_photo;
 
-    db.query("SELECT photo, id_front_photo, id_back_photo FROM users WHERE id=?", [id], (err, rows) => {
+    // Check if user exists
+    db.query("SELECT id, email, photo FROM users WHERE id=?", [id], (err, rows) => {
       if (err || rows.length === 0) {
         res.statusCode = 404;
         return res.end(JSON.stringify({ error: "User not found" }));
       }
 
-      let photoFile = rows[0].photo;
-      let frontFile = rows[0].id_front_photo;
-      let backFile = rows[0].id_back_photo;
+      const oldUser = rows[0];
+      let photoFile = oldUser.photo;
 
-      if (photo && photo.filepath && photo.originalFilename && photo.size > 0) {
-        if (photoFile && fs.existsSync(path.join(UPLOAD_DIR, photoFile))) fs.unlinkSync(path.join(UPLOAD_DIR, photoFile));
-        const photoName = generatePhotoName(id, photo.originalFilename);
-        fs.renameSync(photo.filepath, path.join(UPLOAD_DIR, photoName));
-        photoFile = photoName;
-      }
-
-      if (front && front.filepath && front.originalFilename && front.size > 0) {
-        if (frontFile && fs.existsSync(path.join(UPLOAD_DIR, frontFile))) fs.unlinkSync(path.join(UPLOAD_DIR, frontFile));
-        const frontName = generateIdFrontPhotoName(id, front.originalFilename);
-        fs.renameSync(front.filepath, path.join(UPLOAD_DIR, frontName));
-        frontFile = frontName;
-      }
-
-      if (back && back.filepath && back.originalFilename && back.size > 0) {
-        if (backFile && fs.existsSync(path.join(UPLOAD_DIR, backFile))) fs.unlinkSync(path.join(UPLOAD_DIR, backFile));
-        const backName = generateIdBackPhotoName(id, back.originalFilename);
-        fs.renameSync(back.filepath, path.join(UPLOAD_DIR, backName));
-        backFile = backName;
-      }
-
-      db.query(
-        `UPDATE users SET fullname=?, gender=?, id_type=?, id_number=?, email=?, phone=?, state=?, city=?, address=?, password=?, status=?, gold=?, member_point=?, passcode=?, level=?, promoter=?, photo=?, id_front_photo=?, id_back_photo=? WHERE id=?`,
-        [
-          fields.fullname,
-          fields.gender,
-          fields.id_type,
-          fields.id_number,
-          fields.email,
-          fields.phone,
-          fields.state,
-          fields.city,
-          fields.address,
-          fields.password,
-          fields.status,
-          fields.gold || 0,
-          fields.member_point || 0,
-          fields.passcode || null,
-          fields.level || "level1",
-          fields.promoter || "Normal",
-          photoFile,
-          frontFile,
-          backFile,
-          id,
-        ],
-        (err) => {
+      // --- Check if email already exists in another user ---
+      if (fields.email) {
+        db.query("SELECT id FROM users WHERE email=? AND id<>?", [fields.email, id], (err, dupRows) => {
           if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
           }
+          if (dupRows.length > 0) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်" }));
+          }
 
-          // Fetch full updated record
-          db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
-            if (err || rows.length === 0) {
-              return res.end(JSON.stringify({ message: "User updated, but fetch failed" }));
+          // --- Handle photo update ---
+          if (photo && photo.filepath && photo.originalFilename && photo.size > 0) {
+            if (photoFile && fs.existsSync(path.join(UPLOAD_DIR, photoFile))) {
+              fs.unlinkSync(path.join(UPLOAD_DIR, photoFile));
             }
+            const photoName = generatePhotoName(id, photo.originalFilename);
+            fs.renameSync(photo.filepath, path.join(UPLOAD_DIR, photoName));
+            photoFile = photoName;
+          }
 
-            const user = rows[0];
-            user.profile = user.photo ? `${filepath}${user.photo}` : null;
-            user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
-            user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
+          // --- Update the basic fields ---
+          db.query(
+            "UPDATE users SET fullname=?, phone=?, email=?, photo=? WHERE id=?",
+            [
+              fields.fullname,
+              fields.phone,
+              fields.email,
+              photoFile,
+              id,
+            ],
+            (err) => {
+              if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+              }
 
-            res.end(JSON.stringify({ message: "User updated", user }));
-          });
-        }
-      );
+              // --- Fetch updated user ---
+              db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
+                if (err || rows.length === 0) {
+                  return res.end(JSON.stringify({ message: "User updated, but fetch failed" }));
+                }
+
+                const user = rows[0];
+                user.profile = user.photo ? `${filepath}${user.photo}` : null;
+                user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
+                user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
+
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ message: "အသုံးပြုသူ ပြင်ဆင်ပြီးပါပြီ", user }));
+              });
+            }
+          );
+        });
+      } else {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "Email is required" }));
+      }
     });
   });
 }
