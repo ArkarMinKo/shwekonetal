@@ -53,7 +53,7 @@ function getUserById(req, res, userid) {
         return res.end(JSON.stringify({ error: err.message }));
       }
 
-      const openStock = gold;
+      const openStock = gold[0];
 
       if (rows.length === 0) {
         res.statusCode = 404;
