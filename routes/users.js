@@ -190,8 +190,8 @@ function createUser(req, res) {
 }
 
 // --- UPDATE USER (fullname, phone, email, photo only) ---
-function updateUser(req, res, id) {
-  const id = id;
+function updateUser(req, res, userid) {
+  const id = userid;
   const form = new formidable.IncomingForm();
   form.multiples = false;
   form.uploadDir = UPLOAD_DIR;
