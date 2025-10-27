@@ -195,7 +195,7 @@ function createUser(req, res) {
   });
 }
 
-// --- UPDATE USER (fullname, phone, email, photo only) ---
+// --- UPDATE USER (fullname, phone, email, photo, state, city, address, password) ---
 function updateUser(req, res, userid) {
   const id = userid;
   const form = new formidable.IncomingForm();
@@ -211,7 +211,7 @@ function updateUser(req, res, userid) {
 
     const photo = Array.isArray(files.photo) ? files.photo[0] : files.photo;
 
-    // Check if user exists
+    // --- Check if user exists ---
     db.query("SELECT id, email, photo FROM users WHERE id=?", [id], (err, rows) => {
       if (err || rows.length === 0) {
         res.statusCode = 404;
@@ -221,7 +221,7 @@ function updateUser(req, res, userid) {
       const oldUser = rows[0];
       let photoFile = oldUser.photo;
 
-      // --- Check if email already exists in another user ---
+      // --- Check for duplicate email ---
       if (fields.email) {
         db.query("SELECT id FROM users WHERE email=? AND id<>?", [fields.email, id], (err, dupRows) => {
           if (err) {
@@ -243,38 +243,46 @@ function updateUser(req, res, userid) {
             photoFile = photoName;
           }
 
-          // --- Update the basic fields ---
-          db.query(
-            "UPDATE users SET fullname=?, phone=?, email=?, photo=? WHERE id=?",
-            [
-              fields.fullname,
-              fields.phone,
-              fields.email,
-              photoFile,
-              id,
-            ],
-            (err) => {
-              if (err) {
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: err.message }));
+          // --- Update user info ---
+          const sql = `
+            UPDATE users 
+            SET fullname=?, phone=?, email=?, photo=?, 
+                state=?, city=?, address=?, password=? 
+            WHERE id=?`;
+
+          const params = [
+            fields.fullname,
+            fields.phone,
+            fields.email,
+            photoFile,
+            fields.state,
+            fields.city,
+            fields.address,
+            fields.password,
+            id
+          ];
+
+          db.query(sql, params, (err) => {
+            if (err) {
+              res.statusCode = 500;
+              return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            // --- Fetch updated user ---
+            db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
+              if (err || rows.length === 0) {
+                return res.end(JSON.stringify({ message: "User updated, but fetch failed" }));
               }
 
-              // --- Fetch updated user ---
-              db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
-                if (err || rows.length === 0) {
-                  return res.end(JSON.stringify({ message: "User updated, but fetch failed" }));
-                }
+              const user = rows[0];
+              user.profile = user.photo ? `${filepath}${user.photo}` : null;
+              user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
+              user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
 
-                const user = rows[0];
-                user.profile = user.photo ? `${filepath}${user.photo}` : null;
-                user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
-                user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
-
-                res.writeHead(200, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ message: "အသုံးပြုသူ ပြင်ဆင်ပြီးပါပြီ", user }));
-              });
-            }
-          );
+              res.writeHead(200, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ message: "အသုံးပြုသူ ပြင်ဆင်ပြီးပါပြီ", user }));
+            });
+          });
         });
       } else {
         res.statusCode = 400;
