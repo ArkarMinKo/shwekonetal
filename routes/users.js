@@ -40,26 +40,37 @@ function getUsers(req, res) {
 
 function getUserById(req, res, userid) {
   const sql = "SELECT * FROM users WHERE id = ?";
+  const openStockSql = "SELECT gold FROM stock WHERE id = 1"
   db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    if (rows.length === 0) {
-      res.statusCode = 404;
-      return res.end(JSON.stringify({ error: "User not found" }));
-    }
+    db.query(openStockSql, (err, gold) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
 
-    const r = rows[0];
-    const result = {
-      ...r,
-      profile: r.photo ? `${filepath}${r.photo}` : null,
-      id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
-      id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
-    };
+      const openStock = gold;
 
-    res.end(JSON.stringify(result));
+      if (rows.length === 0) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: "User not found" }));
+      }
+
+      const r = rows[0];
+      const result = {
+        ...r,
+        profile: r.photo ? `${filepath}${r.photo}` : null,
+        id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
+        id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
+        open_stock: openStock
+      };
+
+      res.end(JSON.stringify(result));
+    })
   });
 }
 
