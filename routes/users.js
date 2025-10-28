@@ -86,8 +86,6 @@ function getUserById(req, res, userid) {
         ppnTotal = "0"
       }
 
-      const openStock = goldResult[0].gold;
-
       if (rows.length === 0) {
         res.statusCode = 404;
         return res.end(JSON.stringify({ error: "User not found" }));
@@ -104,7 +102,7 @@ function getUserById(req, res, userid) {
         profile: r.photo ? `${filepath}${r.photo}` : null,
         id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
         id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
-        open_stock: openStock, ppnTotal: ppnTotal
+        ppnTotal: ppnTotal
       };
 
       res.end(JSON.stringify(result));
