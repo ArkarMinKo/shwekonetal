@@ -100,7 +100,7 @@ function getOpenStock(req, res){
           const kyat = Math.floor(goldFloat / latestyway);
           const palbyyway = goldFloat / ywaybypal;
           const pal = Math.floor(palbyyway % 16);
-          const yway = goldFloat % ywaybypal;
+          const yway = (goldFloat % ywaybypal).toFixed(2);s
 
           let goldString = "";
           if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
