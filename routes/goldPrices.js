@@ -19,7 +19,7 @@ function postOpenStock(req, res){
       return res.end(JSON.stringify({ error: "Gold is required" }));
     }
 
-    const sql = `SELECT * FROM stock`;
+    const sql = `SELECT * FROM stock WHERE id = 1`;
 
     db.query(sql, (err,rows) => {
       if (err) {
