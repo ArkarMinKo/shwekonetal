@@ -245,6 +245,11 @@ const server = http.createServer(async (req, res) => {
     goldPrices.getLatestFormula(req, res);
   }
 
+  // --- Get report buy and sell chart
+  else if (pathName === "/report-buy-sell-chart" && method === "GET") {
+    sales.compareBuyAndSellChart(req, res);
+  }
+
   // --- 404 fallback ---
   else {
     res.writeHead(404, { "Content-Type": "application/json" });

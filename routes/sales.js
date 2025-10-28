@@ -750,8 +750,8 @@ function getTimesSalesByToday(req, res){
 
     db.query(sql, [date], (err, rows) => {
         if (err) {
-        res.statusCode = 500;
-        return res.end(JSON.stringify({ error: err.message }));
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
         }
 
         // Time slots (09:00, 10:00 ... etc)
@@ -777,6 +777,54 @@ function getTimesSalesByToday(req, res){
     });
 }
 
+// --- Report compare buy and sell chart ---
+function compareBuyAndSellChart(req, res){
+    const salesSql = `SELECT type, gold, price, DATE(created_at) FROM sales WHERE status = "approved" ORDER BY created_at DESC`
+
+    db.query(salesSql, (err, salesResult) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const getLatestFormulaSql = `
+            SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+        `;
+
+        db.query(getLatestFormulaSql, (err, formulaResult) => {
+            if (err) {
+                console.error("Price fetch error:", err);
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+            
+            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+
+            let sellTotal = 0;
+            let buyTotal = 0;
+
+            salesResult.forEach(sale => {
+                if(sale.type === 'buy'){
+                    sellTotal += parseFloat(sale.gold) * parseInt(sale.price) / latestyway;
+                }else if(sale.type === 'sell'){
+                    buyTotal += parseFloat(sale.gold) * parseInt(sale.price) / latestyway;
+                }
+            })
+
+            const sales = salesResult.map(sale => {
+                return [
+                    sale.created_at,
+                    buyTotal,
+                    sellTotal
+                ]
+            })
+
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: true, data: sales }));
+        })
+    })
+}
+
 module.exports = {
         createSale,
         approveSale,
@@ -788,5 +836,6 @@ module.exports = {
         getAllSalesByUser,
         getDateFilterByUser,
         getTimesSalesByToday,
-        getAllApprove
+        getAllApprove,
+        compareBuyAndSellChart
     };
