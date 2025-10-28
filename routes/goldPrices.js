@@ -84,16 +84,28 @@ function getOpenStock(req, res){
           return res.end(JSON.stringify({ error: err.message }));
       }
 
-      const latestyway = parseInt(formulaResult[0]?.yway) || 128;
-      const ywaybypal = latestyway / 16;
+      const getLatestBuyingPrice = "SELECT * FROM buying_prices ORDER BY date DESC, time DESC LIMIT 1"
+      db.query(getLatestBuyingPrice, (err, buyingPriceResult) => {
+        if (err) {
+          console.error("Price fetch error:", err);
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
 
-      // English → Myanmar number converter
-      const toMyanmarNumber = (num) => {
-          const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
-          return num.toString().split("").map(d => map[d] || d).join("");
-      };
+        const buying_prices = parseInt(buyingPriceResult[0].price)
+        
+        const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+        const ywaybypal = latestyway / 16;
 
-    const formattedRows = rows.map((r) => {
+        const total_profit = rows[0].gold * buying_prices / latestyway;
+
+        // English → Myanmar number converter
+        const toMyanmarNumber = (num) => {
+            const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
+            return num.toString().split("").map(d => map[d] || d).join("");
+        };
+
+        const formattedRows = rows.map((r) => {
           const goldFloat = parseFloat(r.gold);
 
           // convert gold to kyat-pal-yway string
@@ -102,21 +114,21 @@ function getOpenStock(req, res){
           const pal = Math.floor(palbyyway % 16);
           const yway = (goldFloat % ywaybypal).toFixed(2);
 
-          let goldString = "";
-          if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-          if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-          if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
-
           if (!goldString.trim()) goldString = "၀";
 
           return {
               ...r,
-              gold: goldString.trim(),
+              kyat: toMyanmarNumber(kyat),
+              pal: toMyanmarNumber(pal),
+              yway: toMyanmarNumber(yway),
           };
-      });
+        });
 
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.end(JSON.stringify({ success: true, data: formattedRows }));
+        const totalString = `စုစုပေါင်း = ${toMyanmarNumber(buying_prices)} ~ ${toMyanmarNumber(total_profit)}`
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, data: formattedRows }));
+      })
     })
   })
 }
