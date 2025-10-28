@@ -122,7 +122,7 @@ function getOpenStock(req, res){
           };
         });
 
-        const totalString = `စုစုပေါင်း = ${toMyanmarNumber(buying_prices)} ~ ${toMyanmarNumber(total_profit)}`
+        const totalString = `စုစုပေါင်း = ${toMyanmarNumber(buying_prices)} ကျပ် ~ ${toMyanmarNumber(total_profit)} ကျပ်`
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, total: totalString, data: formattedRows }));
