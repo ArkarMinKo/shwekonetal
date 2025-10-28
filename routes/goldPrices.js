@@ -47,8 +47,8 @@ function postOpenStock(req, res){
       const dataPal = (parseFloat(engPal) * ywaybypal).toFixed(2);
       const dataKyat = (parseFloat(engKyat) * latestyway).toFixed(2);
 
-      let gold = dataYway + dataPal + dataKyat;
-      gold = parseFloat(gold).toFixed(2)
+      let gold = parseFloat(dataYway) + parseFloat(dataPal) + parseFloat(dataKyat);
+      gold = parseFloat(gold.toFixed(2));
 
       const sql = `SELECT * FROM stock WHERE id = 1`;
 
@@ -61,7 +61,7 @@ function postOpenStock(req, res){
         if(rows.length === 0) {
           const sql = `INSERT INTO stock (gold) VALUES (?)`;
 
-          db.query(sql, parseFloat(gold), err => {
+          db.query(sql, [parseFloat(gold)], err => {
             if (err) {
               res.statusCode = 500;
               return res.end(JSON.stringify({ error: err.message }));
@@ -79,7 +79,7 @@ function postOpenStock(req, res){
 
           updateGold = parseFloat(rows[0].gold) + parseFloat(gold);
           updateGold = parseFloat(updateGold).toFixed(2)
-          db.query(sql, parseFloat(updateGold), err => {
+          db.query(sql, [parseFloat(updateGold)], err => {
             if (err) {
               res.statusCode = 500;
               return res.end(JSON.stringify({ error: err.message }));
