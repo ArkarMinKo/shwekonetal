@@ -47,7 +47,8 @@ function postOpenStock(req, res){
       const dataPal = (parseFloat(engPal) * ywaybypal).toFixed(2);
       const dataKyat = (parseFloat(engKyat) * latestyway).toFixed(2);
 
-      const gold = dataYway + dataPal + dataKyat;
+      let gold = dataYway + dataPal + dataKyat;
+      gold = parseFloat(gold).toFixed(2)
 
       const sql = `SELECT * FROM stock WHERE id = 1`;
 
