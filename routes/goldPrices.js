@@ -12,54 +12,85 @@ function postOpenStock(req, res){
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    const {gold} = fields;
+    const {kyat, pal, yway} = fields;
 
-    if (!gold) {
+    if (!kyat, !pal, !yway) {
       res.statusCode = 400;
-      return res.end(JSON.stringify({ error: "Gold is required" }));
+      return res.end(JSON.stringify({ error: "Kyat, Pal and Yway are required" }));
     }
 
-    const sql = `SELECT * FROM stock WHERE id = 1`;
+    // Myanmar → English number converter
+    const toEnglishNumber = (num) => {
+        const map = { "၀": 0, "၁": 1,"၂": 2, "၃": 3, "၄": 4, "၅": 5, "၆": 6, "၇": 7, "၈": 8, "၉": 9, ".":"." };
+        return num.toString().split("").map(d => map[d] || d).join("");
+    };
 
-    db.query(sql, (err,rows) => {
+    const engKyat = toEnglishNumber(kyat);
+    const engPal = toEnglishNumber(pal);
+    const engYway = toEnglishNumber(yway);
+
+    const getLatestFormulaSql = `
+      SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+    `;
+
+    db.query(getLatestFormulaSql, (err, formulaResult) => {
       if (err) {
-        res.statusCode = 500;
-        return res.end(JSON.stringify({ error: err.message }));
+          console.error("Price fetch error:", err);
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
       }
 
-      if(rows.length === 0) {
-        const sql = `INSERT INTO stock (gold) VALUES (?)`;
+      const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+      const ywaybypal = latestyway / 16;
 
-        db.query(sql, parseFloat(gold), err => {
-          if (err) {
-            res.statusCode = 500;
-            return res.end(JSON.stringify({ error: err.message }));
-          }
+      const dataYway = parseFloat(engYway).toFixed(2);
+      const dataPal = (parseFloat(engPal) * ywaybypal).toFixed(2);
+      const dataKyat = (parseFloat(engKyat) * latestyway).toFixed(2);
 
-          res.setHeader("Content-Type", "application/json; charset=utf-8");
-          res.end(JSON.stringify({
-            message: "Insert gold to stock successfully",
-            data: gold
-          }));
-        })
-      }else{
-        const sql = `UPDATE stock SET gold = ? WHERE id = 1`
-        let updateGold;
+      const gold = dataYway + dataPal + dataKyat;
 
-        updateGold = parseFloat(rows[0].gold) + parseFloat(gold);
-        db.query(sql, parseFloat(updateGold), err => {
-          if (err) {
-            res.statusCode = 500;
-            return res.end(JSON.stringify({ error: err.message }));
-          }
+      const sql = `SELECT * FROM stock WHERE id = 1`;
 
-          res.setHeader("Content-Type", "application/json; charset=utf-8");
-          res.end(JSON.stringify({
-            message: "Update gold to stock successfully",
-            data: updateGold
-          }));
-        })
-      }
+      db.query(sql, (err,rows) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        if(rows.length === 0) {
+          const sql = `INSERT INTO stock (gold) VALUES (?)`;
+
+          db.query(sql, parseFloat(gold), err => {
+            if (err) {
+              res.statusCode = 500;
+              return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({
+              message: "Insert gold to stock successfully",
+              data: gold
+            }));
+          })
+        }else{
+          const sql = `UPDATE stock SET gold = ? WHERE id = 1`
+          let updateGold;
+
+          updateGold = parseFloat(rows[0].gold) + parseFloat(gold);
+          db.query(sql, parseFloat(updateGold), err => {
+            if (err) {
+              res.statusCode = 500;
+              return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({
+              message: "Update gold to stock successfully",
+              data: updateGold
+            }));
+          })
+        }
+      })
     })
   })
 }
