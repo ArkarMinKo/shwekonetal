@@ -114,8 +114,6 @@ function getOpenStock(req, res){
           const pal = Math.floor(palbyyway % 16);
           const yway = (goldFloat % ywaybypal).toFixed(2);
 
-          if (!goldString.trim()) goldString = "၀";
-
           return {
               ...r,
               kyat: toMyanmarNumber(kyat),
@@ -127,7 +125,7 @@ function getOpenStock(req, res){
         const totalString = `စုစုပေါင်း = ${toMyanmarNumber(buying_prices)} ~ ${toMyanmarNumber(total_profit)}`
 
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, data: formattedRows }));
+        res.end(JSON.stringify({ success: true, total: totalString, data: formattedRows }));
       })
     })
   })
