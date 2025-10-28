@@ -78,6 +78,7 @@ function postOpenStock(req, res){
           let updateGold;
 
           updateGold = parseFloat(rows[0].gold) + parseFloat(gold);
+          updateGold = parseFloat(updateGold).toFixed(2)
           db.query(sql, parseFloat(updateGold), err => {
             if (err) {
               res.statusCode = 500;
