@@ -250,6 +250,16 @@ const server = http.createServer(async (req, res) => {
     sales.compareBuyAndSellChart(req, res);
   }
 
+  // --- Get buy table ---
+  else if (pathName === "/buyTable" && method === "GET") {
+    sales.buyTable(req, res);
+  }
+
+  // --- Get sell table ---
+  else if (pathName === "/sellTable" && method === "GET") {
+    sales.sellTable(req, res);
+  }
+
   // --- 404 fallback ---
   else {
     res.writeHead(404, { "Content-Type": "application/json" });
