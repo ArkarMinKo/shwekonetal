@@ -3,7 +3,7 @@ const formidable = require("formidable");
 
 const { sellingPriceIdGenerator, buyingPriceIdGenerator, formulaIdGenerator } = require("../utils/priceIdGenerator");
 
-function postOpenStock(req, res){
+function postOpenStock(req, res) {
   const form = new formidable.IncomingForm();
 
   form.parse(req, (err, fields) => {
@@ -12,22 +12,22 @@ function postOpenStock(req, res){
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    const {kyat, pal, yway} = fields;
+    const { kyat, pal, yway } = fields;
 
-    if (!kyat, !pal, !yway) {
+    if (kyat === undefined || pal === undefined || yway === undefined) {
       res.statusCode = 400;
       return res.end(JSON.stringify({ error: "Kyat, Pal and Yway are required" }));
     }
 
-    // Myanmar → English number converter
     const toEnglishNumber = (num) => {
-        const map = { "၀": 0, "၁": 1,"၂": 2, "၃": 3, "၄": 4, "၅": 5, "၆": 6, "၇": 7, "၈": 8, "၉": 9, ".":"." };
-        return num.toString().split("").map(d => map[d] || d).join("");
+      const map = { "၀": 0, "၁": 1, "၂": 2, "၃": 3, "၄": 4, "၅": 5, "၆": 6, "၇": 7, "၈": 8, "၉": 9, ".": "." };
+      if (!num) return "0";
+      return num.toString().split("").map(d => map[d] ?? d).join("");
     };
 
-    const engKyat = toEnglishNumber(kyat);
-    const engPal = toEnglishNumber(pal);
-    const engYway = toEnglishNumber(yway);
+    const engKyat = parseFloat(toEnglishNumber(kyat)) || 0;
+    const engPal = parseFloat(toEnglishNumber(pal)) || 0;
+    const engYway = parseFloat(toEnglishNumber(yway)) || 0;
 
     const getLatestFormulaSql = `
       SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
@@ -35,33 +35,37 @@ function postOpenStock(req, res){
 
     db.query(getLatestFormulaSql, (err, formulaResult) => {
       if (err) {
-          console.error("Price fetch error:", err);
-          res.statusCode = 500;
-          return res.end(JSON.stringify({ error: err.message }));
+        console.error("Price fetch error:", err);
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
       }
 
-      const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+      const latestyway = parseFloat(formulaResult[0]?.yway) || 128;
       const ywaybypal = latestyway / 16;
 
-      const dataYway = parseFloat(engYway).toFixed(2);
-      const dataPal = (parseFloat(engPal) * ywaybypal).toFixed(2);
-      const dataKyat = (parseFloat(engKyat) * latestyway).toFixed(2);
+      const dataYway = engYway;
+      const dataPal = engPal * ywaybypal;
+      const dataKyat = engKyat * latestyway;
 
-      let gold = parseFloat(dataYway) + parseFloat(dataPal) + parseFloat(dataKyat);
+      let gold = dataYway + dataPal + dataKyat;
       gold = parseFloat(gold.toFixed(2));
+
+      if (isNaN(gold)) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "Invalid number conversion" }));
+      }
 
       const sql = `SELECT * FROM stock WHERE id = 1`;
 
-      db.query(sql, (err,rows) => {
+      db.query(sql, (err, rows) => {
         if (err) {
           res.statusCode = 500;
           return res.end(JSON.stringify({ error: err.message }));
         }
 
-        if(rows.length === 0) {
-          const sql = `INSERT INTO stock (gold) VALUES (?)`;
-
-          db.query(sql, [parseFloat(gold)], err => {
+        if (rows.length === 0) {
+          const insertSql = `INSERT INTO stock (gold) VALUES (?)`;
+          db.query(insertSql, [gold], (err) => {
             if (err) {
               res.statusCode = 500;
               return res.end(JSON.stringify({ error: err.message }));
@@ -72,14 +76,12 @@ function postOpenStock(req, res){
               message: "Insert gold to stock successfully",
               data: gold
             }));
-          })
-        }else{
-          const sql = `UPDATE stock SET gold = ? WHERE id = 1`
-          let updateGold;
+          });
+        } else {
+          const updateSql = `UPDATE stock SET gold = ? WHERE id = 1`;
+          const updateGold = parseFloat(rows[0].gold) + gold;
 
-          updateGold = parseFloat(rows[0].gold) + parseFloat(gold);
-          updateGold = parseFloat(updateGold).toFixed(2)
-          db.query(sql, [parseFloat(updateGold)], err => {
+          db.query(updateSql, [updateGold], (err) => {
             if (err) {
               res.statusCode = 500;
               return res.end(JSON.stringify({ error: err.message }));
@@ -88,13 +90,13 @@ function postOpenStock(req, res){
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.end(JSON.stringify({
               message: "Update gold to stock successfully",
-              data: updateGold
+              data: updateGold.toFixed(2)
             }));
-          })
+          });
         }
-      })
-    })
-  })
+      });
+    });
+  });
 }
 
 function getOpenStock(req, res){
