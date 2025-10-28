@@ -779,7 +779,7 @@ function getTimesSalesByToday(req, res){
 
 // --- Report compare buy and sell chart ---
 function compareBuyAndSellChart(req, res){
-    const salesSql = `SELECT type, gold, price, DATE(created_at) FROM sales WHERE status = "approved" ORDER BY created_at DESC`
+    const salesSql = `SELECT type, gold, price, DATE(created_at) AS created_at FROM sales WHERE status = "approved" ORDER BY created_at DESC`
 
     db.query(salesSql, (err, salesResult) => {
         if (err) {
@@ -814,8 +814,8 @@ function compareBuyAndSellChart(req, res){
             const sales = salesResult.map(sale => {
                 return [
                     sale.created_at,
-                    buyTotal,
-                    sellTotal
+                    parseFloat(buyTotal.toFixed(2)),
+                    parseFloat(sellTotal.toFixed(2))
                 ]
             })
 
