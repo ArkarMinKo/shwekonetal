@@ -38,7 +38,7 @@ function getUsers(req, res) {
   });
 }
 
-function getUserById(req, res, userid) {ဖ
+function getUserById(req, res, userid) {
   const sql = "SELECT * FROM users WHERE id = ?";
 
   const profitSql = "SELECT * FROM own_gold WHERE userid = ? ORDER BY created_at DESC";
@@ -125,7 +125,6 @@ function getUserById(req, res, userid) {ဖ
     });
   });
 }
-
 
 // --- CREATE USER ---
 function createUser(req, res) {
