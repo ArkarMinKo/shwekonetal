@@ -43,6 +43,7 @@ function getUserById(req, res, userid) {
 
   const profitSql = "SELECT * FROM own_gold WHERE userid = ? ORDER BY created_at DESC";
 
+  const serverSql = "SELECT server FROM server WHERE id = 1"
   db.query(sql, [userid], (err, rows) => {
     if (err) {
       res.statusCode = 500;
@@ -55,58 +56,67 @@ function getUserById(req, res, userid) {
         return res.end(JSON.stringify({ error: err.message }));
       }
 
-      let ppn = 0;
-      let ppnTotal;
-
-      const formattedResults = profitResult.map(data => {
-        const profit = parseFloat(data.profit) || 0;
-
-        ppn += profit;
-
-        let formattedProfit;
-        if (profit > 0) {
-          formattedProfit = `+ ${profit}`;
-        } else if (profit < 0) {
-          formattedProfit = `- ${Math.abs(profit)}`;
-        } else {
-          formattedProfit = "0";
+      db.query(serverSql, (err, serverResult) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
         }
 
-        return {
-          ...data,
-          profit: formattedProfit
+        const server = serverResult[0].server || 1;
+
+        let ppn = 0;
+        let ppnTotal;
+
+        const formattedResults = profitResult.map(data => {
+          const profit = parseFloat(data.profit) || 0;
+
+          ppn += profit;
+
+          let formattedProfit;
+          if (profit > 0) {
+            formattedProfit = `+ ${profit}`;
+          } else if (profit < 0) {
+            formattedProfit = `- ${Math.abs(profit)}`;
+          } else {
+            formattedProfit = "0";
+          }
+
+          return {
+            ...data,
+            profit: formattedProfit
+          };
+        });
+
+        if(ppn > 0){
+          ppnTotal = `+ ${ppn}`
+        }else if(ppn < 0){
+          ppnTotal = `- ${Math.abs(ppn)}`
+        }else{
+          ppnTotal = "0"
+        }
+
+        if (rows.length === 0) {
+          res.statusCode = 404;
+          return res.end(JSON.stringify({ error: "User not found" }));
+        }
+
+        const r = rows[0];
+
+        // remove "level" word from level value
+        const cleanLevel = r.level ? r.level.replace("level", "") : null;
+
+        const result = {
+          ...r,
+          level: cleanLevel, // updated field
+          profile: r.photo ? `${filepath}${r.photo}` : null,
+          id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
+          id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
+          ppnTotal: ppnTotal, server: server
         };
-      });
 
-      if(ppn > 0){
-        ppnTotal = `+ ${ppn}`
-      }else if(ppn < 0){
-        ppnTotal = `- ${Math.abs(ppn)}`
-      }else{
-        ppnTotal = "0"
-      }
-
-      if (rows.length === 0) {
-        res.statusCode = 404;
-        return res.end(JSON.stringify({ error: "User not found" }));
-      }
-
-      const r = rows[0];
-
-      // remove "level" word from level value
-      const cleanLevel = r.level ? r.level.replace("level", "") : null;
-
-      const result = {
-        ...r,
-        level: cleanLevel, // updated field
-        profile: r.photo ? `${filepath}${r.photo}` : null,
-        id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
-        id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
-        ppnTotal: ppnTotal
-      };
-
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(result));
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result));
+      })
     });
   });
 }

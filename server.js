@@ -126,6 +126,11 @@ const server = http.createServer(async (req, res) => {
     goldPrices.postOpenStock(req, res);
   }
 
+  // --- Post Open Server ---
+  else if (pathName === "/open-server" && method === "POST") {
+    goldPrices.openServer(req, res);
+  }
+
   // --- Getting All Selling Price ---
   else if (pathName === "/selling-prices" && method === "GET") {
     goldPrices.getAllSellingPrices(req, res);
