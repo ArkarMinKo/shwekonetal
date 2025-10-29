@@ -353,7 +353,7 @@ function getLatestSellingPrice(req, res) {
 
 // --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllBuyingPrices(req, res) {
-  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC"; // ASC for processing logic
+  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC"; // ASC for chronological order
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
@@ -382,10 +382,8 @@ function getAllBuyingPrices(req, res) {
     const finalOutput = {};
     let previousDateData = null;
 
-    // Process in ascending order (for inheritance)
-    const sortedDates = Object.keys(groupedByDate).sort();
-
-    for (const date of sortedDates) {
+    // Process each date in chronological order
+    for (const date of Object.keys(groupedByDate).sort()) {
       const rows = groupedByDate[date];
       const dateData = {};
 
@@ -409,7 +407,7 @@ function getAllBuyingPrices(req, res) {
         dateData[displayTime] = nearest ? nearest.price : null;
       });
 
-      // Inherit missing values from previous date
+      // --- Inherit missing values from previous date ---
       if (previousDateData) {
         for (const slot of Object.keys(dateData)) {
           if (dateData[slot] == null) {
@@ -418,21 +416,13 @@ function getAllBuyingPrices(req, res) {
         }
       }
 
+      // Save current date data
       finalOutput[date] = dateData;
       previousDateData = dateData;
     }
 
-    // Reverse order for DESC output
-    const reversedOutput = {};
-    Object.keys(finalOutput)
-      .sort()
-      .reverse()
-      .forEach(date => {
-        reversedOutput[date] = finalOutput[date];
-      });
-
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify(reversedOutput, null, 2));
+    res.end(JSON.stringify(finalOutput, null, 2));
   });
 }
 
