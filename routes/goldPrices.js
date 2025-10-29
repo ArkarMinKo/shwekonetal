@@ -110,7 +110,7 @@ function openServer(req, res){
 
     const {server} = fields;
 
-    if (!server) {
+    if (server === undefined) {
       res.statusCode = 400;
       return res.end(JSON.stringify({ error: "Server is required" }));
     }
