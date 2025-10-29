@@ -38,7 +38,7 @@ function getUsers(req, res) {
   });
 }
 
-function getUserById(req, res, userid) {
+function getUserById(req, res, userid) {ဖ
   const sql = "SELECT * FROM users WHERE id = ?";
 
   const profitSql = "SELECT * FROM own_gold WHERE userid = ? ORDER BY created_at DESC";
@@ -62,7 +62,12 @@ function getUserById(req, res, userid) {
           return res.end(JSON.stringify({ error: err.message }));
         }
 
-        const server = serverResult[0].server || 1;
+        let server;
+        if (serverResult && serverResult.length > 0) {
+            server = serverResult[0].server || 1; 
+        } else {
+            server = 1;
+        }
 
         let ppn = 0;
         let ppnTotal;
