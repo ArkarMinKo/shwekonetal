@@ -353,38 +353,43 @@ function getLatestSellingPrice(req, res) {
 
 // --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllBuyingPrices(req, res) {
-  const sql = "SELECT * FROM buying_prices ORDER BY date DESC, time DESC";
+  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC"; // ASC for processing logic
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    // Define time slots (24-hour format)
     const timeSlots = [
       "01:00", "03:00", "05:00", "07:00",
       "09:00", "11:00", "13:00", "15:00",
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    // Group records by date
+    // Group rows by date
     const groupedByDate = {};
     results.forEach(row => {
       if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
       groupedByDate[row.date].push(row);
     });
 
-    // Helper to convert time "HH:MM:SS" → seconds
+    // Convert time HH:MM:SS → seconds
     function timeToSeconds(time) {
       const [h, m, s] = time.split(":").map(Number);
       return h * 3600 + m * 60 + s;
     }
 
     const finalOutput = {};
+    let previousDateData = null;
 
-    // For each date, find nearest price for each time slot
-    for (const [date, rows] of Object.entries(groupedByDate)) {
+    // Process in ascending order (for inheritance)
+    const sortedDates = Object.keys(groupedByDate).sort();
+
+    for (const date of sortedDates) {
+      const rows = groupedByDate[date];
       const dateData = {};
+
+      // Find nearest record for each time slot
       timeSlots.forEach(slot => {
         const slotSec = timeToSeconds(slot + ":00");
 
@@ -400,16 +405,34 @@ function getAllBuyingPrices(req, res) {
           }
         }
 
-        // Store slot in format "1:00" (remove leading zero)
         const displayTime = slot.replace(/^0/, "");
         dateData[displayTime] = nearest ? nearest.price : null;
       });
 
+      // Inherit missing values from previous date
+      if (previousDateData) {
+        for (const slot of Object.keys(dateData)) {
+          if (dateData[slot] == null) {
+            dateData[slot] = previousDateData[slot];
+          }
+        }
+      }
+
       finalOutput[date] = dateData;
+      previousDateData = dateData;
     }
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.end(JSON.stringify(finalOutput, null, 2));
+    // Reverse order for DESC output
+    const reversedOutput = {};
+    Object.keys(finalOutput)
+      .sort()
+      .reverse()
+      .forEach(date => {
+        reversedOutput[date] = finalOutput[date];
+      });
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify(reversedOutput, null, 2));
   });
 }
 
