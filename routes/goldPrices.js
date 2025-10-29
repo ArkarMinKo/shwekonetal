@@ -353,7 +353,7 @@ function getLatestSellingPrice(req, res) {
 
 // --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllBuyingPrices(req, res) {
-  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC"; // ASC for chronological order
+  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC"; // ASC for logic, DESC later
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
@@ -366,63 +366,91 @@ function getAllBuyingPrices(req, res) {
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    // Group rows by date
+    // Group records by date
     const groupedByDate = {};
     results.forEach(row => {
       if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
       groupedByDate[row.date].push(row);
     });
 
-    // Convert time HH:MM:SS → seconds
+    // Helper to convert time "HH:MM[:SS]" → seconds
     function timeToSeconds(time) {
       const [h, m, s] = time.split(":").map(Number);
-      return h * 3600 + m * 60 + s;
+      return h * 3600 + m * 60 + (s || 0);
     }
 
-    const finalOutput = {};
-    let previousDateData = null;
+    // Helper to iterate date range
+    function getDateRange(start, end) {
+      const dates = [];
+      let current = new Date(start);
+      const last = new Date(end);
+      while (current <= last) {
+        dates.push(current.toISOString().split("T")[0]);
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    }
 
-    // Process each date in chronological order
-    for (const date of Object.keys(groupedByDate).sort()) {
+    // Get date range
+    const allDatesInDB = Object.keys(groupedByDate).sort(); // ascending
+    const minDate = allDatesInDB[0];
+    const maxDate = allDatesInDB[allDatesInDB.length - 1];
+    const allDates = getDateRange(minDate, maxDate);
+
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+    const finalOutput = {};
+    let lastDateData = null;
+
+    for (const date of allDates) {
       const rows = groupedByDate[date];
       const dateData = {};
 
-      // Find nearest record for each time slot
-      timeSlots.forEach(slot => {
-        const slotSec = timeToSeconds(slot + ":00");
+      if (rows) {
+        // Compute nearest for each slot
+        timeSlots.forEach(slot => {
+          const slotSec = timeToSeconds(slot + ":00");
+          let nearest = null;
+          let minDiff = Infinity;
 
-        let nearest = null;
-        let minDiff = Infinity;
-
-        for (const r of rows) {
-          const rowSec = timeToSeconds(r.time);
-          const diff = Math.abs(rowSec - slotSec);
-          if (diff < minDiff) {
-            minDiff = diff;
-            nearest = r;
+          for (const r of rows) {
+            const rowSec = timeToSeconds(r.time);
+            const diff = Math.abs(rowSec - slotSec);
+            if (diff < minDiff) {
+              minDiff = diff;
+              nearest = r;
+            }
           }
-        }
 
-        const displayTime = slot.replace(/^0/, "");
-        dateData[displayTime] = nearest ? nearest.price : null;
-      });
+          const displayTime = slot.replace(/^0/, "");
 
-      // --- Inherit missing values from previous date ---
-      if (previousDateData) {
-        for (const slot of Object.keys(dateData)) {
-          if (dateData[slot] == null) {
-            dateData[slot] = previousDateData[slot];
+          // Today's future times → null
+          if (date === today && slotSec > currentSec) {
+            dateData[displayTime] = null;
+          } else {
+            dateData[displayTime] = nearest ? nearest.price : null;
           }
+        });
+
+        lastDateData = { ...dateData }; // update last known
+        finalOutput[date] = dateData;
+      } else {
+        // No data → copy previous
+        if (lastDateData) {
+          finalOutput[date] = { ...lastDateData };
         }
       }
-
-      // Save current date data
-      finalOutput[date] = dateData;
-      previousDateData = dateData;
     }
 
+    // Convert to DESC order
+    const sortedDesc = Object.fromEntries(
+      Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    );
+
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify(finalOutput, null, 2));
+    res.end(JSON.stringify(sortedDesc, null, 2));
   });
 }
 
