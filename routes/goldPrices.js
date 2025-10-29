@@ -351,7 +351,7 @@ function getLatestSellingPrice(req, res) {
   });
 }
 
-// --- Get All Buying Prices ---
+// --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllBuyingPrices(req, res) {
   const sql = "SELECT * FROM buying_prices ORDER BY date DESC, time DESC";
   db.query(sql, (err, results) => {
@@ -359,8 +359,57 @@ function getAllBuyingPrices(req, res) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
+
+    // Define time slots (24-hour format)
+    const timeSlots = [
+      "01:00", "03:00", "05:00", "07:00",
+      "09:00", "11:00", "13:00", "15:00",
+      "17:00", "19:00", "21:00", "23:00"
+    ];
+
+    // Group records by date
+    const groupedByDate = {};
+    results.forEach(row => {
+      if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
+      groupedByDate[row.date].push(row);
+    });
+
+    // Helper to convert time "HH:MM:SS" → seconds
+    function timeToSeconds(time) {
+      const [h, m, s] = time.split(":").map(Number);
+      return h * 3600 + m * 60 + s;
+    }
+
+    const finalOutput = {};
+
+    // For each date, find nearest price for each time slot
+    for (const [date, rows] of Object.entries(groupedByDate)) {
+      const dateData = {};
+      timeSlots.forEach(slot => {
+        const slotSec = timeToSeconds(slot + ":00");
+
+        let nearest = null;
+        let minDiff = Infinity;
+
+        for (const r of rows) {
+          const rowSec = timeToSeconds(r.time);
+          const diff = Math.abs(rowSec - slotSec);
+          if (diff < minDiff) {
+            minDiff = diff;
+            nearest = r;
+          }
+        }
+
+        // Store slot in format "1:00" (remove leading zero)
+        const displayTime = slot.replace(/^0/, "");
+        dateData[displayTime] = nearest ? nearest.price : null;
+      });
+
+      finalOutput[date] = dateData;
+    }
+
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.end(JSON.stringify(results));
+    res.end(JSON.stringify(finalOutput, null, 2));
   });
 }
 
