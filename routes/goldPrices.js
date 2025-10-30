@@ -126,7 +126,7 @@ function openServer(req, res){
       if(rows.length === 0){
         const insertSql = `INSERT INTO server (server) VALUES (?)`;
 
-        db.query(insertSql, [server], (err) => {
+        db.query(insertSql, [parseInt(server)], (err) => {
           if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
@@ -140,9 +140,9 @@ function openServer(req, res){
         });
       }else{
         const updateSql = `UPDATE server SET server = ? WHERE id = 1`;
-        const updateServer = server;
+        const updateServer = parseInt(server);
 
-        db.query(updateSql, [updateServer], (err) => {
+        db.query(updateSql, [parseInt(updateServer)], (err) => {
           if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
@@ -158,6 +158,29 @@ function openServer(req, res){
     })
   })
 }
+
+function getServer(req, res) {
+  const sql = `SELECT * FROM server WHERE id = 1`;
+
+  db.query(sql, (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    if (rows.length === 0) {
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ message: "No server found" }));
+    }
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({
+      message: "Get server successfully",
+      data: rows[0]
+    }));
+  });
+}
+
 
 function getOpenStock(req, res){
   const sql = `SELECT * FROM stock`;
@@ -690,5 +713,6 @@ module.exports = {
     getLatestFormula,
     postOpenStock,
     getOpenStock,
-    openServer
+    openServer,
+    getServer
 };

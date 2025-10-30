@@ -127,6 +127,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Post Open Server ---
+  else if (pathName === "/open-server" && method === "GET") {
+    goldPrices.getServer(req, res);
+  }
+
+  // --- Post Open Server ---
   else if (pathName === "/open-server" && method === "POST") {
     goldPrices.openServer(req, res);
   }
