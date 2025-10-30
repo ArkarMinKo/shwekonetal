@@ -419,7 +419,7 @@ function loginUser(req, res, body) {
       return res.end(JSON.stringify({ message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး" }));
     }
 
-    db.query("SELECT id, fullname, email, password, status FROM users WHERE email=?", [email], (err, rows) => {
+    db.query("SELECT id, fullname, email, password, status, passcode FROM users WHERE email=?", [email], (err, rows) => {
       if (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "Server error" }));
@@ -443,7 +443,7 @@ function loginUser(req, res, body) {
       }
 
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်", id: user.id, fullname: user.fullname}));
+      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်", id: user.id, fullname: user.fullname, passcode: user.passcode }));
     });
   } catch (e) {
     res.writeHead(400, { "Content-Type": "application/json" });
