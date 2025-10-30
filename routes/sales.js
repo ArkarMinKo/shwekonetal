@@ -737,9 +737,9 @@ function getDateFilterByUser(req, res, userid) {
 }
 
 // --- From sales.js ---
-function getTimesSalesByToday(req, res){
+function getTimesSalesByToday(req, res) {
     const date = new Date().toLocaleDateString("en-CA");
-    
+
     const sql = `
         SELECT gold, created_at
         FROM sales
@@ -754,22 +754,26 @@ function getTimesSalesByToday(req, res){
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        // Time slots (09:00, 10:00 ... etc)
         const timeSlots = [
-        "00:00", "01:00", "02:00", "03:00", "04:00",
-        "05:00", "06:00", "07:00", "08:00", "09:00",
-        "10:00", "11:00", "12:00", "13:00", "14:00",
-        "15:00", "16:00", "17:00", "18:00", "19:00",
-        "20:00", "21:00", "22:00", "23:00"
+            "00:00", "01:00", "02:00", "03:00", "04:00",
+            "05:00", "06:00", "07:00", "08:00", "09:00",
+            "10:00", "11:00", "12:00", "13:00", "14:00",
+            "15:00", "16:00", "17:00", "18:00", "19:00",
+            "20:00", "21:00", "22:00", "23:00"
         ];
 
         const results = timeSlots.map(slot => ({ date: slot, value: 0 }));
 
         rows.forEach(row => {
             const time = new Date(row.created_at);
-            const hour = time.getHours(); // 0 - 23
+            const hour = time.getHours();
             const gold = parseFloat(row.gold) || 0;
-            results[hour].value += parseFloat(gold.toFixed(2));
+            results[hour].value += gold;
+        });
+
+        // round to 2 decimals
+        results.forEach(r => {
+            r.value = parseFloat(r.value.toFixed(2));
         });
 
         res.setHeader("Content-Type", "application/json; charset=utf-8");
