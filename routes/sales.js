@@ -768,7 +768,7 @@ function getTimesSalesByToday(req, res){
         rows.forEach(row => {
         const time = new Date(row.created_at);
         const hour = time.getHours(); // 0 - 23
-        const gold = parseFloat(row.gold) || 0;
+        const gold = parseFloat(row.gold).toFixed(2) || 0;
         results[hour].value += gold;
         });
 
