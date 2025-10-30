@@ -200,10 +200,10 @@ function approveSale(req, res, saleId) {
                 // Gold calculation (keep decimal)
                 if (sale.type === "buy") {
                     newGold += parseFloat(sale.gold);
-                    newPoint += parseInt(sale.gold)
+                    newPoint += Math.round(parseFloat(sale.gold));
                 } else if (sale.type === "sell") {
                     newGold -= parseFloat(sale.gold);
-                    newPoint -= parseInt(sale.gold)
+                    newPoint -= Math.round(parseFloat(sale.gold))
                     if (newGold < 0) newGold = 0;
                     if (newPoint < 0) newPoint = 0;
                 }
