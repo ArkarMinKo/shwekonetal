@@ -604,6 +604,16 @@ function getAllBuyingPrices(req, res) {
       }
     }
 
+    if (!finalOutput[today] && lastDateData) {
+      const todayData = {};
+      Object.entries(lastDateData).forEach(([slot, value]) => {
+        const [h, m] = slot.split(":").map(Number);
+        const slotSec = h * 3600 + m * 60;
+        todayData[slot] = slotSec > currentSec ? null : value;
+      });
+      finalOutput[today] = todayData;
+    }
+
     // Convert to DESC order
     const sortedDesc = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
