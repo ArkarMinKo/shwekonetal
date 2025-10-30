@@ -62,7 +62,9 @@ function getUserById(req, res, userid) {
           return res.end(JSON.stringify({ error: err.message }));
         }
 
-        let server = serverResult[0].server || 1;
+        let server = (serverResult.length > 0 && serverResult[0].server !== undefined)
+        ? serverResult[0].server
+        : 1;
 
         let ppn = 0;
         let ppnTotal;
