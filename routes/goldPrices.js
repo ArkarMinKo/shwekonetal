@@ -432,8 +432,15 @@ function getAllSellingPrices(req, res) {
     const allDates = getDateRange(minDate, maxDate);
 
     const now = new Date();
-    const today = now.toISOString().split("T")[0];
-    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    // Local date string (YYYY-MM-DD)
+    const today = now.getFullYear() + "-" +
+                  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                  String(now.getDate()).padStart(2, "0");
+
+    // Local time (seconds since midnight)
+    const currentSec = now.getHours() * 3600 +
+                      now.getMinutes() * 60 +
+                      now.getSeconds();
 
     const finalOutput = {};
     let lastDateData = null;
@@ -558,8 +565,15 @@ function getAllBuyingPrices(req, res) {
     const allDates = getDateRange(minDate, maxDate);
 
     const now = new Date();
-    const today = now.toISOString().split("T")[0];
-    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    // Local date string (YYYY-MM-DD)
+    const today = now.getFullYear() + "-" +
+                  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                  String(now.getDate()).padStart(2, "0");
+
+    // Local time (seconds since midnight)
+    const currentSec = now.getHours() * 3600 +
+                      now.getMinutes() * 60 +
+                      now.getSeconds();
 
     const finalOutput = {};
     let lastDateData = null;
