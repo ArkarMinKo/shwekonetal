@@ -766,10 +766,10 @@ function getTimesSalesByToday(req, res){
         const results = timeSlots.map(slot => ({ date: slot, value: 0 }));
 
         rows.forEach(row => {
-        const time = new Date(row.created_at);
-        const hour = time.getHours(); // 0 - 23
-        const gold = parseFloat(row.gold).toFixed(2) || 0;
-        results[hour].value += gold;
+            const time = new Date(row.created_at);
+            const hour = time.getHours(); // 0 - 23
+            const gold = parseFloat(row.gold) || 0;
+            results[hour].value += parseFloat(gold.toFixed(2));
         });
 
         res.setHeader("Content-Type", "application/json; charset=utf-8");
