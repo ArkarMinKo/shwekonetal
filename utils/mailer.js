@@ -163,7 +163,7 @@ async function sendMail(to, name, type, data = {}) {
           <p>Hi <b>${name}</b>,</p>
           <p>Here’s your 8-digit confirmation code:</p>
           <div style="margin:20px auto;font-size:26px;letter-spacing:4px;font-weight:bold;color:#2563eb;">${data.code}</div>
-          <p>This code will expire in <b>10 minute</b>.</p>
+          <p>This code will expire in <b>3 minute</b>.</p>
           <p style="color:#6b7280;">If you didn’t request this, please ignore this email.</p>
         </div>
       </body>
