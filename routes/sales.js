@@ -727,65 +727,108 @@ function getAllSalesByUser(req, res, userid) {
 }
 
 function getDateFilterByUser(req, res, userid) {
-    if (!userid) {
-        res.statusCode = 400;
-        return res.end(JSON.stringify({ error: "userid is required" }));
+  if (!userid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "userid is required" }));
+  }
+
+  const form = new formidable.IncomingForm({ multiples: true });
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
     }
 
-    const form = new formidable.IncomingForm({ multiples: true });
+    const { startDate, endDate } = fields;
 
-    form.parse(req, (err, fields) => {
+    if (!startDate) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "Start date is required" }));
+    }
+
+    let sql, params;
+
+    if (endDate) {
+      sql = `
+        SELECT * FROM sales 
+        WHERE userid = ? 
+        AND created_at >= ? 
+        AND created_at <= ?
+        ORDER BY created_at DESC
+      `;
+      params = [userid, startDate + " 00:00:00", endDate + " 23:59:59"];
+    } else {
+      sql = `
+        SELECT * FROM sales 
+        WHERE userid = ?
+        AND DATE(created_at) = ?
+        ORDER BY created_at DESC
+      `;
+      params = [userid, startDate];
+    }
+
+    db.query(sql, params, (err, rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      // Subqueries for latest prices & formula
+      const buying_price_sql = `SELECT * FROM buying_prices ORDER BY date DESC, time DESC LIMIT 1`;
+      const selling_price_sql = `SELECT * FROM selling_prices ORDER BY date DESC, time DESC LIMIT 1`;
+      const formula_sql = `SELECT * FROM formula ORDER BY date DESC, time DESC LIMIT 1`;
+
+      db.query(buying_price_sql, (err, buyResult) => {
         if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        db.query(selling_price_sql, (err, sellResult) => {
+          if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
-        }
+          }
 
-        const { startDate, endDate } = fields;
-
-        if (!startDate) {
-        res.statusCode = 400;
-        return res.end(JSON.stringify({ error: "Start date is required" }));
-        }
-
-        let sql;
-        let params;
-
-        if (endDate) {
-        sql = `
-            SELECT * FROM sales 
-            WHERE userid = ? 
-            AND created_at >= ? 
-            AND created_at <= ?
-            ORDER BY created_at DESC
-        `;
-        params = [
-            userid,
-            startDate + " 00:00:00",
-            endDate + " 23:59:59"
-        ];
-        } else {
-        sql = `
-            SELECT * FROM sales 
-            WHERE userid = ?
-            AND DATE(created_at) = ?
-            ORDER BY created_at DESC
-        `;
-        params = [
-            userid,
-            startDate,
-        ];
-        }
-
-        db.query(sql, params, (err, results) => {
+          db.query(formula_sql, (err, formulaResult) => {
             if (err) {
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: err.message }));
+              res.statusCode = 500;
+              return res.end(JSON.stringify({ error: err.message }));
             }
 
+            const buying_price = buyResult[0]?.price || 0;
+            const selling_price = sellResult[0]?.price || 0;
+            const formula = formulaResult[0]?.yway || 1;
+
+            let goldBuyTotal = 0;
+            let goldSellTotal = 0;
+
+            rows.forEach((item) => {
+              if (item.type === "buy" && item.status === "approved") {
+                goldBuyTotal += parseFloat(item.gold);
+              } else if (item.type === "sell" && item.status === "approved") {
+                goldSellTotal += parseFloat(item.gold);
+              }
+            });
+
+            const buyTotal = parseInt(goldBuyTotal * (buying_price / formula));
+            const sellTotal = parseInt(goldSellTotal * (selling_price / formula));
+
             res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(JSON.stringify({ success: true, data: results }));
-        })
-    })
+            res.end(
+              JSON.stringify({
+                success: true,
+                buyTotal: buyTotal,
+                sellTotal: sellTotal,
+                data: rows,
+              })
+            );
+          });
+        });
+      });
+    });
+  });
 }
 
 // --- From sales.js ---
