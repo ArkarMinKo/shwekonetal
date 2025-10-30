@@ -192,7 +192,7 @@ function getOpenStock(req, res){
         const latestyway = parseInt(formulaResult[0]?.yway) || 128;
         const ywaybypal = latestyway / 16;
 
-        const total_profit = rows[0].gold * buying_prices / latestyway;
+        const total_profit = (rows[0].gold * buying_prices / latestyway).toFixed(2);
 
         // English → Myanmar number converter
         const toMyanmarNumber = (num) => {
