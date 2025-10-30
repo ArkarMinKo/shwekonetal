@@ -662,6 +662,9 @@ function getAllSalesByUser(req, res, userid) {
   }
 
   const sql = "SELECT * FROM sales WHERE userid = ? ORDER BY created_at DESC";
+  const buying_price_sql = `SELECT * FROM buying_prices ORDER BY date DESC, time DESC LIMIT 1`;
+  const selling_price_sql = `SELECT * FROM selling_prices ORDER BY date DESC, time DESC LIMIT 1`;
+  const formula_sql = `SELECT * FROM formula ORDER BY date DESC, time DESC LIMIT 1`;
 
   db.query(sql, [userid], (err, rows) => {
     if (err) {
@@ -669,8 +672,57 @@ function getAllSalesByUser(req, res, userid) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ success: true, data: rows }));
+    // Run all 3 supporting queries in parallel
+    db.query(buying_price_sql, (err, buyResult) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      db.query(selling_price_sql, (err, sellResult) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        db.query(formula_sql, (err, formulaResult) => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
+
+          const buying_price = buyResult[0]?.price || 0;
+          const selling_price = sellResult[0]?.price || 0;
+          const formula = formulaResult[0]?.yway || 1;
+
+          let goldBuyTotal = 0;
+          let goldSellTotal = 0;
+
+          // Calculate totals based on type and status
+          rows.forEach((item) => {
+            if (item.type === "buy" && item.status === "approved") {
+              goldBuyTotal += parseFloat(item.gold);
+            } else if (item.type === "sell" && item.status === "approved") {
+              goldSellTotal += parseFloat(item.gold);
+            }
+          });
+
+          // Convert to totals using latest prices and formula
+          const buyTotal = parseInt(goldBuyTotal * (buying_price / formula));
+          const sellTotal = parseInt(goldSellTotal * (selling_price / formula));
+
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(
+            JSON.stringify({
+              success: true,
+              buyTotal: buyTotal,
+              sellTotal: sellTotal,
+              data: rows,
+            })
+          );
+        });
+      });
+    });
   });
 }
 
