@@ -240,7 +240,7 @@ function getOpenStock(req, res){
           };
         });
 
-        const totalString = `၁ ကျပ်သားပေါက်စျေး ${toMyanmarNumber(buying_prices)} ကျပ် ≈ စုစုပေါင်း ${toMyanmarNumber(total_profit)} ကျပ်`
+        const totalString = `${toMyanmarNumber(total_profit)} ကျပ်`
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, total: totalString, data: formattedRows }));
