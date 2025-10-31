@@ -17,7 +17,7 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
 // Get all users
 function getUsers(req, res) {
-  db.query("SELECT * FROM users ORDER BY created_at DESC", (err, rows) => {
+  db.query("SELECT * FROM users ORDER BY id DESC", (err, rows) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
