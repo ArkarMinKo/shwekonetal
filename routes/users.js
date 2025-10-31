@@ -306,6 +306,98 @@ function updateUser(req, res, userid) {
   });
 }
 
+// --- PATCH USER PASSWORD ---
+function patchUserPassword(req, res, userid) {
+  const id = userid;
+  const form = new formidable.IncomingForm();
+  form.multiples = false;
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { password } = fields;
+
+    if (!password) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "နောက်ခံစကားဝှက် အသစ် ထည့်ပါ" }));
+    }
+
+    // --- Check if user exists ---
+    db.query("SELECT id FROM users WHERE id=?", [id], (err, rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      if (rows.length === 0) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: "User not found" }));
+      }
+
+      // --- Update only password ---
+      const sql = `UPDATE users SET password=? WHERE id=?`;
+      db.query(sql, [password, id], (err) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ message: "စကားဝှက် ပြောင်းလဲပြီးပါပြီ" }));
+      });
+    });
+  });
+}
+
+// --- PATCH USER PASSCODE ---
+function patchUserPasscode(req, res, userid) {
+  const id = userid;
+  const form = new formidable.IncomingForm();
+  form.multiples = false;
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { passcode } = fields;
+
+    if (!passcode) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "passcode အသစ် ထည့်ပါ" }));
+    }
+
+    // --- Check if user exists ---
+    db.query("SELECT id FROM users WHERE id=?", [id], (err, rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      if (rows.length === 0) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: "User not found" }));
+      }
+
+      // --- Update only password ---
+      const sql = `UPDATE users SET passcode=? WHERE id=?`;
+      db.query(sql, [passcode, id], (err) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ message: "Passcode ပြောင်းလဲပြီးပါပြီ" }));
+      });
+    });
+  });
+}
+
 // Delete user
 function deleteUser(req, res) {
   const id = req.url.split("/")[2];
@@ -568,5 +660,7 @@ module.exports = {
   verifyPasscode,
   requestEmailConfirmation,
   verifyEmailCodeBeforeCreate,
-  getUserById
+  getUserById,
+  patchUserPassword,
+  patchUserPasscode
 };
