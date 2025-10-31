@@ -571,7 +571,7 @@ function getAllSales(req, res) {
 
         const formattedRows = rows.map((r) => {
             const goldFloat = parseFloat(r.gold);
-            const basePrice = parseFloat(r.price);
+            const basePrice = parseInt(r.price);
 
             total = addDecimals(total, goldFloat, 2);
 
@@ -594,7 +594,8 @@ function getAllSales(req, res) {
             return {
                 ...r,
                 gold: goldString.trim(),
-                price: calculatedPrice,
+                price: toMyanmarNumber(parseInt(calculatedPrice)),
+                basePrice: basePrice
             };
         });
 
