@@ -103,7 +103,7 @@ const server = http.createServer(async (req, res) => {
     const id = pathName.split("/")[3];
     users.rejectUser(req, res, id);
   }
-  else if (pathName.startsWith("/users/passcode/" && method === "PATCH")) {
+  else if (pathName.startsWith("/users/passcode/") && method === "PATCH") {
     const id = pathName.split("/")[3];
     users.patchUserPasscode(req, res, id);
   }
