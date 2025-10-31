@@ -594,7 +594,7 @@ function getAllSales(req, res) {
             return {
                 ...r,
                 gold: goldString.trim(),
-                price: toMyanmarNumber(parseInt(calculatedPrice)),
+                price: parseInt(calculatedPrice),
                 basePrice: basePrice
             };
         });
