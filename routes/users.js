@@ -307,7 +307,7 @@ function updateUser(req, res, userid) {
 }
 
 // --- PATCH USER PASSWORD ---
-function patchUserPassword(req, res, userid) {
+function patchUserPasswordWithOTP(req, res, userid) {
   const id = userid;
   const form = new formidable.IncomingForm();
   form.multiples = false;
@@ -351,6 +351,61 @@ function patchUserPassword(req, res, userid) {
     });
   });
 }
+
+// --- PATCH USER PASSWORD WITH OLD PASSWORD CHECK ---
+function patchUserPassword(req, res, userid) {
+  const id = userid;
+  const form = new formidable.IncomingForm();
+  form.multiples = false;
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { old_password, new_password } = fields;
+
+    if (!old_password || !new_password) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "အဟောင်းနှင့်အသစ် စကားဝှက်နှစ်ခုလုံး ထည့်ပါ" }));
+    }
+
+    // --- Check if user exists ---
+    db.query("SELECT password FROM users WHERE id=?", [id], (err, rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      if (rows.length === 0) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: "User not found" }));
+      }
+
+      const currentPassword = rows[0].password;
+
+      // --- Verify old password ---
+      if (old_password !== currentPassword) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "အဟောင်းစကားဝှက် မှားနေပါသည်" }));
+      }
+
+      // --- Update to new password ---
+      const sql = `UPDATE users SET password=? WHERE id=?`;
+      db.query(sql, [new_password, id], (err) => {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ message: "စကားဝှက် အသစ်ပြောင်းပြီးပါပြီ" }));
+      });
+    });
+  });
+}
+
 
 // --- PATCH USER PASSCODE ---
 function patchUserPasscode(req, res, userid) {
@@ -662,5 +717,6 @@ module.exports = {
   verifyEmailCodeBeforeCreate,
   getUserById,
   patchUserPassword,
-  patchUserPasscode
+  patchUserPasscode,
+  patchUserPasswordWithOTP
 };

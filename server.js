@@ -107,6 +107,14 @@ const server = http.createServer(async (req, res) => {
     const id = pathName.split("/")[3];
     users.patchUserPasscode(req, res, id);
   }
+  else if (pathName.startsWith("/users/password/") && method === "PATCH") {
+    const id = pathName.split("/")[3];
+    users.patchUserPassword(req, res, id);
+  }
+  else if (pathName.startsWith("/users/password-with-OTP/") && method === "PATCH") {
+    const id = pathName.split("/")[3];
+    users.patchUserPasswordWithOTP(req, res, id);
+  }
 
   // --- Users PATCH update passcode routes ---
   else if (pathName.startsWith("/users/update-passcode/") && method === "PATCH") {
