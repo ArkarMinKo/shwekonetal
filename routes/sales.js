@@ -712,7 +712,7 @@ function getAllSalesByUser(req, res, userid) {
           const buyTotal = parseInt(goldBuyTotal * (buying_price / formula));
           const sellTotal = parseInt(goldSellTotal * (selling_price / formula));
 
-          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.setHeader("Content-Type", "application/json");
           res.end(
             JSON.stringify({
               success: true,
