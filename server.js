@@ -361,7 +361,6 @@ wss.on("connection", (ws) => {
     }
 
     const payload = { sender, receiver, type, content };
-    console.log("📤 WS Sending payload:", payload);
 
     // --- Send to receiver if online ---
     if (clients[receiver]) {
