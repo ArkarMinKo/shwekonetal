@@ -319,76 +319,85 @@ const server = http.createServer(async (req, res) => {
 });
 
 // --- WebSocket setup ---
+const WebSocket = require("ws");
 const wss = new WebSocket.Server({ server });
-const clients = {}; // store clients by userId
+const clients = {}; // store connected clients by userId
 
 wss.on("connection", (ws) => {
-  console.log("Client connected");
+  console.log("🟢 Client connected");
 
   ws.on("message", (msg) => {
+    console.log("📩 WS raw message:", msg.toString());
+
     let data;
     try {
       data = JSON.parse(msg);
-    } catch {
-      console.error("Invalid JSON:", msg);
+    } catch (err) {
+      console.error("❌ Invalid JSON message:", msg);
       return;
     }
 
-    // --- Init connection with userId ---
-    if (data.type === 'init' && data.userId) {
+    // --- Handle init handshake ---
+    if (data.type === "init" && data.userId) {
       if (!clients[data.userId]) clients[data.userId] = [];
       clients[data.userId].push(ws);
       ws._userId = data.userId;
-      console.log("WS init:", data.userId);
+      console.log("✅ WS init from:", data.userId);
       return;
     }
 
     // --- Extract message fields ---
     let { sender, receiver, type, content } = data;
 
-    // --- Validate message ---
-    if (!receiver || !type) {
-      console.error("Invalid message, missing receiver or type:", data);
-      return;
-    }
-
+    // --- Fallback sender if missing ---
     if (!sender) {
       if (ws._userId) {
         sender = ws._userId;
-        console.log("Sender missing, using ws._userId:", ws._userId);
+        console.log("⚠️ Sender missing; using ws._userId:", ws._userId);
       } else {
-        console.error("No sender and no ws._userId, message ignored:", data);
+        console.error("❌ No sender and no ws._userId; message ignored");
         return;
       }
+    }
+
+    if (!receiver || !type) {
+      console.error("❌ Invalid message, missing receiver/type:", data);
+      return;
     }
 
     const payload = { sender, receiver, type, content };
 
     // --- Send to receiver if online ---
     if (clients[receiver]) {
-      clients[receiver].forEach(socket => {
+      clients[receiver].forEach((socket) => {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify(payload));
         }
       });
+      console.log(`📤 Sent message to receiver [${receiver}]`);
+    } else {
+      console.log(`⚪ Receiver [${receiver}] not online`);
     }
 
-    // --- Echo to sender ---
+    // --- Echo to sender (so their UI also updates immediately) ---
     if (clients[sender]) {
-      clients[sender].forEach(socket => {
+      clients[sender].forEach((socket) => {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify(payload));
         }
       });
     }
 
-    // --- Save to DB ---
+    // --- Save message to DB ---
     db.query(
       "INSERT INTO messages (sender, receiver_id, type, content) VALUES (?, ?, ?, ?)",
       [sender, receiver, type, content || ""],
       (err) => {
-        if (err) console.error("DB insert error:", err);
-        else console.log("Message saved to DB:", payload);
+        if (err) {
+          console.error("💥 DB insert error:", err.sqlMessage || err.message);
+        } else {
+          console.log("✅ Message saved to DB:", payload);
+        }
       }
     );
   });
@@ -396,10 +405,16 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     const id = ws._userId;
     if (id && clients[id]) {
-      clients[id] = clients[id].filter(s => s !== ws);
+      clients[id] = clients[id].filter((s) => s !== ws);
       if (clients[id].length === 0) delete clients[id];
-      console.log("WS: client disconnected:", id);
+      console.log("🔴 WS disconnected:", id);
+    } else {
+      console.log("🔴 WS disconnected (no id)");
     }
+  });
+
+  ws.on("error", (err) => {
+    console.error("⚠️ WS error:", err.message);
   });
 });
 
