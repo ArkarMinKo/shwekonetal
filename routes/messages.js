@@ -55,25 +55,6 @@ exports.createMessage = (req, res) => {
       }
     );
   });
-
-    // Insert message record
-    db.query(
-      "INSERT INTO messages (sender, receiver_id, type, content) VALUES (?, ?, ?, ?)",
-      [sender, receiver, type, content],
-      (err, result) => {
-        if (err) {
-          console.error("DB Error:", err);
-          res.writeHead(500);
-          return res.end("DB error");
-        }
-
-        console.log("✅ Message saved:", { sender, receiver, type, content });
-
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, path: content }));
-      }
-    );
-  });
 };
 
 // Fetch messages
