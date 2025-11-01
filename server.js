@@ -307,9 +307,9 @@ const server = http.createServer(async (req, res) => {
 
   // --- Messages routes ---
   // --- POST Message ---
-  if (pathName === "/messages" && method === "POST") return messages.createMessage(req, res);
+  else if (pathName === "/messages" && method === "POST") return messages.createMessage(req, res);
   // --- GET Message ---
-  if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
+  else if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
 
   // --- 404 fallback ---
   else {
