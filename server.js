@@ -390,8 +390,6 @@ wss.on("connection", (ws) => {
       (err) => {
         if (err) {
           console.error("DB insert error:", err.sqlMessage || err.message);
-        } else {
-          console.log("Message saved to DB:", payload);
         }
       }
     );
