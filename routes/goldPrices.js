@@ -669,7 +669,7 @@ function getLatestBuyingPrice(req, res) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.end(JSON.stringify(results[0] || {}));
   });
 }

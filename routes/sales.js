@@ -711,7 +711,8 @@ function getAllSalesByUser(req, res, userid) {
           // Convert to totals using latest prices and formula
           const buyTotal = parseInt(goldBuyTotal * (buying_price / formula));
           const sellTotal = parseInt(goldSellTotal * (selling_price / formula));
-          res.writeHead(200, { "Content-Type": "application/json" });
+
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
           res.end(
             JSON.stringify({
               success: true,

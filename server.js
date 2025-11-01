@@ -299,9 +299,9 @@ const server = http.createServer(async (req, res) => {
 
   // --- Sticker routes ---
   // --- Post stickers ---
-  if (pathName === "/stickers" && method === "POST") return stickers.uploadSticker(req, res);
+  else if (pathName === "/stickers" && method === "POST") return stickers.uploadSticker(req, res);
   // --- Get stickers ---
-  if (pathName === "/stickers" && method === "GET") return stickers.getStickers(req, res);
+  else if (pathName === "/stickers" && method === "GET") return stickers.getStickers(req, res);
 
   // --- 404 fallback ---
   else {
