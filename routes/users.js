@@ -116,7 +116,7 @@ function getUserById(req, res, userid) {
           ppnTotal: ppnTotal, server: server
         };
 
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(result));
       })
     });
@@ -299,7 +299,7 @@ function updateUser(req, res, userid) {
           user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
           user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
 
-          res.writeHead(200, { "Content-Type": "application/json" });
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
           res.end(JSON.stringify({ message: "အသုံးပြုသူ ပြင်ဆင်ပြီးပါပြီ", user }));
         });
       });
@@ -346,7 +346,7 @@ function patchUserPasswordWithOTP(req, res, userid) {
           return res.end(JSON.stringify({ error: err.message }));
         }
 
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ message: "စကားဝှက် ပြောင်းလဲပြီးပါပြီ" }));
       });
     });
