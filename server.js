@@ -18,6 +18,7 @@ const users = require("./routes/users");
 const goldPrices = require("./routes/goldPrices"); 
 const sales = require("./routes/sales");
 const ownGold = require("./routes/getOwnGold");
+const stickers = require('./routes/stickers');
 
 
 // CORS helper
