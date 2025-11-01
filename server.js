@@ -323,11 +323,7 @@ const wss = new WebSocket.Server({ server });
 const clients = {}; // store connected clients by userId
 
 wss.on("connection", (ws) => {
-  console.log("🟢 Client connected");
-
   ws.on("message", (msg) => {
-    console.log("📩 WS raw message:", msg.toString());
-
     let data;
     try {
       data = JSON.parse(msg);
@@ -341,7 +337,7 @@ wss.on("connection", (ws) => {
       if (!clients[data.userId]) clients[data.userId] = [];
       clients[data.userId].push(ws);
       ws._userId = data.userId;
-      console.log("✅ WS init from:", data.userId);
+      console.log("WS init from:", data.userId);
       return;
     }
 
@@ -352,15 +348,15 @@ wss.on("connection", (ws) => {
     if (!sender) {
       if (ws._userId) {
         sender = ws._userId;
-        console.log("⚠️ Sender missing; using ws._userId:", ws._userId);
+        console.log("Sender missing; using ws._userId:", ws._userId);
       } else {
-        console.error("❌ No sender and no ws._userId; message ignored");
+        console.error("No sender and no ws._userId; message ignored");
         return;
       }
     }
 
     if (!receiver || !type) {
-      console.error("❌ Invalid message, missing receiver/type:", data);
+      console.error("Invalid message, missing receiver/type:", data);
       return;
     }
 
@@ -373,9 +369,9 @@ wss.on("connection", (ws) => {
           socket.send(JSON.stringify(payload));
         }
       });
-      console.log(`📤 Sent message to receiver [${receiver}]`);
+      console.log(`Sent message to receiver [${receiver}]`);
     } else {
-      console.log(`⚪ Receiver [${receiver}] not online`);
+      console.log(`Receiver [${receiver}] not online`);
     }
 
     // --- Echo to sender (so their UI also updates immediately) ---
@@ -393,9 +389,9 @@ wss.on("connection", (ws) => {
       [sender, receiver, type, content || ""],
       (err) => {
         if (err) {
-          console.error("💥 DB insert error:", err.sqlMessage || err.message);
+          console.error("DB insert error:", err.sqlMessage || err.message);
         } else {
-          console.log("✅ Message saved to DB:", payload);
+          console.log("Message saved to DB:", payload);
         }
       }
     );
@@ -406,14 +402,14 @@ wss.on("connection", (ws) => {
     if (id && clients[id]) {
       clients[id] = clients[id].filter((s) => s !== ws);
       if (clients[id].length === 0) delete clients[id];
-      console.log("🔴 WS disconnected:", id);
+      console.log("WS disconnected:", id);
     } else {
-      console.log("🔴 WS disconnected (no id)");
+      console.log("WS disconnected (no id)");
     }
   });
 
   ws.on("error", (err) => {
-    console.error("⚠️ WS error:", err.message);
+    console.error("WS error:", err.message);
   });
 });
 
