@@ -319,7 +319,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 // --- WebSocket setup ---
-const WebSocket = require("ws");
 const wss = new WebSocket.Server({ server });
 const clients = {}; // store connected clients by userId
 
