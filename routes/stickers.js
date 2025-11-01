@@ -21,12 +21,11 @@ exports.uploadSticker = (req, res) => {
       return res.end(JSON.stringify({ error: "Upload failed" }));
     }
 
-    const name = fields.name;
     const file = files.file;
 
-    if (!file || !name) {
+    if (!file) {
       res.writeHead(400, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ error: "Missing name or file" }));
+      return res.end(JSON.stringify({ error: "Missing file" }));
     }
 
     // Get temp path & original filename
@@ -47,15 +46,26 @@ exports.uploadSticker = (req, res) => {
 
       const fileUrl = `/chatUploads/Stickers/${filename}`;
 
-      // Save to database
-      db.query("INSERT INTO stickers (name, url) VALUES (?, ?)", [name, fileUrl], (err) => {
+      // Generate sticker name automatically
+      db.query("SELECT COUNT(*) AS count FROM stickers", (err, rows) => {
         if (err) {
           res.writeHead(500, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ error: "DB insert failed" }));
+          return res.end(JSON.stringify({ error: "DB query failed" }));
         }
 
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, url: fileUrl }));
+        const count = rows[0].count || 0;
+        const stickerName = `sticker${count + 1}`;
+
+        // Save to database
+        db.query("INSERT INTO stickers (name, url) VALUES (?, ?)", [stickerName, fileUrl], (err) => {
+          if (err) {
+            res.writeHead(500, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ error: "DB insert failed" }));
+          }
+
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, url: fileUrl, name: stickerName }));
+        });
       });
     });
   });
