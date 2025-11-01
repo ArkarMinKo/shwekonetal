@@ -19,6 +19,7 @@ const goldPrices = require("./routes/goldPrices");
 const sales = require("./routes/sales");
 const ownGold = require("./routes/getOwnGold");
 const stickers = require('./routes/stickers');
+const messages = require('./routes/messages')
 
 
 // CORS helper
@@ -304,11 +305,102 @@ const server = http.createServer(async (req, res) => {
   // --- Get stickers ---
   else if (pathName === "/stickers" && method === "GET") return stickers.getStickers(req, res);
 
+  // --- Messages routes ---
+  // --- POST Message ---
+  if (pathName === "/messages" && method === "POST") return messages.createMessage(req, res);
+  // --- GET Message ---
+  if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
+
   // --- 404 fallback ---
   else {
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Route not found" }));
   }
+});
+
+// --- WebSocket setup ---
+const wss = new WebSocket.Server({ server });
+const clients = {}; // store clients by userId
+
+wss.on("connection", (ws) => {
+  console.log("Client connected");
+
+  ws.on("message", (msg) => {
+    let data;
+    try {
+      data = JSON.parse(msg);
+    } catch {
+      console.error("Invalid JSON:", msg);
+      return;
+    }
+
+    // --- Init connection with userId ---
+    if (data.type === 'init' && data.userId) {
+      if (!clients[data.userId]) clients[data.userId] = [];
+      clients[data.userId].push(ws);
+      ws._userId = data.userId;
+      console.log("WS init:", data.userId);
+      return;
+    }
+
+    // --- Extract message fields ---
+    let { sender, receiver, type, content } = data;
+
+    // --- Validate message ---
+    if (!receiver || !type) {
+      console.error("Invalid message, missing receiver or type:", data);
+      return;
+    }
+
+    if (!sender) {
+      if (ws._userId) {
+        sender = ws._userId;
+        console.log("Sender missing, using ws._userId:", ws._userId);
+      } else {
+        console.error("No sender and no ws._userId, message ignored:", data);
+        return;
+      }
+    }
+
+    const payload = { sender, receiver, type, content };
+
+    // --- Send to receiver if online ---
+    if (clients[receiver]) {
+      clients[receiver].forEach(socket => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(payload));
+        }
+      });
+    }
+
+    // --- Echo to sender ---
+    if (clients[sender]) {
+      clients[sender].forEach(socket => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(payload));
+        }
+      });
+    }
+
+    // --- Save to DB ---
+    db.query(
+      "INSERT INTO messages (sender, receiver_id, type, content) VALUES (?, ?, ?, ?)",
+      [sender, receiver, type, content || ""],
+      (err) => {
+        if (err) console.error("DB insert error:", err);
+        else console.log("Message saved to DB:", payload);
+      }
+    );
+  });
+
+  ws.on("close", () => {
+    const id = ws._userId;
+    if (id && clients[id]) {
+      clients[id] = clients[id].filter(s => s !== ws);
+      if (clients[id].length === 0) delete clients[id];
+      console.log("WS: client disconnected:", id);
+    }
+  });
 });
 
 const PORT = 3000;
