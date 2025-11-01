@@ -1,4 +1,3 @@
-// routes/messages.js
 const fs = require("fs");
 const path = require("path");
 const formidable = require("formidable");
@@ -6,9 +5,6 @@ const db = require("../db");
 const getNextImageName = require("../utils/chatImageNameGenerator");
 
 const Image_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Images");
-const STICKER_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Stickers");
-
-// Ensure upload directory exists
 if (!fs.existsSync(Image_UPLOAD_DIR)) fs.mkdirSync(Image_UPLOAD_DIR, { recursive: true });
 
 exports.createMessage = (req, res) => {
@@ -38,12 +34,10 @@ exports.createMessage = (req, res) => {
 
     if (type === "image" && files.file) {
       const file = Array.isArray(files.file) ? files.file[0] : files.file;
-
       if (file && file.filepath && file.originalFilename && file.size > 0) {
         const ext = path.extname(file.originalFilename) || ".png";
         const filename = getNextImageName(ext);
         const newPath = path.join(Image_UPLOAD_DIR, filename);
-
         try {
           fs.renameSync(file.filepath, newPath);
           content = `/chatUploads/Images/${filename}`;
@@ -68,7 +62,7 @@ exports.createMessage = (req, res) => {
           return res.end("DB error");
         }
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, messageId: result.insertId }));
+        res.end(JSON.stringify({ success: true, messageId: result.insertId, path: content }));
       }
     );
   });
