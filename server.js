@@ -7,9 +7,11 @@ const WebSocket = require("ws");
 
 // Upload folders
 const USER_UPLOAD_DIR = path.join(__dirname, "uploads");
+const STICKER_UPLOAD_DIR = path.join(__dirname, "chatUploads/Stickers");
 
 // Ensure folders exist
 fs.mkdirSync(USER_UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(STICKER_UPLOAD_DIR, { recursive: true });
 
 // Routes
 const users = require("./routes/users");
@@ -58,6 +60,19 @@ const server = http.createServer(async (req, res) => {
       res.end(data);
     });
     return;
+  }
+
+  // --- Serve sticker uploads ---
+  if (pathName.startsWith("/chatUploads/Stickers/")) {
+    const filename = path.basename(pathName);
+    const safePath = path.join(STICKER_UPLOAD_DIR, filename);
+    return fs.readFile(safePath, (err, data) => {
+      if (err) { res.writeHead(404); return res.end("File not found"); }
+      const ext = path.extname(safePath).toLowerCase();
+      const mimeTypes = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif" };
+      res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
+      res.end(data);
+    });
   }
   
   // --- Login ---
@@ -281,6 +296,12 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/sellTable" && method === "GET") {
     sales.sellTable(req, res);
   }
+
+  // --- Sticker routes ---
+  // --- Post stickers ---
+  if (pathName === "/stickers" && method === "POST") return stickers.uploadSticker(req, res);
+  // --- Get stickers ---
+  if (pathName === "/stickers" && method === "GET") return stickers.getStickers(req, res);
 
   // --- 404 fallback ---
   else {
