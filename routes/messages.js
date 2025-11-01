@@ -21,41 +21,40 @@ exports.createMessage = (req, res) => {
 
   form.parse(req, (err, fields, files) => {
     if (err) {
-      res.writeHead(500);
-      return res.end("Form parse error");
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
     }
 
-    const sender = fields.sender;
-    const receiver = fields.receiver;
-    let type = fields.type;
-    let content = fields.content || "";
+    const { sender, receiver, type } = fields;
+    let content = "";
 
-    if (!sender || !receiver) {
-      res.writeHead(400);
-      return res.end("Missing sender or receiver");
+    if (type[0] === "image" && files.image) {
+      const file = files.image[0]; // formidable v3+ => array
+      const filePath = "/chatUploads/Images/" + file.newFilename;
+      content = filePath;
+    } else if (type[0] === "text") {
+      content = fields.message?.[0] || "";
+    } else if (type[0] === "sticker") {
+      content = fields.sticker?.[0] || "";
     }
 
-    // 🟩 If message is image, move file to folder
-    if (type === "image" && files.file) {
-      const file = Array.isArray(files.file) ? files.file[0] : files.file;
-      if (!file || !file.filepath || !file.originalFilename) {
-        res.writeHead(400);
-        return res.end("Invalid file upload");
+    console.log("✅ Message saved:", { sender, receiver, type, content });
+
+    db.query(
+      "INSERT INTO messages (sender, receiver_id, type, content) VALUES (?, ?, ?, ?)",
+      [sender[0], receiver[0], type[0], content],
+      (err, result) => {
+        if (err) {
+          console.error("DB Error:", err);
+          res.writeHead(500);
+          return res.end("DB error");
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, path: content }));
       }
-
-      const ext = path.extname(file.originalFilename) || ".png";
-      const newName = getNextImageName(ext);
-      const newPath = path.join(IMAGE_UPLOAD_DIR, newName);
-
-      try {
-        fs.renameSync(file.filepath, newPath);
-        content = `/chatUploads/Images/${newName}`; // store relative path
-      } catch (err) {
-        console.error("File move error:", err);
-        res.writeHead(500);
-        return res.end("File move failed");
-      }
-    }
+    );
+  });
 
     // Insert message record
     db.query(
