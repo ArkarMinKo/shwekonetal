@@ -307,9 +307,8 @@ function updateUser(req, res, userid) {
   });
 }
 
-// --- PATCH USER PASSWORD ---
-function patchUserPasswordWithOTP(req, res, userid) {
-  const id = userid;
+// --- PATCH USER PASSWORD WITH OTP (using email) ---
+function patchUserPasswordWithOTP(req, res) {
   const form = new formidable.IncomingForm();
   form.multiples = false;
 
@@ -319,15 +318,17 @@ function patchUserPasswordWithOTP(req, res, userid) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    const { password } = fields;
+    const { email, password } = fields;
 
-    if (!password) {
+    if (!email || !password) {
       res.statusCode = 400;
-      return res.end(JSON.stringify({ error: "နောက်ခံစကားဝှက် အသစ် ထည့်ပါ" }));
+      return res.end(
+        JSON.stringify({ error: "Email နဲ့ စကားဝှက် အသစ် ၂ခုလုံး ထည့်ပါ" })
+      );
     }
 
     // --- Check if user exists ---
-    db.query("SELECT id FROM users WHERE id=?", [id], (err, rows) => {
+    db.query("SELECT id FROM users WHERE email=?", [email], (err, rows) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -335,12 +336,12 @@ function patchUserPasswordWithOTP(req, res, userid) {
 
       if (rows.length === 0) {
         res.statusCode = 404;
-        return res.end(JSON.stringify({ error: "User not found" }));
+        return res.end(JSON.stringify({ error: "အကောင့်မတွေ့ပါ" }));
       }
 
       // --- Update only password ---
-      const sql = `UPDATE users SET password=? WHERE id=?`;
-      db.query(sql, [password, id], (err) => {
+      const sql = `UPDATE users SET password=? WHERE email=?`;
+      db.query(sql, [password, email], (err) => {
         if (err) {
           res.statusCode = 500;
           return res.end(JSON.stringify({ error: err.message }));
