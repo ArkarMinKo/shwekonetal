@@ -118,7 +118,7 @@ exports.markMessagesSeen = (req, res) => {
       }
 
       db.query(
-        "UPDATE messages SET seen = 1 WHERE receiver_id = ? AND sender != 'admin'",
+        "UPDATE messages SET seen = 1 WHERE sender = ? AND receiver_id = 'admin'",
         [userId],
         (err) => {
           if (err) {
