@@ -1,4 +1,4 @@
- // routes/messages.js
+// routes/messages.js
 const fs = require("fs");
 const path = require("path");
 const formidable = require("formidable");
@@ -11,6 +11,7 @@ const STICKER_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Stickers");
 // Ensure upload directory exists
 if (!fs.existsSync(Image_UPLOAD_DIR)) fs.mkdirSync(Image_UPLOAD_DIR, { recursive: true });
 
+// ===== CREATE MESSAGE =====
 exports.createMessage = (req, res) => {
   if (req.method !== "POST") {
     res.writeHead(405);
@@ -36,6 +37,7 @@ exports.createMessage = (req, res) => {
       return res.end("Missing sender or receiver");
     }
 
+    // Handle image upload
     if (type === "image" && files.file) {
       const file = Array.isArray(files.file) ? files.file[0] : files.file;
 
@@ -58,8 +60,9 @@ exports.createMessage = (req, res) => {
       }
     }
 
+    // ✅ INSERT with seen = 0
     db.query(
-      "INSERT INTO messages (sender, receiver_id, type, content) VALUES (?, ?, ?, ?)",
+      "INSERT INTO messages (sender, receiver_id, type, content, seen) VALUES (?, ?, ?, ?, 0)",
       [sender, receiver, type, content || ""],
       (err, result) => {
         if (err) {
@@ -74,6 +77,7 @@ exports.createMessage = (req, res) => {
   });
 };
 
+// ===== GET MESSAGES =====
 exports.getMessages = (req, res) => {
   const userId = req.url.split("?userId=")[1];
   if (!userId) {
@@ -94,4 +98,42 @@ exports.getMessages = (req, res) => {
       res.end(JSON.stringify(rows));
     }
   );
+};
+
+// ===== ✅ MARK SEEN =====
+exports.markMessagesSeen = (req, res) => {
+  if (req.method !== "POST") {
+    res.writeHead(405);
+    return res.end("Method not allowed");
+  }
+
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", () => {
+    try {
+      const { userId } = JSON.parse(body);
+      if (!userId) {
+        res.writeHead(400);
+        return res.end("Missing userId");
+      }
+
+      db.query(
+        "UPDATE messages SET seen = 1 WHERE receiver_id = ? AND sender != 'admin'",
+        [userId],
+        (err) => {
+          if (err) {
+            console.error("DB Seen Update Error:", err);
+            res.writeHead(500);
+            return res.end("DB error");
+          }
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true }));
+        }
+      );
+    } catch (e) {
+      console.error("Parse Error:", e);
+      res.writeHead(400);
+      res.end("Invalid JSON");
+    }
+  });
 };

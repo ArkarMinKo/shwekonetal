@@ -310,6 +310,8 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/messages" && method === "POST") return messages.createMessage(req, res);
   // --- GET Message ---
   else if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
+  // --- Mark messages as seen ---
+  else if (pathName === "/messages/mark-seen" && method === "POST") return messages.markMessagesSeen(req, res);
 
   // --- 404 fallback ---
   else {
@@ -385,7 +387,7 @@ wss.on("connection", (ws) => {
 
     // --- Save message to DB ---
     db.query(
-      "INSERT INTO messages (sender, receiver_id, type, content) VALUES (?, ?, ?, ?)",
+      "INSERT INTO messages (sender, receiver_id, type, content, seen) VALUES (?, ?, ?, ?, 0)",
       [sender, receiver, type, content || ""],
       (err) => {
         if (err) {
