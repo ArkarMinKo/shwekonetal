@@ -137,3 +137,80 @@ exports.markMessagesSeen = (req, res) => {
     }
   });
 };
+
+// ===== ✅ DELETE MESSAGES =====
+exports.deleteMessages = (req, res, wss, clients) => {
+  if (req.method !== "POST") {
+    res.writeHead(405);
+    return res.end("Method not allowed");
+  }
+
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", () => {
+    try {
+      const { userId, messageIds, deleteAll } = JSON.parse(body);
+
+      if (!userId) {
+        res.writeHead(400);
+        return res.end("Missing userId");
+      }
+
+      // --- Build query ---
+      let query = "";
+      let params = [];
+
+      if (deleteAll) {
+        query = "DELETE FROM messages WHERE sender=? OR receiver_id=?";
+        params = [userId, userId];
+      } else if (Array.isArray(messageIds) && messageIds.length > 0) {
+        query = `DELETE FROM messages WHERE id IN (${messageIds.map(() => "?").join(",")})`;
+        params = messageIds;
+      } else {
+        res.writeHead(400);
+        return res.end("Missing deleteAll or messageIds");
+      }
+
+      db.query(query, params, (err, result) => {
+        if (err) {
+          console.error("DB Delete Error:", err);
+          res.writeHead(500);
+          return res.end("DB error");
+        }
+
+        // --- Broadcast deletion to all clients (admin + user) ---
+        const payload = {
+          type: "delete",
+          deleteAll: !!deleteAll,
+          messageIds: messageIds || [],
+          userId,
+        };
+
+        // Notify user's connected sockets
+        if (clients[userId]) {
+          clients[userId].forEach((socket) => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          });
+        }
+
+        // Notify admin sockets
+        if (clients["admin"]) {
+          clients["admin"].forEach((socket) => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          });
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true }));
+      });
+    } catch (e) {
+      console.error("Delete Parse Error:", e);
+      res.writeHead(400);
+      res.end("Invalid JSON");
+    }
+  });
+};
