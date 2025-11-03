@@ -981,7 +981,7 @@ function buyTable(req, res){
             if (!goldString.trim()) goldString = "0";
 
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, priceTotal: priceTotal, goldTotal: goldString, data: formattedRows }));
+            res.end(JSON.stringify({ success: true, priceTotal: parseInt(priceTotal), goldTotal: goldString, data: formattedRows }));
         });
     });
 }
@@ -1059,7 +1059,7 @@ function sellTable(req, res){
             if (!goldString.trim()) goldString = "0";
 
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, priceTotal: priceTotal, goldTotal: goldString, data: formattedRows }));
+            res.end(JSON.stringify({ success: true, priceTotal: parseInt(priceTotal), goldTotal: goldString, data: formattedRows }));
         });
     });
 }
