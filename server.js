@@ -312,7 +312,7 @@ const server = http.createServer(async (req, res) => {
   // --- Mark messages as seen ---
   else if (pathName === "/messages/mark-seen" && method === "POST") return messages.markMessagesSeen(req, res);
   // --- DELETE messages ---
-else if (pathName === "/messages/delete" && method === "POST") return messages.deleteMessages(req, res, wss, clients);
+  else if (pathName === "/messages/delete" && method === "POST") return messages.deleteMessages(req, res, wss, clients);
 
 
   // --- 404 fallback ---
