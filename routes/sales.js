@@ -461,17 +461,6 @@ function getAllApprove(req, res) {
             const latestyway = parseInt(formulaResult[0]?.yway) || 128;
             const ywaybypal = latestyway / 16;
 
-            // English → Myanmar number converter
-            const toMyanmarNumber = (num) => {
-                const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
-                return num.toString().split("").map(d => map[d] || d).join("");
-            };
-
-            function addDecimals(a, b, precision = 2) {
-                const factor = Math.pow(10, precision);
-                return (Math.round(a * factor) + Math.round(b * factor)) / factor;
-            }
-
             let total = 0;
 
             const formattedRows = rows.map((r) => {
@@ -490,11 +479,11 @@ function getAllApprove(req, res) {
                 const yway = (goldFloat % ywaybypal).toFixed(2);
 
                 let goldString = "";
-                if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-                if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-                if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+                if (kyat > 0) goldString += `${kyat} ကျပ် `;
+                if (pal > 0) goldString += `${pal} ပဲ `;
+                if (yway > 0) goldString += `${yway} ရွေး`;
 
-                if (!goldString.trim()) goldString = "၀";
+                if (!goldString.trim()) goldString = "0";
 
                 return {
                     ...r,
@@ -556,12 +545,6 @@ function getAllSales(req, res) {
         const latestyway = parseInt(formulaResult[0]?.yway) || 128;
         const ywaybypal = latestyway / 16;
 
-        // English → Myanmar number converter
-        const toMyanmarNumber = (num) => {
-            const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
-            return num.toString().split("").map(d => map[d] || d).join("");
-        };
-
         function addDecimals(a, b, precision = 2) {
             const factor = Math.pow(10, precision);
             return (Math.round(a * factor) + Math.round(b * factor)) / factor;
@@ -585,11 +568,11 @@ function getAllSales(req, res) {
             const yway = (goldFloat % ywaybypal).toFixed(2);
 
             let goldString = "";
-            if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-            if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-            if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+            if (kyat > 0) goldString += `${kyat} ကျပ် `;
+            if (pal > 0) goldString += `${pal} ပဲ `;
+            if (yway > 0) goldString += `${yway} ရွေး`;
 
-            if (!goldString.trim()) goldString = "၀";
+            if (!goldString.trim()) goldString = "0";
 
             return {
                 ...r,
@@ -606,11 +589,11 @@ function getAllSales(req, res) {
         const yway = (total % ywaybypal).toFixed(2);
 
         let goldString = "";
-        if (kyat > 0) goldString += `${toMyanmarNumber(kyat)} ကျပ် `;
-        if (pal > 0) goldString += `${toMyanmarNumber(pal)} ပဲ `;
-        if (yway > 0) goldString += `${toMyanmarNumber(yway)} ရွေး`;
+        if (kyat > 0) goldString += `${kyat} ကျပ် `;
+        if (pal > 0) goldString += `${pal} ပဲ `;
+        if (yway > 0) goldString += `${yway} ရွေး`;
 
-        if (!goldString.trim()) goldString = "၀";
+        if (!goldString.trim()) goldString = "0";
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, goldTotal: goldString.trim(), data: formattedRows }));
