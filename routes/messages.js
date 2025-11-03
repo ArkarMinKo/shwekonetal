@@ -139,7 +139,7 @@ exports.markMessagesSeen = (req, res) => {
   });
 };
 
-// ===== ✅ DELETE MESSAGES =====
+// ===== ✅ DELETE MESSAGES (Realtime) =====
 exports.deleteMessages = (req, res, wss, clients) => {
   if (req.method !== "POST") {
     res.writeHead(405);
@@ -157,7 +157,7 @@ exports.deleteMessages = (req, res, wss, clients) => {
         return res.end("Missing userId");
       }
 
-      // --- Build query ---
+      // Build query
       let query = "";
       let params = [];
 
@@ -172,14 +172,14 @@ exports.deleteMessages = (req, res, wss, clients) => {
         return res.end("Missing deleteAll or messageIds");
       }
 
-      db.query(query, params, (err, result) => {
+      db.query(query, params, (err) => {
         if (err) {
           console.error("DB Delete Error:", err);
           res.writeHead(500);
           return res.end("DB error");
         }
 
-        // --- Broadcast deletion to all clients (admin + user) ---
+        // Prepare payload for realtime update
         const payload = {
           type: "delete",
           deleteAll: !!deleteAll,
@@ -187,23 +187,16 @@ exports.deleteMessages = (req, res, wss, clients) => {
           userId,
         };
 
-        // Notify user's connected sockets
-        if (clients[userId]) {
-          clients[userId].forEach((socket) => {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
-            }
-          });
-        }
-
-        // Notify admin sockets
-        if (clients["admin"]) {
-          clients["admin"].forEach((socket) => {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
-            }
-          });
-        }
+        // Broadcast to all connected clients (user + admin)
+        [userId, "admin"].forEach((id) => {
+          if (clients[id]) {
+            clients[id].forEach((socket) => {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+              }
+            });
+          }
+        });
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true }));
