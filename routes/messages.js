@@ -4,6 +4,7 @@ const path = require("path");
 const formidable = require("formidable");
 const db = require("../db");
 const getNextImageName = require("../utils/chatImageNameGenerator");
+const WebSocket = require('ws');
 
 const Image_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Images");
 const STICKER_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Stickers");
