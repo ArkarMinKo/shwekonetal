@@ -893,7 +893,7 @@ function compareBuyAndSellChart(req, res) {
     results.forEach(row => {
       const d = row.date;
       if (!dataMap[d]) dataMap[d] = { buy: 0, sell: 0 };
-      dataMap[d][row.type] = row.total_gold.toFixed(2);
+      dataMap[d][row.type] = (row.total_gold).toFixed(2);
     });
 
     // Step 3: Final formatted data
