@@ -5,6 +5,7 @@ const db = require("../db");
 const { generateSaleId } = require("../utils/saleHistoryIdGenerator");
 const { generatePhotoName } = require("../utils/photoNameGenerator");
 const { generateOwnGoldId } = require("../utils/idOwnGoldGenerator");
+const { parseArgs } = require("util");
 
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -900,7 +901,7 @@ function compareBuyAndSellChart(req, res) {
     const finalData = dates.map(date => {
       const sell = dataMap[date]?.sell || 0;
       const buy = dataMap[date]?.buy || 0;
-      return [date, sell, buy];
+      return [date, parseFloat(sell).toFixed(2), parseFloat(buy).toFixed(2)];
     });
 
     res.writeHead(200, { "Content-Type": "application/json" });
