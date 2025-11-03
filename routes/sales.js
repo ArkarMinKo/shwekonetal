@@ -901,7 +901,7 @@ function compareBuyAndSellChart(req, res) {
     const finalData = dates.map(date => {
       const sell = dataMap[date]?.sell || 0;
       const buy = dataMap[date]?.buy || 0;
-      return [date, parseFloat(sell).toFixed(2), parseFloat(buy).toFixed(2)];
+      return [date, parseFloat(sell.toFixed(2)), parseFloat(buy.toFixed(2))];
     });
 
     res.writeHead(200, { "Content-Type": "application/json" });
