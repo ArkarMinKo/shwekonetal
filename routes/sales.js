@@ -861,51 +861,51 @@ function getTimesSalesByToday(req, res) {
 }
 
 // --- Report compare buy and sell chart ---
-function compareBuyAndSellChart(req, res){
-    const salesSql = `SELECT type, gold, price, DATE(created_at) AS created_at FROM sales WHERE status = "approved" ORDER BY created_at DESC`
+function compareBuyAndSellChart(req, res) {
+  const sql = `
+    SELECT 
+      DATE(created_at) AS date, 
+      type, 
+      SUM(gold) AS total_gold
+    FROM sales
+    WHERE status = "approved"
+      AND DATE(created_at) >= CURDATE() - INTERVAL 2 DAY
+    GROUP BY DATE(created_at), type
+    ORDER BY date DESC;
+  `;
 
-    db.query(salesSql, (err, salesResult) => {
-        if (err) {
-            res.statusCode = 500;
-            return res.end(JSON.stringify({ error: err.message }));
-        }
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.writeHead(500, { "Content-Type": "application/json" })
+        .end(JSON.stringify({ error: err.message }));
+    }
 
-        const getLatestFormulaSql = `
-            SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
-        `;
+    // Step 1: Build date range (today, yesterday, day before)
+    const dates = [];
+    for (let i = 0; i < 3; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().slice(0, 10)); // YYYY-MM-DD
+    }
 
-        db.query(getLatestFormulaSql, (err, formulaResult) => {
-            if (err) {
-                console.error("Price fetch error:", err);
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: err.message }));
-            }
-            
-            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+    // Step 2: Create map for quick lookup
+    const dataMap = {};
+    results.forEach(row => {
+      const d = row.date;
+      if (!dataMap[d]) dataMap[d] = { buy: 0, sell: 0 };
+      dataMap[d][row.type] = row.total_gold;
+    });
 
-            let sellTotal = 0;
-            let buyTotal = 0;
+    // Step 3: Final formatted data
+    const finalData = dates.map(date => {
+      const sell = dataMap[date]?.sell || 0;
+      const buy = dataMap[date]?.buy || 0;
+      return [date, sell, buy];
+    });
 
-            salesResult.forEach(sale => {
-                if(sale.type === 'buy'){
-                    sellTotal += parseFloat(sale.gold) * parseInt(sale.price) / latestyway;
-                }else if(sale.type === 'sell'){
-                    buyTotal += parseFloat(sale.gold) * parseInt(sale.price) / latestyway;
-                }
-            })
-
-            const sales = salesResult.map(sale => {
-                return [
-                    sale.created_at,
-                    parseFloat(buyTotal.toFixed(2)),
-                    parseFloat(sellTotal.toFixed(2))
-                ]
-            })
-
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, data: sales }));
-        })
-    })
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ data: finalData }));
+  });
 }
 
 // --- Buy table ---
