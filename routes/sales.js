@@ -150,13 +150,10 @@ function createSale(req, res) {
                         }
                         res.writeHead(200, { "Content-Type": "application/json" });
                         if(saleType === 'buy'){
-                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                             res.end(JSON.stringify({ success: true, message: `‌ရွှေ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
                         }else if(saleType === 'sell'){
-                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                             res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ရောင်းချခြင်းအောင်မြင်ပါသည် ငွေဖြည့်သွင်းပေးရန် ခနစောင့်ပါ` }));
                         }else{
-                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                             res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ထုတ်ယူခြင်းအောင်မြင်ပါသည် ပို့ဆောင်ရန် စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
                         }
                     });
