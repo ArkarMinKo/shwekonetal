@@ -55,7 +55,7 @@ function summarys(req, res) {
                         const formattedBuyDifferentPercentage = buyDifferentpercentage > 0
                                                                 ?  `+ ${buyDifferentpercentage} %`
                                                                 : buyDifferentpercentage < 0
-                                                                ? `- ${buyDifferentpercentage} %`
+                                                                ? `- ${Math.abs(buyDifferentpercentage)} %`
                                                                 : `0 %`
                         
                         const newSellingPrice = parseInt(sellingPricesResult[0].price);

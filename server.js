@@ -21,6 +21,7 @@ const ownGold = require("./routes/getOwnGold");
 const stickers = require('./routes/stickers');
 const messages = require('./routes/messages');
 const dashboard = require('./routes/dashboard');
+const mobileNotification = require('./routes/mobileNotification')
 
 
 // CORS helper
@@ -302,6 +303,12 @@ const server = http.createServer(async (req, res) => {
   // --- Get summarys dashboard ---
   else if (pathName === "/dashboard-summarys" && method === "GET") {
     dashboard.summarys(req, res);
+  }
+
+  // --- Get notification on mobile ---
+  else if (pathName.startsWith("/mobile-noti/") && method === "GET") {
+    const userid = pathName.split("/")[2];
+    mobileNotification.getNoti(req, res, userid);
   }
 
   // --- Sticker routes ---
