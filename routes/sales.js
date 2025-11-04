@@ -211,7 +211,7 @@ function approveSale(req, res, saleId) {
                 if (sale.type === "buy") {
                     newGold += parseFloat(sale.gold);
                     newPoint += Math.round(parseFloat(sale.gold));
-                } else if (sale.type === "sell") {
+                } else if (sale.type === "sell" || sale.type === "delivery") {
                     newGold -= parseFloat(sale.gold);
                     newPoint -= Math.round(parseFloat(sale.gold))
                     if (newGold < 0) newGold = 0;
@@ -278,7 +278,7 @@ function approveSale(req, res, saleId) {
                         });
                     }
 
-                    else if (sale.type === "sell") {
+                    else if (sale.type === "sell" || sale.type === "delivery") {
                         const getOwnGoldSql = `
                             SELECT * FROM own_gold 
                             WHERE userid = ? 
@@ -879,7 +879,8 @@ function compareBuyAndSellChart(req, res) {
       SUM(gold) AS total_gold
     FROM sales
     WHERE status = "approved"
-      AND DATE(created_at) >= CURDATE() - INTERVAL 2 DAY
+    AND type != 'delivery'
+    AND DATE(created_at) >= CURDATE() - INTERVAL 2 DAY
     GROUP BY DATE(created_at), type
     ORDER BY date DESC;
   `;
