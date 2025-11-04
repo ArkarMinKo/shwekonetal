@@ -35,6 +35,8 @@ function createSale(req, res) {
             return res.end(JSON.stringify({ error: "userid, type, gold are required" }));
         }
 
+        console.log(userid)
+
         const getOpenStock = `SELECT * FROM stock`;
 
         db.query(getOpenStock, (err, stockResult) => {
