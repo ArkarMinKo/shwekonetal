@@ -311,9 +311,6 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
   // --- Mark messages as seen ---
   else if (pathName === "/messages/mark-seen" && method === "POST") return messages.markMessagesSeen(req, res);
-  // --- DELETE messages ---
-  else if (pathName === "/messages/delete" && method === "POST") return messages.deleteMessages(req, res, wss, clients);
-
 
   // --- 404 fallback ---
   else {
@@ -343,22 +340,6 @@ wss.on("connection", (ws) => {
       ws._userId = data.userId;
       console.log("WS init from:", data.userId);
       return;
-    }
-
-     // --- 🧩 NEW: Handle delete broadcast (single/multi/all) ---
-    if (data.type === "delete_message" || data.type === "delete_all_messages") {
-      console.log("Realtime delete broadcast:", data);
-
-      // broadcast to everyone connected (admin + user)
-      Object.values(clients).forEach((sockets) => {
-        sockets.forEach((socket) => {
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify(data));
-          }
-        });
-      });
-
-      return; // stop here (don’t save delete as DB message)
     }
 
     // --- Extract message fields ---
@@ -404,9 +385,12 @@ wss.on("connection", (ws) => {
     }
 
     // --- Save message to DB ---
+    const imageValue = type === "image" ? content : null;
+    const contentValue = type !== "image" ? content : null;
+
     db.query(
-      "INSERT INTO messages (sender, receiver_id, type, content, seen) VALUES (?, ?, ?, ?, 0)",
-      [sender, receiver, type, content || ""],
+      "INSERT INTO messages (sender, receiver_id, type, content, image, seen) VALUES (?, ?, ?, ?, ?, 0)",
+      [sender, receiver, type, contentValue, imageValue],
       (err) => {
         if (err) {
           console.error("DB insert error:", err.sqlMessage || err.message);

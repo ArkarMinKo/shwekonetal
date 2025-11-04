@@ -1,15 +1,7 @@
-// routes/messages.js
 const fs = require("fs");
 const path = require("path");
 const formidable = require("formidable");
 const db = require("../db");
-const getNextImageName = require("../utils/chatImageNameGenerator");
-
-const Image_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Images");
-const STICKER_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Stickers");
-
-// Ensure upload directory exists
-if (!fs.existsSync(Image_UPLOAD_DIR)) fs.mkdirSync(Image_UPLOAD_DIR, { recursive: true });
 
 // ===== CREATE MESSAGE =====
 exports.createMessage = (req, res) => {
@@ -29,41 +21,30 @@ exports.createMessage = (req, res) => {
 
     const sender = fields.sender;
     const receiver = fields.receiver;
-    let type = fields.type;
-    let content = fields.content || fields.text || "";
+    const type = fields.type;
+    let content = fields.content || fields.text || null;
+    let image = null;
 
-    if (!sender || !receiver) {
+    if (!sender || !receiver || !type) {
       res.writeHead(400);
-      return res.end("Missing sender or receiver");
+      return res.end("Missing sender, receiver or type");
     }
 
-    // Handle image upload
+    // --- Handle image upload ---
     if (type === "image" && files.file) {
-      const file = Array.isArray(files.file) ? files.file[0] : files.file;
+      const uploadDir = path.join(__dirname, "../uploads");
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-      if (file && file.filepath && file.originalFilename && file.size > 0) {
-        const ext = path.extname(file.originalFilename) || ".png";
-        const filename = getNextImageName(ext);
-        const newPath = path.join(Image_UPLOAD_DIR, filename);
-
-        try {
-          fs.renameSync(file.filepath, newPath);
-          content = `/chatUploads/Images/${filename}`;
-        } catch (e) {
-          console.error("File move error:", e);
-          res.writeHead(500);
-          return res.end("File save error");
-        }
-      } else {
-        res.writeHead(400);
-        return res.end("Invalid file upload");
-      }
+      const file = files.file[0] || files.file;
+      const newPath = path.join(uploadDir, file.originalFilename);
+      fs.renameSync(file.filepath, newPath);
+      image = `/uploads/${file.originalFilename}`;
     }
 
-    // ✅ INSERT with seen = 0
+    // ✅ Insert message into DB
     db.query(
-      "INSERT INTO messages (sender, receiver_id, type, content, seen) VALUES (?, ?, ?, ?, 0)",
-      [sender, receiver, type, content || ""],
+      "INSERT INTO messages (sender, receiver_id, type, content, image, seen) VALUES (?, ?, ?, ?, ?, 0)",
+      [sender, receiver, type, content, image],
       (err, result) => {
         if (err) {
           console.error("DB Error:", err);
@@ -94,13 +75,23 @@ exports.getMessages = (req, res) => {
         res.writeHead(500);
         return res.end("DB error");
       }
+
+      // ✅ Frontend-safe transformation
+      const messages = rows.map((msg) => {
+        if (msg.type === "image" && msg.image) {
+          // return image path as content (frontend auto displays)
+          return { ...msg, content: msg.image };
+        }
+        return msg;
+      });
+
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(rows));
+      res.end(JSON.stringify(messages));
     }
   );
 };
 
-// ===== ✅ MARK SEEN =====
+// ===== MARK SEEN =====
 exports.markMessagesSeen = (req, res) => {
   if (req.method !== "POST") {
     res.writeHead(405);
