@@ -4,7 +4,6 @@ const path = require("path");
 const formidable = require("formidable");
 const db = require("../db");
 const getNextImageName = require("../utils/chatImageNameGenerator");
-const WebSocket = require('ws');
 
 const Image_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Images");
 const STICKER_UPLOAD_DIR = path.join(__dirname, "../chatUploads/Stickers");
@@ -133,61 +132,6 @@ exports.markMessagesSeen = (req, res) => {
       );
     } catch (e) {
       console.error("Parse Error:", e);
-      res.writeHead(400);
-      res.end("Invalid JSON");
-    }
-  });
-};
-
-// ===== DELETE MESSAGES =====
-exports.deleteMessages = (req, res, wss, clients) => {
-  if (req.method !== "POST") {
-    res.writeHead(405);
-    return res.end("Method not allowed");
-  }
-
-  let body = "";
-  req.on("data", chunk => body += chunk);
-  req.on("end", () => {
-    try {
-      const { userId, messageIds, deleteAll } = JSON.parse(body);
-      if (!userId) return res.end("Missing userId");
-
-      let query = "";
-      let params = [];
-
-      if (deleteAll) {
-        query = "DELETE FROM messages WHERE sender=? OR receiver_id=?";
-        params = [userId, userId];
-      } else if (Array.isArray(messageIds) && messageIds.length > 0) {
-        query = `DELETE FROM messages WHERE id IN (${messageIds.map(() => "?").join(",")})`;
-        params = messageIds;
-      } else return res.end("Missing deleteAll or messageIds");
-
-      db.query(query, params, (err) => {
-        if (err) return res.end("DB error");
-
-        const payload = {
-          type: "delete",
-          userId,
-          deleteAll: !!deleteAll,
-          messageIds: messageIds || []
-        };
-
-        // ✅ Broadcast to admin + user
-        [userId, "admin"].forEach(id => {
-          if (clients[id]) {
-            clients[id].forEach(socket => {
-              if (socket.readyState === WebSocket.OPEN)
-                socket.send(JSON.stringify(payload));
-            });
-          }
-        });
-
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true }));
-      });
-    } catch (e) {
       res.writeHead(400);
       res.end("Invalid JSON");
     }
