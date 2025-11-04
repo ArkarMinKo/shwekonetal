@@ -345,6 +345,22 @@ wss.on("connection", (ws) => {
       return;
     }
 
+     // --- 🧩 NEW: Handle delete broadcast (single/multi/all) ---
+    if (data.type === "delete_message" || data.type === "delete_all_messages") {
+      console.log("Realtime delete broadcast:", data);
+
+      // broadcast to everyone connected (admin + user)
+      Object.values(clients).forEach((sockets) => {
+        sockets.forEach((socket) => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(data));
+          }
+        });
+      });
+
+      return; // stop here (don’t save delete as DB message)
+    }
+
     // --- Extract message fields ---
     let { sender, receiver, type, content } = data;
 

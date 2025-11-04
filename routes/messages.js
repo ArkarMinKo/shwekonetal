@@ -139,7 +139,7 @@ exports.markMessagesSeen = (req, res) => {
   });
 };
 
-// ===== ✅ DELETE MESSAGES (Realtime) =====
+// ===== DELETE MESSAGES =====
 exports.deleteMessages = (req, res, wss, clients) => {
   if (req.method !== "POST") {
     res.writeHead(405);
@@ -147,17 +147,12 @@ exports.deleteMessages = (req, res, wss, clients) => {
   }
 
   let body = "";
-  req.on("data", (chunk) => (body += chunk));
+  req.on("data", chunk => body += chunk);
   req.on("end", () => {
     try {
       const { userId, messageIds, deleteAll } = JSON.parse(body);
+      if (!userId) return res.end("Missing userId");
 
-      if (!userId) {
-        res.writeHead(400);
-        return res.end("Missing userId");
-      }
-
-      // Build query
       let query = "";
       let params = [];
 
@@ -167,33 +162,24 @@ exports.deleteMessages = (req, res, wss, clients) => {
       } else if (Array.isArray(messageIds) && messageIds.length > 0) {
         query = `DELETE FROM messages WHERE id IN (${messageIds.map(() => "?").join(",")})`;
         params = messageIds;
-      } else {
-        res.writeHead(400);
-        return res.end("Missing deleteAll or messageIds");
-      }
+      } else return res.end("Missing deleteAll or messageIds");
 
       db.query(query, params, (err) => {
-        if (err) {
-          console.error("DB Delete Error:", err);
-          res.writeHead(500);
-          return res.end("DB error");
-        }
+        if (err) return res.end("DB error");
 
-        // Prepare payload for realtime update
         const payload = {
           type: "delete",
-          deleteAll: !!deleteAll,
-          messageIds: messageIds || [],
           userId,
+          deleteAll: !!deleteAll,
+          messageIds: messageIds || []
         };
 
-        // Broadcast to all connected clients (user + admin)
-        [userId, "admin"].forEach((id) => {
+        // ✅ Broadcast to admin + user
+        [userId, "admin"].forEach(id => {
           if (clients[id]) {
-            clients[id].forEach((socket) => {
-              if (socket.readyState === WebSocket.OPEN) {
+            clients[id].forEach(socket => {
+              if (socket.readyState === WebSocket.OPEN)
                 socket.send(JSON.stringify(payload));
-              }
             });
           }
         });
@@ -202,7 +188,6 @@ exports.deleteMessages = (req, res, wss, clients) => {
         res.end(JSON.stringify({ success: true }));
       });
     } catch (e) {
-      console.error("Delete Parse Error:", e);
       res.writeHead(400);
       res.end("Invalid JSON");
     }
