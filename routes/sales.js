@@ -143,7 +143,7 @@ function createSale(req, res) {
                         INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name, address)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `;
-                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null, address || null], (err) => {
+                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method || "KBZ Pay", payment_phone || null, Payment_name || null, address || null], (err) => {
                         if (err) {
                             res.statusCode = 500;
                             return res.end(JSON.stringify({ error: err.message }));
