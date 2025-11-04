@@ -19,7 +19,8 @@ const goldPrices = require("./routes/goldPrices");
 const sales = require("./routes/sales");
 const ownGold = require("./routes/getOwnGold");
 const stickers = require('./routes/stickers');
-const messages = require('./routes/messages')
+const messages = require('./routes/messages');
+const dashboard = require('./routes/dashboard');
 
 
 // CORS helper
@@ -296,6 +297,11 @@ const server = http.createServer(async (req, res) => {
   // --- Get sell table ---
   else if (pathName === "/sellTable" && method === "GET") {
     sales.sellTable(req, res);
+  }
+
+  // --- Get summarys dashboard ---
+  else if (pathName === "/dashboard-summarys" && method === "GET") {
+    dashboard.summarys(req, res);
   }
 
   // --- Sticker routes ---
