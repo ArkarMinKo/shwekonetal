@@ -73,7 +73,7 @@ function createSale(req, res) {
             }
 
             // First, get user level and gold
-            db.query("SELECT level, gold AS user_gold FROM users WHERE id = ?", [userid], (err, rows) => {
+            db.query("SELECT level, gold AS user_gold, point FROM users WHERE id = ?", [userid], (err, rows) => {
                 if (err || rows.length === 0) {
                     res.statusCode = 400;
                     return res.end(JSON.stringify({ error: "User not found" }));
@@ -81,6 +81,7 @@ function createSale(req, res) {
 
                 const userLevel = rows[0].level;
                 const userGold = parseFloat(rows[0].user_gold || 0);
+                const userPoint = parseInt(rows[0].point || 0);
                 const requestedGold = parseFloat(gold);
 
                 // Define max gold per level (string keys)
