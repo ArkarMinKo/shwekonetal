@@ -311,6 +311,12 @@ const server = http.createServer(async (req, res) => {
     mobileNotification.getNoti(req, res, userid);
   }
 
+  // --- Seen notification on mobile ---
+  else if (pathName.startsWith("/mobile-noti/") && method === "PATCH") {
+    const userid = pathName.split("/")[2];
+    mobileNotification.seenNoti(req, res, userid);
+  }
+
   // --- Sticker routes ---
   // --- Post stickers ---
   else if (pathName === "/stickers" && method === "POST") return stickers.uploadSticker(req, res);

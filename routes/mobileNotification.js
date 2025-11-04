@@ -91,6 +91,34 @@ function getNoti(req, res, userid){
     })
 }
 
+function seenNoti(req, res, userid) {
+    if (!userid) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "userid is required" }));
+    }
+
+    const markSeenSql = `
+        UPDATE sales
+        SET seen = 1
+        WHERE status != 'pending'
+        AND seen = 0
+        AND userid = ?
+    `;
+
+    db.query(markSeenSql, [userid], (err, result) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({
+            success: true,
+        }));
+    });
+}
+
 module.exports = {
-    getNoti
+    getNoti,
+    seenNoti
 };
