@@ -12,7 +12,7 @@ function summarys(req, res) {
         WHERE status = 'approved'
         AND DATE(created_at) = ?
     `;
-    const usersSql = `SELECT id, DATE(created_at) AS created_at FROM users`;
+    const usersSql = `SELECT id, DATE(create_at) AS created_at FROM users`;
     const getLatestFormulaSql = `
         SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
     `;
