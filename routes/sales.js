@@ -29,10 +29,10 @@ function createSale(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        const { userid, type, gold, method, Payment_name, payment_phone } = fields;
-        if (!userid || !type || !gold || !method) {
+        const { userid, type, gold, method, Payment_name, payment_phone, address} = fields;
+        if (!userid || !type || !gold) {
             res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "userid, type, gold and method are required" }));
+            return res.end(JSON.stringify({ error: "userid, type, gold are required" }));
         }
 
         const getOpenStock = `SELECT * FROM stock`;
@@ -109,6 +109,14 @@ function createSale(req, res) {
                     }));
                 }
 
+                // Validation for delivery
+                if (saleType === "delivery" && requestedGold > userGold) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({
+                        error: `သင့်တွင် ရှိသော ရွှေပမာဏသည် ${userGold} ရွေးသာ ရှိသောကြောင့် ${requestedGold} ရွေးကို ထုတ်ယူရန် မဖြစ်နိုင်ပါ`
+                    }));
+                }
+
                 const id = generateSaleId(userid, saleType);
 
                 getLatestPrice(saleType, (err, price) => {
@@ -132,19 +140,24 @@ function createSale(req, res) {
                     }
 
                     const sql = `
-                        INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name, address)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `;
-                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null], (err) => {
+                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method, payment_phone || null, Payment_name || null, address || null], (err) => {
                         if (err) {
                             res.statusCode = 500;
                             return res.end(JSON.stringify({ error: err.message }));
                         }
                         res.writeHead(200, { "Content-Type": "application/json" });
                         if(saleType === 'buy'){
+                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                             res.end(JSON.stringify({ success: true, message: `‌ရွှေ ${requestedGold} ရွေးကို ဝယ်ယူပြီးပါပြီ အချက်အလက်များ စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
-                        }else{
+                        }else if(saleType === 'sell'){
+                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                             res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ရောင်းချခြင်းအောင်မြင်ပါသည် ငွေဖြည့်သွင်းပေးရန် ခနစောင့်ပါ` }));
+                        }else{
+                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                            res.end(JSON.stringify({ success: true, message: `ရွှေ ${requestedGold} ရွေးကို ထုတ်ယူခြင်းအောင်မြင်ပါသည် ပို့ဆောင်ရန် စစ်ဆေးနေပါသည် ခနစောင့်ပါ` }));
                         }
                     });
                 });
