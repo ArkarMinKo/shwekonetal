@@ -9,7 +9,7 @@ function getNoti(req, res, userid){
     const buyingPricesSql = `SELECT * FROM buying_prices ORDER BY date DESC, time DESC LIMIT 2`;
     const sellingPricesSql = `SELECT * FROM selling_prices ORDER BY date DESC, time DESC LIMIT 2`;
     const transactionsSql = `
-        SELECT *
+        SELECT id, type, gold, price, status, created_at, seen
         FROM sales
         WHERE status != 'pending'
         AND seen = 0
