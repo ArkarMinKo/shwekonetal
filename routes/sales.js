@@ -117,6 +117,30 @@ function createSale(req, res) {
                     }));
                 }
 
+                if (saleType === "sell" || saleType === "delivery") {
+                    let newGold = userGold - requestedGold;
+                    let newPoint = userPoint - Math.round(requestedGold);
+                    if (newGold < 0) newGold = 0;
+                    if (newPoint < 0) newPoint = 0;
+
+                    let newLevel = "level1";
+                    if (newPoint >= 200) newLevel = "level4";
+                    else if (newPoint >= 150) newLevel = "level3";
+                    else if (newPoint >= 100) newLevel = "level2";
+
+                    const updateUserSql = `
+                        UPDATE users 
+                        SET gold = ?, member_point = ?, level = ?
+                        WHERE id = ?
+                    `;
+                    db.query(updateUserSql, [newGold, newPoint, newLevel, userid], (err) => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: err.message }));
+                        }
+                    });
+                }
+
                 const id = generateSaleId(userid, saleType);
 
                 getLatestPrice(saleType, (err, price) => {
@@ -211,11 +235,6 @@ function approveSale(req, res, saleId) {
                 if (sale.type === "buy") {
                     newGold += parseFloat(sale.gold);
                     newPoint += Math.round(parseFloat(sale.gold));
-                } else if (sale.type === "sell" || sale.type === "delivery") {
-                    newGold -= parseFloat(sale.gold);
-                    newPoint -= Math.round(parseFloat(sale.gold))
-                    if (newGold < 0) newGold = 0;
-                    if (newPoint < 0) newPoint = 0;
                 }
 
                 // Level update logic
@@ -370,7 +389,7 @@ function rejectSale(req, res, saleId) {
         return res.end(JSON.stringify({ error: "saleId is required" }));
     }
 
-    const getSaleSql = "SELECT gold, type FROM sales WHERE id = ?";
+    const getSaleSql = "SELECT id, userid, gold, type FROM sales WHERE id = ?";
     db.query(getSaleSql, [saleId], (err, salesResult) => {
         if (err) {
             res.statusCode = 500;
@@ -384,64 +403,62 @@ function rejectSale(req, res, saleId) {
 
         const sale = salesResult[0];
 
-        const updateSaleSql = "UPDATE sales SET status = 'rejected' WHERE id = ?";
-        db.query(updateSaleSql, [saleId], (err, result) => {
+        // First update sale status to rejected
+        db.query("UPDATE sales SET status = 'rejected' WHERE id = ?", [saleId], (err, result) => {
             if (err) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
             }
 
-            if (result.affectedRows === 0) {
-                res.statusCode = 404;
-                return res.end(JSON.stringify({ error: "Sale not found for update" }));
-            }
-
-            const getOpenStockSql = `SELECT gold FROM stock WHERE id = 1`;
-            
-            db.query(getOpenStockSql, (err, stockResult) => {
-                if (err) {
-                    res.statusCode = 500;
-                    return res.end(JSON.stringify({ 
-                        error: "Failed to update stock after rejecting sale. Data is inconsistent.", 
-                        detail: err.message 
-                    }));
-                }
-                
-                if (stockResult.length === 0) {
-                     res.statusCode = 500;
-                     return res.end(JSON.stringify({ 
-                        error: "Stock record not found. Data is inconsistent.",
-                    }));
-                }
-
-                const stockGold = parseFloat(stockResult[0].gold);
-                let updateGold;
-
-                if (sale.type === "buy") {
-                    updateGold = stockGold + parseFloat(sale.gold);
-                } else if (sale.type === "sell") {
-                    updateGold = stockGold - parseFloat(sale.gold);
-                } else {
-                    // Handle unknown sale type if necessary, and skip stock update.
-                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-                    return res.end(JSON.stringify({ success: true, saleId, status: "rejected (no stock update due to unknown sale type)" }));
-                }
-
-                const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
-                
-                db.query(updateStockSql, parseFloat(updateGold), err => {
-                    if (err) {
+            // --- SELL & DELIVERY user.gold / point / level restore logic ---
+            if (sale.type === "sell" || sale.type === "delivery") {
+                const getUserSql = "SELECT gold, member_point FROM users WHERE id = ?";
+                db.query(getUserSql, [sale.userid], (err, userResult) => {
+                    if (err || userResult.length === 0) {
                         res.statusCode = 500;
-                        return res.end(JSON.stringify({ 
-                            error: "Failed to update stock after rejecting sale. Data is inconsistent.", 
-                            detail: err.message 
-                        }));
+                        return res.end(JSON.stringify({ error: "User fetch failed" }));
                     }
 
-                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-                    res.end(JSON.stringify({ success: true, saleId, status: "rejected", stockUpdated: true }));
+                    let user = userResult[0];
+                    let newGold = parseFloat(user.gold || 0) + parseFloat(sale.gold);
+                    let newPoint = parseInt(user.member_point || 0) + Math.round(parseFloat(sale.gold));
+
+                    // Recalculate level
+                    let newLevel = "level1";
+                    if (newPoint >= 200) newLevel = "level4";
+                    else if (newPoint >= 150) newLevel = "level3";
+                    else if (newPoint >= 100) newLevel = "level2";
+
+                    const updateUserSql = `
+                        UPDATE users 
+                        SET gold = ?, member_point = ?, level = ? 
+                        WHERE id = ?
+                    `;
+
+                    db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], err => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: "Failed to update user", detail: err.message }));
+                        }
+
+                        // If SALE type → also restore stock
+                        if (sale.type === "sell") {
+                            db.query("UPDATE stock SET gold = gold - ? WHERE id = 1", [parseFloat(sale.gold)], err => {
+                                if (err) {
+                                    res.statusCode = 500;
+                                    return res.end(JSON.stringify({ error: "Stock update failed", detail: err.message }));
+                                }
+                                return res.end(JSON.stringify({ success: true, restored: "SELL user + stock" }));
+                            });
+                        } else {
+                            return res.end(JSON.stringify({ success: true, restored: "DELIVERY user only" }));
+                        }
+                    });
                 });
-            });
+            } 
+            else {
+                return res.end(JSON.stringify({ success: true, note: "BUY ignored (no user change)" }));
+            }
         });
     });
 }
