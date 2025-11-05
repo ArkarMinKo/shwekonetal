@@ -599,6 +599,7 @@ function getAllBuyingPrices(req, res) {
       const dateData = {};
 
       if (rows) {
+        // Existing data → fill nearest
         timeSlots.forEach(slot => {
           const slotSec = timeToSeconds(slot + ":00");
           let nearest = null;
@@ -618,16 +619,18 @@ function getAllBuyingPrices(req, res) {
         if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
 
       } else {
+        // Missing date
         const usePrice = lastFinalPrice ?? fallbackPrice;
+
         timeSlots.forEach(slot => {
           const displayTime = slot.replace(/^0/, "");
           const slotSec = timeToSeconds(slot + ":00");
 
           if (date === today) {
-            // Today's missing → past hours fill, future null
+            // Today → past hours fill, future hours null
             dateData[displayTime] = slotSec <= currentSec ? usePrice : null;
           } else if (usePrice !== null) {
-            // Other missing date → fill all slots
+            // Other missing date → fill all slots with last price
             dateData[displayTime] = usePrice;
           }
         });
@@ -636,6 +639,7 @@ function getAllBuyingPrices(req, res) {
       finalOutput[date] = dateData;
     }
 
+    // Sort descending by date
     const sortedDesc = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
     );
