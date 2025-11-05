@@ -204,6 +204,7 @@ function buyingPricesChart(req, res) {
     let lastPrice1W = null;
     const allDatesSorted = rows.map(r=>r.date).sort(); // all dates in DB sorted
     const price1W = weekDates.map((d,i)=>{
+      if(d > todayStr) return { time: weekdayLabels[i], price: null }; // future day => null
       const last = lastRow(byDate[d]);
       if(last){
         lastPrice1W = last.price;
