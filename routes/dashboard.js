@@ -146,7 +146,6 @@ function summarys(req, res) {
 }
 
 // GET /buying-prices-chart
-// GET /buying-prices-chart
 function buyingPricesChart(req, res) {
   const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC";
   db.query(sql, (err, rows) => {
@@ -179,10 +178,10 @@ function buyingPricesChart(req, res) {
     // --- 1D ---
     const slots1D = ["01:00","03:00","05:00","07:00","09:00","11:00","13:00","15:00","17:00","19:00","21:00","23:00"];
     let lastPrice1D = null;
+    const dayRows = byDate[todayStr] || [];
     const price1D = slots1D.map(slot => {
       const slotSec = timeToSeconds(slot);
       if(slotSec > nowSec) return { time: slot, price: null };
-      const dayRows = byDate[todayStr] || [];
       const nearest = lastRow(dayRows);
       if(nearest) lastPrice1D = nearest.price;
       return { time: slot, price: nearest ? nearest.price : lastPrice1D };
@@ -191,17 +190,31 @@ function buyingPricesChart(req, res) {
     // --- 1W ---
     const weekdayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
     function weekDatesThisWeek(){
-      const t = new Date(); const day = t.getDay();
-      const monday = new Date(t); monday.setDate(t.getDate() + (day===0?-6:1-day));
-      return Array.from({length:7},(_,i)=>{ const d=new Date(monday); d.setDate(monday.getDate()+i); return d.toISOString().slice(0,10); });
+      const t = new Date(); 
+      const day = t.getDay();
+      const monday = new Date(t); 
+      monday.setDate(t.getDate() + (day===0?-6:1-day));
+      return Array.from({length:7},(_,i)=>{
+        const d = new Date(monday); 
+        d.setDate(monday.getDate()+i); 
+        return d.toISOString().slice(0,10); 
+      });
     }
     const weekDates = weekDatesThisWeek();
     let lastPrice1W = null;
+    const allDatesSorted = rows.map(r=>r.date).sort(); // all dates in DB sorted
     const price1W = weekDates.map((d,i)=>{
-      if(d>todayStr) return { time: weekdayLabels[i], price:null };
       const last = lastRow(byDate[d]);
-      if(last) lastPrice1W = last.price;
-      return { time: weekdayLabels[i], price: last ? last.price : lastPrice1W };
+      if(last){
+        lastPrice1W = last.price;
+      } else {
+        // find latest price before this day in DB
+        const prevDate = allDatesSorted.filter(dd=>dd<d).pop();
+        if(prevDate && byDate[prevDate].length){
+          lastPrice1W = lastRow(byDate[prevDate]).price;
+        }
+      }
+      return { time: weekdayLabels[i], price: lastPrice1W };
     });
 
     // --- 1M ---
@@ -214,10 +227,20 @@ function buyingPricesChart(req, res) {
     const weekPriceMap = {};
     for(const w of weeksSet){
       const datesInW = monthDates.filter(d=>weekOfMonth(d)===w);
-      let last = null;
-      for(const d of datesInW) if(byDate[d] && byDate[d].length) last = lastRow(byDate[d]);
-      if(last) lastPrice1M = last.price;
-      weekPriceMap[w] = last ? last.price : lastPrice1M;
+      let weekLast = null;
+      for(const d of datesInW) if(byDate[d] && byDate[d].length) weekLast = lastRow(byDate[d]);
+      
+      if(weekLast){
+        lastPrice1M = weekLast.price;
+      } else {
+        // find latest price before first day of this week in DB
+        const firstDay = datesInW[0];
+        const prevDate = allDatesSorted.filter(dd=>dd<firstDay).pop();
+        if(prevDate && byDate[prevDate].length){
+          lastPrice1M = lastRow(byDate[prevDate]).price;
+        }
+      }
+      weekPriceMap[w] = lastPrice1M;
     }
     const currentWeekNum = weekOfMonth(todayStr);
     const price1M = weeksSet.map(w => w>currentWeekNum ? { time:`Week ${w}`, price:null } : { time:`Week ${w}`, price:weekPriceMap[w] });
