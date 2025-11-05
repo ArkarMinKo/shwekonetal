@@ -209,6 +209,14 @@ function approveSale(req, res, saleId) {
 
         const sale = salesResult[0];
 
+        if (sale.status === 'approved') {
+            res.statusCode = 409; 
+            return res.end(JSON.stringify({ 
+                success: false, 
+                message: "အရောင်းအဝယ်ကို အရင်ကတည်းက အတည်ပြုပြီးသားဖြစ်ပါတယ်။" 
+            }));
+        }
+
         const updateSaleSql = "UPDATE sales SET status = 'approved' WHERE id = ?";
         db.query(updateSaleSql, [saleId], (err) => {
             if (err) {
