@@ -310,6 +310,11 @@ const server = http.createServer(async (req, res) => {
     dashboard.buyingPricesChart(req,res)
   }
 
+  // --- Get revenue gold chart
+  else if (pathName === "/revenue-gold-chart" && method === "GET") {
+    dashboard.revenueGoldChart(req,res)
+  }
+
   // --- Get notification on mobile ---
   else if (pathName.startsWith("/mobile-noti/") && method === "GET") {
     const userid = pathName.split("/")[2];

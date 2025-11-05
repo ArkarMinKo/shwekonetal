@@ -44,11 +44,12 @@ function getNoti(req, res, userid){
                 const oldBuyingPrice = parseInt(buyingPricesResult[1]?.price || buyingPricesResult[0].price);
                 const buyDifferentpercentage = parseFloat(((newBuyingPrice - oldBuyingPrice) / oldBuyingPrice * 100).toFixed(2));
 
-                const formattedBuyDifferentPercentage = buyDifferentpercentage > 0
-                                                        ?  `+ ${buyDifferentpercentage} %`
-                                                        : buyDifferentpercentage < 0
-                                                        ? `- ${Math.abs(buyDifferentpercentage)} %`
-                                                        : `0 %`
+                const formattedBuyDifferentPercentage = 
+                    buyDifferentpercentage > 0
+                        ?  `+ ${buyDifferentpercentage} %`
+                        : buyDifferentpercentage < 0
+                        ? `- ${Math.abs(buyDifferentpercentage)} %`
+                        : `0 %`
                 
                 const newSellingPrice = parseInt(sellingPricesResult[0].price);
                 const oldSellingPrice = parseInt(sellingPricesResult[1]?.price || sellingPricesResult[0].price);
