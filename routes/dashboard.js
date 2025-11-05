@@ -301,15 +301,16 @@ function revenueGoldChart(req, res) {
       const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
       const targetMonth = months.find((m) => m.key === key);
       if (targetMonth) {
-        if (data.type === "buy") targetMonth.value -= data.gold;
-        else if (data.type === "sell") targetMonth.value += data.gold;
+        const gold = parseFloat(data.gold) || 0;
+        if (data.type === "buy") targetMonth.value -= gold;
+        else if (data.type === "sell") targetMonth.value += gold;
       }
     });
 
-    // Format final output
+    // Format final output safely
     const REVENUE = months.map(({ month, value }) => ({
       month,
-      value: parseFloat(value.toFixed(2)),
+      value: parseFloat((Number(value) || 0).toFixed(2)),
     }));
 
     res.setHeader("Content-Type", "application/json");
