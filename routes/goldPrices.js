@@ -582,7 +582,7 @@ function getAllBuyingPrices(req, res) {
     const minDate = allDatesInDB[0];
     const maxDate = allDatesInDB[allDatesInDB.length - 1];
 
-    // ✅ Include extra 5 days after last DB date
+    // Include extra 5 days after last DB date
     const nextDay = new Date(maxDate);
     nextDay.setDate(nextDay.getDate() + 5);
     const allDates = getDateRange(minDate, nextDay.toISOString().split("T")[0]);
@@ -599,7 +599,7 @@ function getAllBuyingPrices(req, res) {
     let lastDateData = null;
     let lastFinalPrice = null;
 
-    // ✅ fallback price from last row in DB
+    // Fallback price from last row in DB
     const fallbackPrice = results.length > 0 ? results[results.length - 1].price : null;
 
     for (const date of allDates) {
@@ -633,28 +633,30 @@ function getAllBuyingPrices(req, res) {
         const nonNulls = Object.values(dateData).filter(v => v !== null);
         if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
         finalOutput[date] = dateData;
+
       } else {
-        // ✅ Missing date → fill with lastFinalPrice or fallbackPrice
-        const usePrice = lastFinalPrice ?? fallbackPrice;
-        if (usePrice !== null) {
-          const filledDay = {};
+        // Missing date
+        if (date === today && !groupedByDate[today]) {
+          // Today's data missing → fill all slots with fallbackPrice
+          const todayData = {};
           timeSlots.forEach(slot => {
             const displayTime = slot.replace(/^0/, "");
-            filledDay[displayTime] = usePrice;
+            todayData[displayTime] = fallbackPrice;
           });
-          finalOutput[date] = filledDay;
+          finalOutput[date] = todayData;
+        } else {
+          // Other missing dates → fill with lastFinalPrice or fallbackPrice
+          const usePrice = lastFinalPrice ?? fallbackPrice;
+          if (usePrice !== null) {
+            const filledDay = {};
+            timeSlots.forEach(slot => {
+              const displayTime = slot.replace(/^0/, "");
+              filledDay[displayTime] = usePrice;
+            });
+            finalOutput[date] = filledDay;
+          }
         }
       }
-    }
-
-    if (!finalOutput[today] && lastDateData) {
-      const todayData = {};
-      Object.entries(lastDateData).forEach(([slot, value]) => {
-        const [h, m] = slot.split(":").map(Number);
-        const slotSec = h * 3600 + m * 60;
-        todayData[slot] = slotSec > currentSec ? null : value;
-      });
-      finalOutput[today] = todayData;
     }
 
     const sortedDesc = Object.fromEntries(
@@ -665,7 +667,6 @@ function getAllBuyingPrices(req, res) {
     res.end(JSON.stringify(sortedDesc, null, 2));
   });
 }
-
 
 // --- Get Latest Buying Price ---
 function getLatestBuyingPrice(req, res) {
