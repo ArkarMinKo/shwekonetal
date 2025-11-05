@@ -270,6 +270,7 @@ function buyingPricesChart(req, res) {
   });
 }
 
+// --- Revenue Gold Chart ---
 function revenueGoldChart(req, res) {
     const transactionsSql = `
         SELECT gold, type, DATE_FORMAT(created_at, '%Y-%m') AS ym
@@ -284,36 +285,36 @@ function revenueGoldChart(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        // --- Generate last 6 months (current + 5 previous) ---
+        // --- Create last 6 month keys ---
         const months = [];
         const now = new Date();
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = d.toISOString().slice(0, 7); // "YYYY-MM"
-            const label = d.toLocaleString("en-US", { month: "short" });
+            const key = d.toISOString().slice(0, 7); // YYYY-MM
+            const label = d.toLocaleString("en-US", { month: "short" }); // Jan
             months.push({ key, label });
         }
 
-        // --- Prepare object to store totals per month ---
+        // --- Initialize tracking object ---
         const monthTotals = {};
         months.forEach(m => monthTotals[m.key] = { buy: 0, sell: 0 });
 
-        // --- Loop through DB result and store totals ---
+        // --- Loop through DB rows ---
         transactionsResult.forEach(row => {
-            if (monthTotals[row.ym]) {
+            if (row.ym && monthTotals[row.ym]) {
                 if (row.type === "buy") monthTotals[row.ym].buy += row.gold;
                 else if (row.type === "sell") monthTotals[row.ym].sell += row.gold;
             }
         });
 
-        // --- Final formatted output: REVENUE array ---
-        const revenue = months.map(m => {
+        // --- Build final REVENUE array ---
+        const REVENUE = months.map(m => {
             const t = monthTotals[m.key];
-            const value = parseFloat((t.sell - t.buy).toFixed(2)); // revenue difference
-            return { month: m.label, value };
+            const value = parseFloat((t.sell - t.buy).toFixed(2));
+            return { month: m.label, value: isNaN(value) ? 0 : value };
         });
 
-        res.end(JSON.stringify({ revenue }));
+        res.end(JSON.stringify({ REVENUE }));
     });
 }
 
