@@ -556,7 +556,6 @@ function getAllBuyingPrices(req, res) {
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    // Group records by date
     const groupedByDate = {};
     results.forEach(row => {
       if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
@@ -582,31 +581,33 @@ function getAllBuyingPrices(req, res) {
     const allDatesInDB = Object.keys(groupedByDate).sort();
     const minDate = allDatesInDB[0];
     const maxDate = allDatesInDB[allDatesInDB.length - 1];
-    const allDates = getDateRange(minDate, maxDate);
+
+    // Include extra 5 days after last DB date
+    const nextDay = new Date(maxDate);
+    nextDay.setDate(nextDay.getDate() + 5);
+    const allDates = getDateRange(minDate, nextDay.toISOString().split("T")[0]);
 
     const now = new Date();
-    const today = now.getFullYear() + "-" +
-                  String(now.getMonth() + 1).padStart(2, "0") + "-" +
-                  String(now.getDate()).padStart(2, "0");
-    const currentSec = now.getHours() * 3600 +
-                      now.getMinutes() * 60 +
-                      now.getSeconds();
+    const today = now.toISOString().split("T")[0];
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
     const finalOutput = {};
-    let lastKnownPrice = null; // store the last row's price
+    let lastFinalPrice = null;
+
+    // Fallback price from last row in DB
+    const fallbackPrice = results.length > 0 ? results[results.length - 1].price : null;
 
     for (const date of allDates) {
       const rows = groupedByDate[date];
       const dateData = {};
 
-      if (rows && rows.length > 0) {
-        // Fill today's slots or past dates
+      if (rows) {
+        // Fill date with nearest available prices
         timeSlots.forEach(slot => {
           const slotSec = timeToSeconds(slot + ":00");
-
-          // Find nearest price for this slot
           let nearest = null;
           let minDiff = Infinity;
+
           for (const r of rows) {
             const rowSec = timeToSeconds(r.time);
             const diff = Math.abs(rowSec - slotSec);
@@ -618,30 +619,37 @@ function getAllBuyingPrices(req, res) {
 
           const displayTime = slot.replace(/^0/, "");
           if (date === today && slotSec > currentSec) {
-            dateData[displayTime] = null; // future today → null
+            dateData[displayTime] = null;
           } else {
-            dateData[displayTime] = nearest ? nearest.price : lastKnownPrice;
+            dateData[displayTime] = nearest ? nearest.price : lastFinalPrice ?? fallbackPrice;
           }
         });
 
-        // Update last known price
-        lastKnownPrice = rows[rows.length - 1].price;
-        finalOutput[date] = dateData;
+        const nonNulls = Object.values(dateData).filter(v => v !== null);
+        if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
+
       } else {
-        // No rows → use last known price
-        timeSlots.forEach(slot => {
-          const displayTime = slot.replace(/^0/, "");
-          if (date === today && timeToSeconds(slot + ":00") > currentSec) {
-            dateData[displayTime] = null; // future today → null
-          } else {
-            dateData[displayTime] = lastKnownPrice;
-          }
-        });
-        finalOutput[date] = dateData;
+        // Missing date → fill with lastFinalPrice or fallbackPrice
+        const usePrice = lastFinalPrice ?? fallbackPrice;
+        if (date === today) {
+          // Today → future hours null
+          timeSlots.forEach(slot => {
+            const displayTime = slot.replace(/^0/, "");
+            const slotSec = timeToSeconds(slot + ":00");
+            dateData[displayTime] = slotSec <= currentSec ? usePrice : null;
+          });
+        } else if (usePrice !== null) {
+          timeSlots.forEach(slot => {
+            const displayTime = slot.replace(/^0/, "");
+            dateData[displayTime] = usePrice;
+          });
+        }
       }
+
+      finalOutput[date] = dateData;
     }
 
-    // Convert to DESC order
+    // Sort descending by date
     const sortedDesc = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
     );
