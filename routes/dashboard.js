@@ -307,13 +307,13 @@ function revenueGoldChart(req, res) {
         });
 
         // --- Final formatted output: REVENUE array ---
-        const REVENUE = months.map(m => {
+        const revenue = months.map(m => {
             const t = monthTotals[m.key];
             const value = parseFloat((t.sell - t.buy).toFixed(2)); // revenue difference
             return { month: m.label, value };
         });
 
-        res.end(JSON.stringify({ REVENUE }));
+        res.end(JSON.stringify({ revenue }));
     });
 }
 
