@@ -588,22 +588,26 @@ function getAllBuyingPrices(req, res) {
     const allDates = getDateRange(minDate, maxDate);
 
     const now = new Date();
+    // Local date string (YYYY-MM-DD)
     const today = now.getFullYear() + "-" +
-      String(now.getMonth() + 1).padStart(2, "0") + "-" +
-      String(now.getDate()).padStart(2, "0");
+                  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                  String(now.getDate()).padStart(2, "0");
+
+    // Local time (seconds since midnight)
     const currentSec = now.getHours() * 3600 +
-      now.getMinutes() * 60 +
-      now.getSeconds();
+                      now.getMinutes() * 60 +
+                      now.getSeconds();
 
     const finalOutput = {};
     let lastDateData = null;
+    let lastFinalPrice = null; // ✅ keep track of last known final price
 
     for (const date of allDates) {
       const rows = groupedByDate[date];
       const dateData = {};
 
       if (rows) {
-        // === your existing nearest-slot logic ===
+        // === original logic ===
         timeSlots.forEach(slot => {
           const slotSec = timeToSeconds(slot + ":00");
           let nearest = null;
@@ -620,7 +624,6 @@ function getAllBuyingPrices(req, res) {
 
           const displayTime = slot.replace(/^0/, "");
 
-          // Today's future times → null
           if (date === today && slotSec > currentSec) {
             dateData[displayTime] = null;
           } else {
@@ -628,25 +631,20 @@ function getAllBuyingPrices(req, res) {
           }
         });
 
-        lastDateData = { ...dateData }; // remember last full date
+        lastDateData = { ...dateData }; // update last known
+        // ✅ find last non-null price of this date
+        const nonNulls = Object.values(dateData).filter(v => v !== null);
+        if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
+
         finalOutput[date] = dateData;
-
       } else {
-        // === FIX: No data for this date ===
-        if (lastDateData) {
-          // Get the last non-null value (final price of last known date)
-          const nonNullValues = Object.values(lastDateData).filter(v => v !== null);
-          const lastFinal = nonNullValues.length
-            ? nonNullValues[nonNullValues.length - 1]
-            : null;
-
-          // Fill all time slots with that last final value
+        // === NEW: fill missing date using last known final price ===
+        if (lastFinalPrice !== null) {
           const filledDay = {};
           timeSlots.forEach(slot => {
             const displayTime = slot.replace(/^0/, "");
-            filledDay[displayTime] = lastFinal;
+            filledDay[displayTime] = lastFinalPrice;
           });
-
           finalOutput[date] = filledDay;
         }
       }
