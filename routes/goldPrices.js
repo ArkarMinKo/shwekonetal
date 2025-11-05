@@ -582,7 +582,6 @@ function getAllBuyingPrices(req, res) {
     const minDate = allDatesInDB[0];
     const maxDate = allDatesInDB[allDatesInDB.length - 1];
 
-    // Include extra 5 days after last DB date
     const nextDay = new Date(maxDate);
     nextDay.setDate(nextDay.getDate() + 5);
     const allDates = getDateRange(minDate, nextDay.toISOString().split("T")[0]);
@@ -593,8 +592,6 @@ function getAllBuyingPrices(req, res) {
 
     const finalOutput = {};
     let lastFinalPrice = null;
-
-    // Fallback price from last row in DB
     const fallbackPrice = results.length > 0 ? results[results.length - 1].price : null;
 
     for (const date of allDates) {
@@ -602,12 +599,10 @@ function getAllBuyingPrices(req, res) {
       const dateData = {};
 
       if (rows) {
-        // Existing date → use nearest available prices
         timeSlots.forEach(slot => {
           const slotSec = timeToSeconds(slot + ":00");
           let nearest = null;
           let minDiff = Infinity;
-
           for (const r of rows) {
             const rowSec = timeToSeconds(r.time);
             const diff = Math.abs(rowSec - slotSec);
@@ -616,30 +611,23 @@ function getAllBuyingPrices(req, res) {
               nearest = r;
             }
           }
-
           const displayTime = slot.replace(/^0/, "");
-          if (date === today && slotSec > currentSec) {
-            dateData[displayTime] = null;
-          } else {
-            dateData[displayTime] = nearest ? nearest.price : lastFinalPrice ?? fallbackPrice;
-          }
+          dateData[displayTime] = nearest ? nearest.price : lastFinalPrice ?? fallbackPrice;
         });
-
         const nonNulls = Object.values(dateData).filter(v => v !== null);
         if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
 
       } else {
-        // Missing date → fill logic
         const usePrice = lastFinalPrice ?? fallbackPrice;
         timeSlots.forEach(slot => {
           const displayTime = slot.replace(/^0/, "");
           const slotSec = timeToSeconds(slot + ":00");
 
           if (date === today) {
-            // Today's missing → past hours filled, future hours null
+            // Today's missing → past hours fill, future null
             dateData[displayTime] = slotSec <= currentSec ? usePrice : null;
           } else if (usePrice !== null) {
-            // Other missing dates → fill all slots
+            // Other missing date → fill all slots
             dateData[displayTime] = usePrice;
           }
         });
@@ -648,7 +636,6 @@ function getAllBuyingPrices(req, res) {
       finalOutput[date] = dateData;
     }
 
-    // Sort descending by date
     const sortedDesc = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
     );
