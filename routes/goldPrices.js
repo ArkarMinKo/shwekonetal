@@ -602,7 +602,7 @@ function getAllBuyingPrices(req, res) {
       const dateData = {};
 
       if (rows) {
-        // Fill date with nearest available prices
+        // Existing date → use nearest available prices
         timeSlots.forEach(slot => {
           const slotSec = timeToSeconds(slot + ":00");
           let nearest = null;
@@ -629,15 +629,17 @@ function getAllBuyingPrices(req, res) {
         if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
 
       } else {
-        // Missing date → fill with lastFinalPrice or fallbackPrice
+        // Missing date → fill logic
         const usePrice = lastFinalPrice ?? fallbackPrice;
         timeSlots.forEach(slot => {
           const displayTime = slot.replace(/^0/, "");
           const slotSec = timeToSeconds(slot + ":00");
+
           if (date === today) {
-            // Today → future hours null
+            // Today's missing → past hours filled, future hours null
             dateData[displayTime] = slotSec <= currentSec ? usePrice : null;
           } else if (usePrice !== null) {
+            // Other missing dates → fill all slots
             dateData[displayTime] = usePrice;
           }
         });
