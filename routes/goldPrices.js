@@ -588,15 +588,12 @@ function getAllBuyingPrices(req, res) {
     const allDates = getDateRange(minDate, maxDate);
 
     const now = new Date();
-    // Local date string (YYYY-MM-DD)
     const today = now.getFullYear() + "-" +
-                  String(now.getMonth() + 1).padStart(2, "0") + "-" +
-                  String(now.getDate()).padStart(2, "0");
-
-    // Local time (seconds since midnight)
+      String(now.getMonth() + 1).padStart(2, "0") + "-" +
+      String(now.getDate()).padStart(2, "0");
     const currentSec = now.getHours() * 3600 +
-                      now.getMinutes() * 60 +
-                      now.getSeconds();
+      now.getMinutes() * 60 +
+      now.getSeconds();
 
     const finalOutput = {};
     let lastDateData = null;
@@ -606,7 +603,7 @@ function getAllBuyingPrices(req, res) {
       const dateData = {};
 
       if (rows) {
-        // Compute nearest for each slot
+        // === your existing nearest-slot logic ===
         timeSlots.forEach(slot => {
           const slotSec = timeToSeconds(slot + ":00");
           let nearest = null;
@@ -631,12 +628,26 @@ function getAllBuyingPrices(req, res) {
           }
         });
 
-        lastDateData = { ...dateData }; // update last known
+        lastDateData = { ...dateData }; // remember last full date
         finalOutput[date] = dateData;
+
       } else {
-        // No data → copy previous
+        // === FIX: No data for this date ===
         if (lastDateData) {
-          finalOutput[date] = { ...lastDateData };
+          // Get the last non-null value (final price of last known date)
+          const nonNullValues = Object.values(lastDateData).filter(v => v !== null);
+          const lastFinal = nonNullValues.length
+            ? nonNullValues[nonNullValues.length - 1]
+            : null;
+
+          // Fill all time slots with that last final value
+          const filledDay = {};
+          timeSlots.forEach(slot => {
+            const displayTime = slot.replace(/^0/, "");
+            filledDay[displayTime] = lastFinal;
+          });
+
+          finalOutput[date] = filledDay;
         }
       }
     }
@@ -650,19 +661,6 @@ function getAllBuyingPrices(req, res) {
       });
       finalOutput[today] = todayData;
     }
-
-    // ✅ --- fill missing dates between minDate and today ---
-    const allDatesFull = getDateRange(minDate, today);
-    let previousDateData = null;
-    for (const d of allDatesFull) {
-      if (!finalOutput[d] && previousDateData) {
-        finalOutput[d] = { ...previousDateData };
-      }
-      if (finalOutput[d]) {
-        previousDateData = { ...finalOutput[d] };
-      }
-    }
-    // ✅ -----------------------------------------------
 
     // Convert to DESC order
     const sortedDesc = Object.fromEntries(
