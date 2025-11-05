@@ -272,50 +272,49 @@ function buyingPricesChart(req, res) {
 
 // --- Revenue Gold Chart ---
 function revenueGoldChart(req, res) {
-    const transactionsSql = `
-        SELECT gold, type, DATE_FORMAT(created_at, '%Y-%m') AS ym
-        FROM sales
-        WHERE status = 'approved'
-    `;
+  const transactionsSql = `
+    SELECT gold, type, created_at
+    FROM sales
+    WHERE status = 'approved'
+  `;
 
-    db.query(transactionsSql, (err, transactionsResult) => {
-        if (err) {
-            console.error("Price fetch error:", err);
-            res.statusCode = 500;
-            return res.end(JSON.stringify({ error: err.message }));
-        }
+  db.query(transactionsSql, (err, transactionsResult) => {
+    if (err) {
+      console.error("Price fetch error:", err);
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
 
-        // --- Create last 6 month keys ---
-        const months = [];
-        const now = new Date();
-        for (let i = 5; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = d.toISOString().slice(0, 7); // YYYY-MM
-            const label = d.toLocaleString("en-US", { month: "short" }); // Jan
-            months.push({ key, label });
-        }
+    // Prepare last 6 months (current + previous 5)
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString("default", { month: "short" });
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.push({ key, month: monthName, value: 0 });
+    }
 
-        // --- Initialize tracking object ---
-        const monthTotals = {};
-        months.forEach(m => monthTotals[m.key] = { buy: 0, sell: 0 });
-
-        // --- Loop through DB rows ---
-        transactionsResult.forEach(row => {
-            if (row.ym && monthTotals[row.ym]) {
-                if (row.type === "buy") monthTotals[row.ym].buy += row.gold;
-                else if (row.type === "sell") monthTotals[row.ym].sell += row.gold;
-            }
-        });
-
-        // --- Build final REVENUE array ---
-        const REVENUE = months.map(m => {
-            const t = monthTotals[m.key];
-            const value = parseFloat((t.sell - t.buy).toFixed(2));
-            return { month: m.label, value: isNaN(value) ? 0 : value };
-        });
-
-        res.end(JSON.stringify({ REVENUE }));
+    // Calculate total buy/sell per month
+    transactionsResult.forEach((data) => {
+      const created = new Date(data.created_at);
+      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+      const targetMonth = months.find((m) => m.key === key);
+      if (targetMonth) {
+        if (data.type === "buy") targetMonth.value -= data.gold;
+        else if (data.type === "sell") targetMonth.value += data.gold;
+      }
     });
+
+    // Format final output
+    const REVENUE = months.map(({ month, value }) => ({
+      month,
+      value: parseFloat(value.toFixed(2)),
+    }));
+
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(REVENUE));
+  });
 }
 
 module.exports = {
