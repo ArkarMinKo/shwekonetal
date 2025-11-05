@@ -14,6 +14,7 @@ function getNoti(req, res, userid){
         WHERE status != 'pending'
         AND seen = 0
         AND userid = ?
+        ORDER BY created_at DESC
     `;
 
     db.query(buyingPricesSql, (err, buyingPricesResult) => {
