@@ -582,7 +582,6 @@ function getAllBuyingPrices(req, res) {
     const minDate = allDatesInDB[0];
     const maxDate = allDatesInDB[allDatesInDB.length - 1];
 
-    // Include extra 5 days after last DB date
     const nextDay = new Date(maxDate);
     nextDay.setDate(nextDay.getDate() + 5);
     const allDates = getDateRange(minDate, nextDay.toISOString().split("T")[0]);
@@ -596,10 +595,8 @@ function getAllBuyingPrices(req, res) {
                       now.getSeconds();
 
     const finalOutput = {};
-    let lastDateData = null;
     let lastFinalPrice = null;
 
-    // Fallback price from last row in DB
     const fallbackPrice = results.length > 0 ? results[results.length - 1].price : null;
 
     for (const date of allDates) {
@@ -629,32 +626,23 @@ function getAllBuyingPrices(req, res) {
           }
         });
 
-        lastDateData = { ...dateData };
         const nonNulls = Object.values(dateData).filter(v => v !== null);
         if (nonNulls.length > 0) lastFinalPrice = nonNulls[nonNulls.length - 1];
         finalOutput[date] = dateData;
 
       } else {
-        // Missing date
-        if (date === today && !groupedByDate[today]) {
-          // Today's data missing → fill all slots with fallbackPrice
-          const todayData = {};
+        const usePrice = lastFinalPrice ?? fallbackPrice;
+        if (usePrice !== null) {
           timeSlots.forEach(slot => {
             const displayTime = slot.replace(/^0/, "");
-            todayData[displayTime] = fallbackPrice;
+            // If today → future slots null
+            if (date === today && timeToSeconds(slot + ":00") > currentSec) {
+              dateData[displayTime] = null;
+            } else {
+              dateData[displayTime] = usePrice;
+            }
           });
-          finalOutput[date] = todayData;
-        } else {
-          // Other missing dates → fill with lastFinalPrice or fallbackPrice
-          const usePrice = lastFinalPrice ?? fallbackPrice;
-          if (usePrice !== null) {
-            const filledDay = {};
-            timeSlots.forEach(slot => {
-              const displayTime = slot.replace(/^0/, "");
-              filledDay[displayTime] = usePrice;
-            });
-            finalOutput[date] = filledDay;
-          }
+          finalOutput[date] = dateData;
         }
       }
     }
