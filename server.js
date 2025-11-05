@@ -305,14 +305,19 @@ const server = http.createServer(async (req, res) => {
     dashboard.summarys(req, res);
   }
 
-  // --- Get buying price chart
+  // --- Get buying price chart ---
   else if (pathName === "/buying-prices-chart" && method === "GET") {
     dashboard.buyingPricesChart(req,res)
   }
 
-  // --- Get revenue gold chart
+  // --- Get revenue gold chart ----
   else if (pathName === "/revenue-gold-chart" && method === "GET") {
     dashboard.revenueGoldChart(req,res)
+  }
+
+  // --- Get top3 wallet ---
+  else if (pathName === "/topWallet" && method === "GET") {
+    dashboard.topWallet(req,res)
   }
 
   // --- Get notification on mobile ---

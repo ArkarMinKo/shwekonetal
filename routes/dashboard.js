@@ -318,8 +318,35 @@ function revenueGoldChart(req, res) {
   });
 }
 
+// --- Top Wallet ---
+function topWallet(req, res) {
+  const usersSql = `
+    SELECT id, fullname AS user, gold
+    FROM users
+    ORDER BY gold DESC
+    LIMIT 3
+  `;
+
+  db.query(usersSql, (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const TOP_WALLETS = rows.map(row => ({
+      user: row.user,
+      id: row.id,
+      gold: row.gold,
+    }));
+
+    res.statusCode = 200;
+    res.end(JSON.stringify({ TOP_WALLETS }));
+  });
+}
+
 module.exports = {
     summarys,
     buyingPricesChart,
-    revenueGoldChart
+    revenueGoldChart,
+    topWallet
 };
