@@ -305,6 +305,11 @@ const server = http.createServer(async (req, res) => {
     dashboard.summarys(req, res);
   }
 
+  // --- Get buying price chart
+  else if (pathName === "/buying-prices-chart" && method === "GET") {
+    dashboard.buyingPricesChart(req,res)
+  }
+
   // --- Get notification on mobile ---
   else if (pathName.startsWith("/mobile-noti/") && method === "GET") {
     const userid = pathName.split("/")[2];

@@ -48,6 +48,11 @@ function summarys(req, res) {
                             return res.end(JSON.stringify({ error: err.message }));
                         }
 
+                        if (!buyingPricesResult.length || !sellingPricesResult.length) {
+                            res.statusCode = 404;
+                            return res.end(JSON.stringify({ error: "Not enough price data" }));
+                        }
+
                         const newBuyingPrice = parseInt(buyingPricesResult[0].price);
                         const oldBuyingPrice = parseInt(buyingPricesResult[1]?.price || buyingPricesResult[0].price);
                         const buyDifferentpercentage = parseFloat(((newBuyingPrice - oldBuyingPrice) / oldBuyingPrice * 100).toFixed(2));
@@ -140,6 +145,21 @@ function summarys(req, res) {
     })
 }
 
+function buyingPricesChart(req, res){
+    const sql = `SELECT * FROM buying_prices`;
+
+    db.query(sql, (err, rows) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(rows))
+    })
+}
+
 module.exports = {
-    summarys
+    summarys,
+    buyingPricesChart
 };
