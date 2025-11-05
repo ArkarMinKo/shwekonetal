@@ -145,274 +145,316 @@ function summarys(req, res) {
     })
 }
 
+// GET /buying-prices-chart
 function buyingPricesChart(req, res){
-    const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC";
-    db.query(sql, (err, rows) => {
-        if (err) {
-        res.statusCode = 500;
-        return res.end(JSON.stringify({ error: err.message }));
-        }
+  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC";
+  db.query(sql, (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
 
-        // Helper: parse "HH:MM[:SS]" -> seconds since midnight
-        function timeToSeconds(t) {
-        const parts = t.split(":").map(Number);
-        const h = parts[0] || 0;
-        const m = parts[1] || 0;
-        const s = parts[2] || 0;
-        return h * 3600 + m * 60 + s;
-        }
+    // ---- Helpers ----
+    function timeToSeconds(t) {
+      const parts = t.split(":").map(Number);
+      const h = parts[0] || 0, m = parts[1] || 0, s = parts[2] || 0;
+      return h * 3600 + m * 60 + s;
+    }
+    function dateToEpochSec(dateStr, timeStr = "00:00:00") {
+      // treat as local
+      const [y, mo, d] = dateStr.split("-").map(Number);
+      const [hh, mm, ss] = timeStr.split(":").map(Number);
+      const dt = new Date(y, mo - 1, d, hh || 0, mm || 0, ss || 0);
+      return Math.floor(dt.getTime() / 1000);
+    }
+    function displaySlot(slot) { return slot.replace(/^0/, ""); } // "09:00" -> "9:00"
 
-        // Helper: format display time like "9:00", "1:00" (remove leading zero hour)
-        function displayHour(hhmm) {
-        // hhmm like "09:00" or "13:00"
-        const [h, m] = hhmm.split(":").map(Number);
-        return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")}`.replace(/^0/, "");
-        }
-
-        // Group rows by date (YYYY-MM-DD)
-        const byDate = {};
-        rows.forEach(r => {
-        if (!byDate[r.date]) byDate[r.date] = [];
-        byDate[r.date].push(r);
-        });
-
-        // Prepare "now" data for today/future logic (local time)
-        const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10);
-        const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-
-        // --- 1D logic: slots 09:00 .. 17:00 (hourly) nearest-record per slot ---
-        const slots = [];
-        for (let hour = 9; hour <= 17; hour++) {
-        slots.push(String(hour).padStart(2, "0") + ":00");
-        }
-
-        // get date range covered by DB (asc)
-        const allDates = Object.keys(byDate).sort();
-        // if DB empty, return empty structure
-        if (allDates.length === 0) {
-        const emptyPRICE_DATA = { "1D": [], "1W": [], "1M": [], "1Y": [] };
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
-        return res.end(JSON.stringify(emptyPRICE_DATA, null, 2));
-        }
-
-        // helper to create inclusive date array
-        function getDateRange(startStr, endStr) {
-        const out = [];
-        const cur = new Date(startStr + "T00:00:00");
-        const end = new Date(endStr + "T00:00:00");
-        while (cur <= end) {
-            out.push(cur.toISOString().slice(0, 10));
-            cur.setDate(cur.getDate() + 1);
-        }
-        return out;
-        }
-
-        const minDate = allDates[0];
-        const maxDate = allDates[allDates.length - 1];
-        const fullDates = getDateRange(minDate, maxDate);
-
-        // Build finalOutput (date -> { slotDisplay: price|null })
-        const finalByDate = {};
-        let lastDateData = null;
-
-        for (const date of fullDates) {
-        const rowsForDate = byDate[date];
-        if (rowsForDate && rowsForDate.length > 0) {
-            // For each slot find nearest record (by time)
-            const slotObj = {};
-            for (const slot of slots) {
-            const slotSec = timeToSeconds(slot + ":00");
-            let nearest = null;
-            let minDiff = Infinity;
-            for (const r of rowsForDate) {
-                const rSec = timeToSeconds(r.time);
-                const diff = Math.abs(rSec - slotSec);
-                if (diff < minDiff) {
-                minDiff = diff;
-                nearest = r;
-                }
-            }
-            const disp = slot.replace(/^0/, ""); // "09:00" -> "9:00"
-            // if this is today and slot is in future -> null
-            if (date === todayStr && slotSec > nowSeconds) {
-                slotObj[disp] = null;
-            } else {
-                slotObj[disp] = nearest ? Number(nearest.price) : null;
-            }
-            }
-            finalByDate[date] = slotObj;
-            lastDateData = { ...slotObj };
-        } else {
-            // no rows for this date -> copy lastDateData (if any)
-            if (lastDateData) {
-            // ensure for today we null future slots
-            if (date === todayStr) {
-                const todayCopy = {};
-                Object.entries(lastDateData).forEach(([slot, val]) => {
-                const [h, m] = slot.split(":").map(Number);
-                const slotSec = h * 3600 + m * 60;
-                todayCopy[slot] = slotSec > nowSeconds ? null : val;
-                });
-                finalByDate[date] = todayCopy;
-                lastDateData = { ...todayCopy };
-            } else {
-                finalByDate[date] = { ...lastDateData };
-            }
-            } else {
-            // no previous data: set all slots null (but this is rare because we iterate from minDate)
-            const emptySlots = {};
-            slots.forEach(s => emptySlots[s.replace(/^0/, "")] = null);
-            finalByDate[date] = emptySlots;
-            }
-        }
-        }
-
-        // We'll use the most recent date to compute carry-forward baseline if today not present
-        if (!finalByDate[todayStr] && lastDateData) {
-        const todayCopy = {};
-        Object.entries(lastDateData).forEach(([slot, val]) => {
-            const [h, m] = slot.split(":").map(Number);
-            const slotSec = h * 3600 + m * 60;
-            todayCopy[slot] = slotSec > nowSeconds ? null : val;
-        });
-        finalByDate[todayStr] = todayCopy;
-        }
-
-        // Convert finalByDate into one 1D array for the *latest date* (as in your example PRICE_DATA 1D)
-        // The example PRICE_DATA 1D shows times with 9..17 and prices for a single day.
-        // We'll use the most recent date (maxDate) that is <= today (or last available) as the 1D source.
-        let sourceDateFor1D = maxDate;
-        if (sourceDateFor1D > todayStr && fullDates.includes(todayStr)) {
-        sourceDateFor1D = todayStr;
-        } else if (sourceDateFor1D > todayStr) {
-        // if maxDate is in future (unlikely), pick latest <= today or lastDateData fallback
-        const beforeToday = fullDates.filter(d => d <= todayStr);
-        sourceDateFor1D = beforeToday.length ? beforeToday[beforeToday.length - 1] : maxDate;
-        }
-        const daySlots = finalByDate[sourceDateFor1D] || lastDateData || {};
-        const price1D = Object.keys(daySlots).map(slot => ({
-        time: slot,
-        price: daySlots[slot] === null ? null : Number(daySlots[slot])
-        }));
-
-        // --- 1W logic: last 7 calendar days, label Mon..Sun (use weekday names) ---
-        const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        // last 7 days (including today) descending -> but output from Mon..Sun order in example.
-        const last7 = [];
-        for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        last7.push(d.toISOString().slice(0, 10));
-        }
-
-        // For each of those dates, pick the last (latest time) row for that day if exists; else carry-forward
-        let lastKnown = null;
-        const dayPriceMap = {};
-        for (const date of last7) {
-        const rowsForDate = (byDate[date] || []);
-        if (rowsForDate.length > 0) {
-            // last change is last element because original query was ASC
-            const lastRow = rowsForDate[rowsForDate.length - 1];
-            lastKnown = Number(lastRow.price);
-            dayPriceMap[date] = lastKnown;
-        } else {
-            // carry-forward
-            dayPriceMap[date] = lastKnown;
-        }
-        }
-
-        // produce 7-element array Mon..Sun in order. We'll map weekday names across last7 dates
-        // The example shows Mon..Sun specifically, so we'll produce labels Mon..Sun and assign:
-        // find the date in last7 that matches each weekday label; if multiple weeks cross, we still pick the corresponding day's price from last7
-        const weekData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(label => {
-        // find first date in last7 with this weekday
-        const foundDate = last7.find(d => {
-            const wd = new Date(d + "T00:00:00").getDay(); // 0=Sun
-            return weekdayNames[wd] === label;
-        });
-        const price = foundDate ? dayPriceMap[foundDate] : lastKnown;
-        return { time: label, price: price === null || price === undefined ? null : Number(price) };
-        });
-
-        // --- 1M logic: group current month into weeks Week 1..Week 5 ---
-        // We'll compute for the *current month* (based on today). But use DB range within that month.
-        const nowMonth = new Date();
-        const monthStart = new Date(nowMonth.getFullYear(), nowMonth.getMonth(), 1);
-        const monthEnd = new Date(nowMonth.getFullYear(), nowMonth.getMonth() + 1, 0); // last day
-        const monthDates = getDateRange(monthStart.toISOString().slice(0, 10), monthEnd.toISOString().slice(0, 10));
-
-        // group dates by week-of-month (week starting on day 1..7 => week1)
-        function weekOfMonth(dateStr) {
-        const d = new Date(dateStr + "T00:00:00");
-        return Math.ceil((d.getDate()) / 7);
-        }
-
-        // for each week number found in the current month, pick last change in that week (from DB rows),
-        // if none use carry-forward from previous week
-        const weeksInMonth = new Set(monthDates.map(d => weekOfMonth(d)));
-        const weekNums = Array.from(weeksInMonth).sort((a, b) => a - b); // 1..5
-        let lastWeekKnown = null;
-        const weekPrices = [];
-
-        for (const w of weekNums) {
-        // collect all rows whose date is in this week of the month
-        const rowsInWeek = [];
-        for (const d of monthDates) {
-            if (weekOfMonth(d) === w && byDate[d]) {
-            rowsInWeek.push(...byDate[d]);
-            }
-        }
-        if (rowsInWeek.length > 0) {
-            const lastRow = rowsInWeek[rowsInWeek.length - 1];
-            lastWeekKnown = Number(lastRow.price);
-            weekPrices.push({ time: `Week ${w}`, price: lastWeekKnown });
-        } else {
-            weekPrices.push({ time: `Week ${w}`, price: lastWeekKnown === null ? null : Number(lastWeekKnown) });
-        }
-        }
-
-        // If no weeks (rare) fallback to last known across DB
-        if (weekPrices.length === 0) {
-        const fallback = rows.length ? Number(rows[rows.length - 1].price) : null;
-        weekPrices.push({ time: "Week 1", price: fallback });
-        }
-
-        // --- 1Y logic: months Jan..Dec, last change in each month (for year of today) ---
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const thisYear = now.getFullYear();
-        let lastMonthKnown = null;
-        const yearPrices = [];
-
-        for (let m = 0; m < 12; m++) {
-        // collect rows in this year-month
-        const start = new Date(thisYear, m, 1).toISOString().slice(0, 10);
-        const end = new Date(thisYear, m + 1, 0).toISOString().slice(0, 10);
-        const datesOfMonth = getDateRange(start, end);
-        const rowsInMonth = [];
-        for (const d of datesOfMonth) {
-            if (byDate[d]) rowsInMonth.push(...byDate[d]);
-        }
-        if (rowsInMonth.length > 0) {
-            const lastRow = rowsInMonth[rowsInMonth.length - 1]; // last change in month
-            lastMonthKnown = Number(lastRow.price);
-            yearPrices.push({ time: monthNames[m], price: lastMonthKnown });
-        } else {
-            yearPrices.push({ time: monthNames[m], price: lastMonthKnown === null ? null : Number(lastMonthKnown) });
-        }
-        }
-
-        // Build final PRICE_DATA object
-        const PRICE_DATA = {
-        "1D": price1D,
-        "1W": weekData,
-        "1M": weekPrices,
-        "1Y": yearPrices
-        };
-
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
-        res.end(JSON.stringify(PRICE_DATA, null, 2));
+    // Group rows by date
+    const byDate = {};
+    rows.forEach(r => {
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push(r);
     });
+
+    // Convert each row to an epoch (for global closest calculation)
+    const rowsWithEpoch = rows.map(r => {
+      return {
+        ...r,
+        epoch: dateToEpochSec(r.date, r.time)
+      };
+    });
+
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0,10);
+    const nowSecToday = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+    // --- UTIL: get last row (latest time) among rows array ---
+    function lastRow(rowsArr) {
+      if (!rowsArr || rowsArr.length === 0) return null;
+      return rowsArr[rowsArr.length - 1];
+    }
+
+    // --- UTIL: find globally closest row to a target epoch (seconds) ---
+    function findClosestGlobal(targetEpoch) {
+      if (!rowsWithEpoch.length) return null;
+      let best = rowsWithEpoch[0];
+      let bestDiff = Math.abs(targetEpoch - best.epoch);
+      for (let i = 1; i < rowsWithEpoch.length; i++) {
+        const d = Math.abs(targetEpoch - rowsWithEpoch[i].epoch);
+        if (d < bestDiff) { best = rowsWithEpoch[i]; bestDiff = d; }
+      }
+      return best;
+    }
+
+    // --- 1D: today's slots 09:00 - 17:00 ---
+    const slots = [];
+    for (let h = 9; h <= 17; h++) slots.push(String(h).padStart(2, "0") + ":00");
+
+    // Helper: find nearest record for a slot within a given date's rows
+    function nearestPriceForSlotOnDate(slot, date) {
+      const dateRows = byDate[date];
+      if (!dateRows || dateRows.length === 0) return null;
+      const slotEpoch = dateToEpochSec(date, slot + ":00");
+      let best = null, bestDiff = Infinity;
+      for (const r of dateRows) {
+        const rEpoch = dateToEpochSec(r.date, r.time);
+        const diff = Math.abs(rEpoch - slotEpoch);
+        if (diff < bestDiff) { best = r; bestDiff = diff; }
+      }
+      return best ? Number(best.price) : null;
+    }
+
+    // If today has rows use them; else use the most recent previous date that has rows
+    function sourceDateFor1D() {
+      if (byDate[todayStr] && byDate[todayStr].length) return todayStr;
+      // find latest date < today that has rows
+      const candidateDates = Object.keys(byDate).filter(d => d <= todayStr).sort();
+      if (candidateDates.length) return candidateDates[candidateDates.length - 1];
+      // otherwise fallback to latest date in DB
+      const allDates = Object.keys(byDate).sort();
+      return allDates.length ? allDates[allDates.length - 1] : null;
+    }
+
+    const chosenDateFor1D = sourceDateFor1D(); // may be null
+
+    const price1D = slots.map(slot => {
+      const slotSec = timeToSeconds(slot + ":00");
+      // future compared to now for today => null
+      if (chosenDateFor1D === todayStr && slotSec > nowSecToday) {
+        return { time: displaySlot(slot), price: null };
+      }
+
+      // try nearest on chosenDateFor1D
+      if (chosenDateFor1D) {
+        const p = nearestPriceForSlotOnDate(slot, chosenDateFor1D);
+        if (p !== null && p !== undefined) return { time: displaySlot(slot), price: Number(p) };
+      }
+
+      // If we got here and there's no chosenDateFor1D or no value, 
+      // find a globally closest record relative to target slot on today's date (preferred)
+      const targetDate = chosenDateFor1D || todayStr;
+      const targetEpoch = dateToEpochSec(targetDate, slot + ":00");
+      const globalClosest = findClosestGlobal(targetEpoch);
+      if (globalClosest) return { time: displaySlot(slot), price: Number(globalClosest.price) };
+
+      // no data anywhere
+      return { time: displaySlot(slot), price: null };
+    });
+
+    // --- 1W: this calendar week Mon..Sun ---
+    // Get dates for Monday..Sunday of current week
+    function weekDatesThisWeek() {
+      const today = new Date();
+      const day = today.getDay(); // 0 Sun .. 6 Sat
+      // compute Monday date
+      const monday = new Date(today);
+      const diffToMon = (day === 0 ? -6 : 1 - day); // if Sunday (0), go back 6 days
+      monday.setDate(today.getDate() + diffToMon);
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        dates.push(d.toISOString().slice(0,10));
+      }
+      return dates; // Mon..Sun
+    }
+
+    const weekDates = weekDatesThisWeek();
+    const weekdayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+    // Get the week's last price if any
+    function lastPriceInDates(datesArr) {
+      // find last row among those dates (rows are asc by time)
+      let found = null;
+      for (const d of datesArr) {
+        if (byDate[d] && byDate[d].length) found = byDate[d][byDate[d].length - 1];
+      }
+      return found ? Number(found.price) : null;
+    }
+
+    // Compose 1W: for each day apply fallback chain: same day -> previous day in week -> week's last -> global closest -> null
+    const weekLastPrice = lastPriceInDates(weekDates);
+    const price1W = [];
+    let carry = null;
+    for (let i = 0; i < 7; i++) {
+      const d = weekDates[i];
+      const label = weekdayLabels[i];
+      const isFuture = d > todayStr;
+      if (isFuture) {
+        price1W.push({ time: label, price: null });
+        continue;
+      }
+
+      const rowsForDay = byDate[d] || [];
+      if (rowsForDay.length) {
+        const p = Number(rowsForDay[rowsForDay.length - 1].price);
+        carry = p;
+        price1W.push({ time: label, price: p });
+      } else {
+        // fallback: previous day in week (carry), else week's last price, else global closest
+        if (carry !== null) {
+          price1W.push({ time: label, price: carry });
+        } else if (weekLastPrice !== null) {
+          price1W.push({ time: label, price: weekLastPrice });
+          carry = weekLastPrice;
+        } else {
+          // global closest: target epoch = this day's midday
+          const targetEpoch = dateToEpochSec(d, "12:00:00");
+          const g = findClosestGlobal(targetEpoch);
+          if (g) {
+            price1W.push({ time: label, price: Number(g.price) });
+            carry = Number(g.price);
+          } else {
+            price1W.push({ time: label, price: null });
+          }
+        }
+      }
+    }
+
+    // --- 1M: current month grouped into Week 1..Week N ---
+    const monthNow = new Date();
+    const monthStart = new Date(monthNow.getFullYear(), monthNow.getMonth(), 1);
+    const monthEnd = new Date(monthNow.getFullYear(), monthNow.getMonth() + 1, 0);
+    function getDateRange(startStr, endStr) {
+      const out = [];
+      let cur = new Date(startStr + "T00:00:00");
+      const end = new Date(endStr + "T00:00:00");
+      while (cur <= end) {
+        out.push(cur.toISOString().slice(0,10));
+        cur.setDate(cur.getDate() + 1);
+      }
+      return out;
+    }
+    const monthDates = getDateRange(monthStart.toISOString().slice(0,10), monthEnd.toISOString().slice(0,10));
+    function weekOfMonth(dateStr) {
+      const d = new Date(dateStr + "T00:00:00");
+      return Math.ceil(d.getDate() / 7);
+    }
+    // determine weeks present in this month
+    const weeksSet = new Set(monthDates.map(d => weekOfMonth(d)));
+    const weekNums = Array.from(weeksSet).sort((a,b) => a-b); // 1..5
+    // compute last price per week
+    const weekPrices = [];
+    let lastWeekCarry = null;
+    // find month's last price if exists
+    let monthLastPrice = null;
+    for (const d of monthDates) {
+      if (byDate[d] && byDate[d].length) monthLastPrice = Number(byDate[d][byDate[d].length - 1].price);
+    }
+    for (const w of weekNums) {
+      // collect dates in this week
+      const datesInWeek = monthDates.filter(d => weekOfMonth(d) === w);
+      // gather last row in week
+      let lastRowWeek = null;
+      for (const d of datesInWeek) {
+        if (byDate[d] && byDate[d].length) lastRowWeek = byDate[d][byDate[d].length - 1];
+      }
+      if (lastRowWeek) {
+        lastWeekCarry = Number(lastRowWeek.price);
+        weekPrices.push({ time: `Week ${w}`, price: lastWeekCarry });
+      } else {
+        // fallback: previous week carry, else monthLastPrice, else global closest
+        if (lastWeekCarry !== null) {
+          weekPrices.push({ time: `Week ${w}`, price: lastWeekCarry });
+        } else if (monthLastPrice !== null) {
+          weekPrices.push({ time: `Week ${w}`, price: monthLastPrice });
+          lastWeekCarry = monthLastPrice;
+        } else {
+          // global closest target = mid-date of week (use first date of week)
+          const targetDate = datesInWeek.length ? datesInWeek[0] : monthDates[0];
+          const targetEpoch = dateToEpochSec(targetDate, "12:00:00");
+          const g = findClosestGlobal(targetEpoch);
+          if (g) {
+            weekPrices.push({ time: `Week ${w}`, price: Number(g.price) });
+            lastWeekCarry = Number(g.price);
+          } else {
+            weekPrices.push({ time: `Week ${w}`, price: null });
+          }
+        }
+      }
+    }
+
+    // Future weeks null: determine which weeks are future
+    // determine week number of today
+    const todayWeekNum = weekOfMonth(todayStr);
+    const price1M = weekPrices.map(wobj => {
+      const wnum = Number(wobj.time.split(" ")[1]);
+      // if week is after today's week => future -> null
+      if (wnum > todayWeekNum) return { time: wobj.time, price: null };
+      return wobj;
+    });
+
+    // --- 1Y: current year Jan..Dec ---
+    const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const year = now.getFullYear();
+    // get dates per month in this year
+    function monthDateRange(y, m) {
+      const start = new Date(y, m, 1).toISOString().slice(0,10);
+      const end = new Date(y, m+1, 0).toISOString().slice(0,10);
+      return getDateRange(start, end);
+    }
+    // find last price in year
+    let yearLastPrice = null;
+    for (const r of rows) {
+      const [yStr] = r.date.split("-");
+      if (Number(yStr) === year) yearLastPrice = Number(r.price);
+    }
+    const price1Y = [];
+    for (let m = 0; m < 12; m++) {
+      const dates = monthDateRange(year, m);
+      let thisMonthLast = null;
+      for (const d of dates) {
+        if (byDate[d] && byDate[d].length) thisMonthLast = Number(byDate[d][byDate[d].length - 1].price);
+      }
+      if (thisMonthLast !== null) {
+        // if month > current month => future -> null
+        const monthIndexNow = now.getMonth();
+        if (m > monthIndexNow) price1Y.push({ time: monthNames[m], price: null });
+        else price1Y.push({ time: monthNames[m], price: thisMonthLast });
+      } else {
+        // month missing -> use year's last price (period year's last). If no year data -> null
+        if (yearLastPrice !== null) {
+          // future months still null
+          const monthIndexNow = now.getMonth();
+          if (m > monthIndexNow) price1Y.push({ time: monthNames[m], price: null });
+          else price1Y.push({ time: monthNames[m], price: yearLastPrice });
+        } else {
+          price1Y.push({ time: monthNames[m], price: null });
+        }
+      }
+    }
+
+    // Build final PRICE_DATA
+    const PRICE_DATA = {
+      "1D": price1D,
+      "1W": price1W,
+      "1M": price1M,
+      "1Y": price1Y
+    };
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify(PRICE_DATA, null, 2));
+  });
 }
 
 module.exports = {
