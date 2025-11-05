@@ -631,19 +631,16 @@ function getAllBuyingPrices(req, res) {
       } else {
         // Missing date → fill with lastFinalPrice or fallbackPrice
         const usePrice = lastFinalPrice ?? fallbackPrice;
-        if (date === today) {
-          // Today → future hours null
-          timeSlots.forEach(slot => {
-            const displayTime = slot.replace(/^0/, "");
-            const slotSec = timeToSeconds(slot + ":00");
+        timeSlots.forEach(slot => {
+          const displayTime = slot.replace(/^0/, "");
+          const slotSec = timeToSeconds(slot + ":00");
+          if (date === today) {
+            // Today → future hours null
             dateData[displayTime] = slotSec <= currentSec ? usePrice : null;
-          });
-        } else if (usePrice !== null) {
-          timeSlots.forEach(slot => {
-            const displayTime = slot.replace(/^0/, "");
+          } else if (usePrice !== null) {
             dateData[displayTime] = usePrice;
-          });
-        }
+          }
+        });
       }
 
       finalOutput[date] = dateData;
