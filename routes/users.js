@@ -304,9 +304,9 @@ function updateUser(req, res, userid) {
 
             const user = rows[0].map(u => {
               return {
-                fullname: user.fullname,
-                phone: user.phone,
-                profile: `${filepath}${user.photo}`
+                fullname: u.fullname,
+                phone: u.phone,
+                profile: `${filepath}${u.photo}`
               }
             });
 
