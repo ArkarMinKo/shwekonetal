@@ -263,6 +263,22 @@ function approveSale(req, res, saleId) {
                         return res.end(JSON.stringify({ error: err.message }));
                     }
 
+                    // ---------- NEW DELIVERY FEES LOGIC START ----------
+                    if (sale.type === "delivery") {
+                        const { deli_fees, service_fees } = req.body || {};
+                        if (deli_fees !== undefined && service_fees !== undefined) {
+                            const updateFeesSql = `
+                                UPDATE sales 
+                                SET deli_fees = ?, service_fees = ?
+                                WHERE id = ?
+                            `;
+                            db.query(updateFeesSql, [deli_fees, service_fees, saleId], (err) => {
+                                if (err) console.error("Delivery fees update error:", err);
+                            });
+                        }
+                    }
+                    // ---------- NEW DELIVERY FEES LOGIC END ----------
+
                     // ---------- OWN_GOLD LOGIC START ----------
                     if (sale.type === "buy") {
                         const ownGoldId = generateOwnGoldId(sale.userid, sale.created_at);
