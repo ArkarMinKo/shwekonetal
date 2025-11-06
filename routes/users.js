@@ -302,13 +302,14 @@ function updateUser(req, res, userid) {
               return res.end(JSON.stringify({ message: "User updated, but fetch failed" }));
             }
 
-            const user = rows[0].map(u => {
-              return {
-                fullname: u.fullname,
-                phone: u.phone,
-                profile: `${filepath}${u.photo}`
-              }
-            });
+            const fetchedUser = rows[0]; 
+
+            // Create the formatted user object (NOT an array)
+            const user = {
+              fullname: fetchedUser.fullname,
+              phone: fetchedUser.phone,
+              profile: `${filepath}${fetchedUser.photo}` // Assuming `filepath` is defined
+            };
 
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ message: "အသုံးပြုသူ ပြင်ဆင်ပြီးပါပြီ", user }));
