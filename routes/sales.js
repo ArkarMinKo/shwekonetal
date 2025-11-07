@@ -366,7 +366,7 @@ function approveSale(req, res, saleId) {
                                         const latestyway = parseInt(formulaResult[0]?.yway) || 128;
 
                                         const latestYwayPrice = latestPrice / latestyway;
-                                        const salesYwayPrice =  sale.price / latestyway;
+                                        
 
                                         for (let goldRow of goldResults) {
                                             if (remainingGold <= 0) break;
@@ -376,6 +376,7 @@ function approveSale(req, res, saleId) {
                                             availableGold -= deductGold;
                                             remainingGold -= deductGold;
 
+                                            const salesYwayPrice =  goldRow.price / latestyway;
                                             const profit = (deductGold * latestYwayPrice) - (deductGold * salesYwayPrice);
 
                                             if (availableGold <= 0) {
