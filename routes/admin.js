@@ -326,7 +326,69 @@ function verifyAdminPasscode(req, res) {
                     const match = await bcrypt.compare(passcode, row.passcode);
                     if (match) {
                         matched = true;
-                        break; // တစ်ခုပဲ တွေ့တာနဲ့ ရပ်
+                        break;
+                    }
+                }
+
+                if (matched) {
+                    res.statusCode = 200;
+                    res.end(JSON.stringify({
+                        success: true,
+                        message: "Passcode verified successfully"
+                    }));
+                } else {
+                    res.statusCode = 403;
+                    res.end(JSON.stringify({
+                        success: false,
+                        message: "Invalid passcode"
+                    }));
+                }
+            });
+        } catch (error) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    });
+}
+
+// --- VERIFY OWNER PASSCODE ---
+function verifyOwnerPasscode(req, res) {
+    const form = new formidable.IncomingForm();
+
+    form.parse(req, async (err, fields) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const passcodeField = fields.passcode;
+        const passcode = Array.isArray(passcodeField) ? passcodeField[0].toString() : passcodeField.toString();
+
+        if (!passcode) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Passcode is required" }));
+        }
+
+        try {
+            const sql = "SELECT passcode FROM admin WHERE id = 'A001'";
+            db.query(sql, async (err, results) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+
+                if (results.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "No admin passcodes found" }));
+                }
+
+                let matched = false;
+
+                for (const row of results) {
+                    const match = await bcrypt.compare(passcode, row.passcode);
+                    if (match) {
+                        matched = true;
+                        break;
                     }
                 }
 
@@ -357,5 +419,6 @@ module.exports = {
     updateAdminInfo,
     getAdminsById,
     loginAdmin,
-    verifyAdminPasscode
+    verifyAdminPasscode,
+    verifyOwnerPasscode
 };

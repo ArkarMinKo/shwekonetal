@@ -111,7 +111,8 @@ const server = http.createServer(async (req, res) => {
     admin.getAdminsById(req, res, id);
   }
 
-  else if (pathName === "/admin/verify-admin-passcode" && method === "POST") admin.verifyAdminPasscode(req, res)
+  else if (pathName === "/admin/verify-admin-passcode" && method === "POST") admin.verifyAdminPasscode(req, res);
+  else if (pathName === "/admin/verify-owner-passcode" && method === "POST") admin.verifyOwnerPasscode(req, res);
 
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
