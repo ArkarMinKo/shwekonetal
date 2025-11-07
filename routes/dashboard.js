@@ -337,7 +337,7 @@ function revenueGoldChart(req, res) {
 // --- Top Wallet ---
 function topWallet(req, res) {
   const usersSql = `
-    SELECT id, fullname AS user, gold
+    SELECT state, fullname AS user, gold
     FROM users
     ORDER BY gold DESC
     LIMIT 3
@@ -351,7 +351,7 @@ function topWallet(req, res) {
 
     const TOP_WALLETS = rows.map(row => ({
       user: row.user,
-      id: row.id,
+      state: row.state,
       gold: row.gold,
     }));
 
