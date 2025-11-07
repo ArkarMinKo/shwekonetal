@@ -8,7 +8,26 @@ const { generatePhotoName } = require("../utils/photoNameGenerator");
 
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+// --- GET ADMIN ---
+function getAdmins(req, res) {
+    const sql = `
+        SELECT id, name, photo, email, phone, gender, role
+        FROM admin
+        ORDER BY id ASC
+    `;
 
+    db.query(sql, (err, results) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.statusCode = 200;
+        res.end(JSON.stringify({ success: true, data: results }));
+    });
+}
+
+// --- CREATE ADMIN ---
 function createAdmin(req, res) {
     const form = new formidable.IncomingForm({ multiples: false, uploadDir: UPLOAD_DIR, keepExtensions: true });
 
@@ -107,4 +126,7 @@ function createAdmin(req, res) {
     });
 }
 
-module.exports = { createAdmin };
+module.exports = { 
+    getAdmins,
+    createAdmin 
+};
