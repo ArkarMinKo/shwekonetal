@@ -352,7 +352,7 @@ function buyVSsell(req, res){
         WHERE status = 'approved'
     `;
 
-    db.query(transactionsSql, [date], (err, transactionsResult) => {
+    db.query(transactionsSql, (err, transactionsResult) => {
         if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
