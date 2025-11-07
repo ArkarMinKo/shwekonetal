@@ -99,7 +99,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- ‌Admin CRUD ---
-  else if (pathName === "/users" && method === "POST") admin.createAdmin(req,res);
+  else if (pathName === "/admin" && method === "POST") admin.createAdmin(req,res);
 
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
