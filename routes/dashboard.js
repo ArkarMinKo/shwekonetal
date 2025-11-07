@@ -363,19 +363,19 @@ function buyVSsell(req, res){
 
         transactionsResult.forEach(sale => {
             if(sale.type === 'buy'){
-                buyTotal += sale.gold;
+                buyTotal += parseFloat(sale.gold);
             }else if(sale.type === 'sell'){
-                sellTotal += sale.gold;
+                sellTotal += parseFloat(sale.gold);
             }
         })
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(
           {
-            label: "Buy", value: buyTotal
+            label: "Buy", value: parseFloat(buyTotal.toFixed(2))
           },
           {
-            label: "Sell", value: sellTotal
+            label: "Sell", value: parseFloat(sellTotal.toFixed(2))
           }
         ));
     })
