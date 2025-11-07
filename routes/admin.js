@@ -132,7 +132,7 @@ function createAdmin(req, res) {
             if (roleStr === "owner") {
                 res.writeHead(403, { "Content-Type": "application/json" });
                 return res.end(JSON.stringify({
-                    message: "Owner account ဖွင့်ရန် ဒီ API မသုံးပါ။"
+                    message: "Owner account ဖွင့်ခွင့်မရှိပါ"
                 }));
             }
 
