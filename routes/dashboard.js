@@ -371,12 +371,14 @@ function buyVSsell(req, res){
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(
-          {
-            label: "Buy", value: parseFloat(buyTotal.toFixed(2))
-          },
-          {
-            label: "Sell", value: parseFloat(sellTotal.toFixed(2))
-          }
+            [
+                {
+                  label: "Buy", value: parseFloat(buyTotal.toFixed(2))
+                },
+                {
+                  label: "Sell", value: parseFloat(sellTotal.toFixed(2))
+                }
+            ]
         ));
     })
 }
