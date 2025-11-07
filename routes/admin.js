@@ -13,7 +13,7 @@ function getAdmins(req, res) {
     const sql = `
         SELECT id, name, photo, email, phone, gender, role
         FROM admin
-        ORDER BY id ASC
+        ORDER BY id DESC
     `;
 
     db.query(sql, (err, results) => {
