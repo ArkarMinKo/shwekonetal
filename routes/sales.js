@@ -204,6 +204,7 @@ function approveSale(req, res, saleId) {
         }
 
         const { deli_fees, service_fees, seller, manager } = fields;
+        const managerStr = Array.isArray(manager) ? manager[0].toString() : manager.toString();
 
         const getSaleSql = "SELECT * FROM sales WHERE id = ?";
         db.query(getSaleSql, [saleId], (err, salesResult) => {
@@ -228,7 +229,7 @@ function approveSale(req, res, saleId) {
             }
 
             // ✅ Manager Passcode Check
-            const getAdminSql = "SELECT name, passcode FROM admin";
+            const getAdminSql = "SELECT name, passcode FROM admin WHERE role = 'owner' OR role = 'manager'";
             db.query(getAdminSql, async (err, admins) => {
                 if (err) {
                     res.statusCode = 500;
@@ -237,7 +238,7 @@ function approveSale(req, res, saleId) {
 
                 let managerName = null;
                 for (const admin of admins) {
-                    if (await bcrypt.compare(manager.toString(), admin.passcode)) {
+                    if (await bcrypt.compare(managerStr, admin.passcode)) {
                         managerName = admin.name;
                         break;
                     }
