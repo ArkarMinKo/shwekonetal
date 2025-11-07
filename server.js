@@ -380,9 +380,16 @@ wss.on("connection", (ws) => {
     // --- Handle init handshake ---
     if (data.type === "init" && data.userId) {
       if (!clients[data.userId]) clients[data.userId] = [];
-      clients[data.userId].push(ws);
-      ws._userId = data.userId;
-      console.log("WS init from:", data.userId);
+      // avoid duplicate entries
+      if (!clients[data.userId].includes(ws)) {
+        clients[data.userId].push(ws);
+        ws._userId = data.userId;
+        console.log("WS init from:", data.userId);
+      } else {
+        // update ws._userId in case it wasn't set
+        ws._userId = data.userId;
+        console.log("WS init (duplicate) from:", data.userId);
+      }
       return;
     }
 
@@ -419,9 +426,11 @@ wss.on("connection", (ws) => {
       console.log(`Receiver [${receiver}] not online`);
     }
 
-    // --- Echo to sender (so their UI also updates immediately) ---
+    // --- Echo to sender's other sockets (exclude the socket that sent this message)
     if (clients[sender]) {
       clients[sender].forEach((socket) => {
+        // skip the original socket to avoid duplicate local echo
+        if (socket === ws) return;
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify(payload));
         }
