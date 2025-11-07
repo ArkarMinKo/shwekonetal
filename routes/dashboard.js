@@ -95,9 +95,9 @@ function summarys(req, res) {
 
                             transactionsResult.forEach(data => {
                                 if(data.type === 'buy'){
-                                    totalBuyGold += data.gold;
+                                    totalBuyGold += parseFloat(data.gold);
                                 }else if(data.type === 'sell'){
-                                    totalSellGold += data.gold;
+                                    totalSellGold += parseFloat(data.gold);
                                 }
                             })
 
