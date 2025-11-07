@@ -14,6 +14,7 @@ fs.mkdirSync(USER_UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(STICKER_UPLOAD_DIR, { recursive: true });
 
 // Routes
+const admin = require('./routes/admin')
 const users = require("./routes/users");
 const goldPrices = require("./routes/goldPrices"); 
 const sales = require("./routes/sales");
@@ -96,6 +97,9 @@ const server = http.createServer(async (req, res) => {
   else if(pathName === "/verify-email-code" && method === "POST"){
     users.verifyEmailCodeBeforeCreate(req, res);
   }
+
+  // --- ‌Admin CRUD ---
+  else if (pathName === "/users" && method === "POST") admin.createAdmin(req,res);
 
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);

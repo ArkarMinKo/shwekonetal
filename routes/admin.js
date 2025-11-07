@@ -24,54 +24,74 @@ function createAdmin(req, res) {
                 return res.end(JSON.stringify({ error: err.message }));
             }
 
-            const { name, password, passcode, email, phone, gender, position } = fields;
-            const photoFile = files.photo;
+            const { name, password, passcode, email, phone, gender, role } = fields;
+            const photoFile = Array.isArray(files.photo) ? files.photo[0] : files.photo;
 
-            if (!name || !password || !passcode || !email || !gender) {
+            if (!name || !password || !email || !gender) {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({ error: "Missing required fields" }));
             }
 
             try {
-                // Hash password and passcode
-                const hashedPassword = await bcrypt.hash(password, 10);
-                const hashedPasscode = await bcrypt.hash(passcode, 10);
-
-                let photoName = null;
-                if (photoFile && photoFile.originalFilename) {
-                    photoName = generatePhotoName(newId, photoFile.originalFilename);
-                    const newPath = path.join(UPLOAD_DIR, photoName);
-                    fs.renameSync(photoFile.filepath, newPath);
-                }
-
-                const sql = `
-                    INSERT INTO admin (id, name, photo, password, passcode, email, phone, gender, position)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `;
-
-                db.query(
-                    sql,
-                    [
-                        newId,
-                        name,
-                        photoName,
-                        hashedPassword,
-                        hashedPasscode,
-                        email,
-                        phone || null,
-                        gender,
-                        position || "seller",
-                    ],
-                    (err) => {
-                        if (err) {
-                            res.statusCode = 500;
-                            return res.end(JSON.stringify({ error: err.message }));
-                        }
-
-                        res.statusCode = 201;
-                        res.end(JSON.stringify({ success: true, message: "Admin created successfully", id: newId }));
+                // Check if email already exists
+                const checkEmailSql = "SELECT email FROM admin WHERE email = ?";
+                db.query(checkEmailSql, [email], async (err, results) => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
                     }
-                );
+
+                    if (results.length > 0) {
+                        res.statusCode = 409; // Conflict
+                        return res.end(JSON.stringify({ error: "Email already exists" }));
+                    }
+
+                    // Hash password and passcode
+                    const hashedPassword = await bcrypt.hash(password, 10);
+                    const hashedPasscode = passcode ? await bcrypt.hash(passcode, 10) : null;
+
+                    let photoName = null;
+                    if (photoFile && photoFile.originalFilename) {
+                        photoName = generatePhotoName(newId, photoFile.originalFilename);
+                        const newPath = path.join(UPLOAD_DIR, photoName);
+                        fs.renameSync(photoFile.filepath, newPath);
+                    }
+
+                    const insertSql = `
+                        INSERT INTO admin (id, name, photo, password, passcode, email, phone, gender, role)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+
+                    db.query(
+                        insertSql,
+                        [
+                            newId,
+                            name,
+                            photoName,
+                            hashedPassword,
+                            hashedPasscode,
+                            email,
+                            phone || null,
+                            gender,
+                            role || "seller",
+                        ],
+                        (err) => {
+                            if (err) {
+                                res.statusCode = 500;
+                                return res.end(JSON.stringify({ error: err.message }));
+                            }
+
+                            res.statusCode = 201;
+                            res.end(
+                                JSON.stringify({
+                                    success: true,
+                                    message: "Admin created successfully",
+                                    id: newId,
+                                })
+                            );
+                        }
+                    );
+                });
             } catch (error) {
                 res.statusCode = 500;
                 res.end(JSON.stringify({ error: error.message }));
