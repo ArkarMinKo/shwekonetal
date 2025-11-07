@@ -220,7 +220,7 @@ function verifyAdminPasscode(req, res) {
         }
 
         const passcodeField = fields.passcode;
-        const passcode = Array.isArray(passcodeField) ? passcodeField[0] : passcodeField;
+        const passcode = Array.isArray(passcodeField) ? passcodeField[0].toString() : passcodeField.toString();
 
         if (!passcode) {
             res.statusCode = 400;
