@@ -211,55 +211,64 @@ function createAdmin(req, res) {
 
 // --- VERIFY ADMIN PASSCODE ---
 function verifyAdminPasscode(req, res) {
-    const { passcode } = req.body;
+    const form = new formidable.IncomingForm();
 
-    if (!passcode) {
-        res.statusCode = 400;
-        return res.end(JSON.stringify({ error: "Passcode is required" }));
-    }
+    form.parse(req, async (err, fields) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
 
-    try {
-        const sql = "SELECT passcode FROM admin WHERE passcode IS NOT NULL";
-        db.query(sql, async (err, results) => {
-            if (err) {
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: err.message }));
-            }
+        const passcodeField = fields.passcode;
+        const passcode = Array.isArray(passcodeField) ? passcodeField[0] : passcodeField;
 
-            if (results.length === 0) {
-                res.statusCode = 404;
-                return res.end(JSON.stringify({ error: "No admin passcodes found" }));
-            }
+        if (!passcode) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Passcode is required" }));
+        }
 
-            // Compare given passcode with ALL stored hashed passcodes
-            let matched = false;
-
-            for (const row of results) {
-                const match = await bcrypt.compare(passcode, row.passcode);
-                if (match) {
-                    matched = true;
-                    break; // တစ်ခုပဲ တွေ့တာနဲ့ ရပ်
+        try {
+            const sql = "SELECT passcode FROM admin WHERE passcode IS NOT NULL";
+            db.query(sql, async (err, results) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
                 }
-            }
 
-            if (matched) {
-                res.statusCode = 200;
-                res.end(JSON.stringify({
-                    success: true,
-                    message: "Passcode verified successfully"
-                }));
-            } else {
-                res.statusCode = 403;
-                res.end(JSON.stringify({
-                    success: false,
-                    message: "Invalid passcode"
-                }));
-            }
-        });
-    } catch (error) {
-        res.statusCode = 500;
-        res.end(JSON.stringify({ error: error.message }));
-    }
+                if (results.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "No admin passcodes found" }));
+                }
+
+                let matched = false;
+
+                for (const row of results) {
+                    const match = await bcrypt.compare(passcode, row.passcode);
+                    if (match) {
+                        matched = true;
+                        break; // တစ်ခုပဲ တွေ့တာနဲ့ ရပ်
+                    }
+                }
+
+                if (matched) {
+                    res.statusCode = 200;
+                    res.end(JSON.stringify({
+                        success: true,
+                        message: "Passcode verified successfully"
+                    }));
+                } else {
+                    res.statusCode = 403;
+                    res.end(JSON.stringify({
+                        success: false,
+                        message: "Invalid passcode"
+                    }));
+                }
+            });
+        } catch (error) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    });
 }
 
 module.exports = { 
