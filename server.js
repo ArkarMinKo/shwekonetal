@@ -104,7 +104,7 @@ const server = http.createServer(async (req, res) => {
   // --- ‌Admin CRUD ---
   else if (pathName === "/admin" && method === "POST") admin.createAdmin(req, res);
   else if (pathName === "/admin" && method === "GET") admin.getAdmins(req, res);
-  else if (pathName === "/admin" && method === "PUT") admin.getAdmins(req, res);
+  else if (pathName === "/admin" && method === "PUT") admin.updateAdminInfo(req, res);
 
   else if (pathName.startsWith("/admin/") && method === "GET") {
     const id = pathName.split("/")[2];
