@@ -27,7 +27,7 @@ function loginAdmin(req, res) {
       return res.end(JSON.stringify({ message: "Email နဲ့ Password တို့ထည့်ပါ" }));
     }
 
-    const sql = "SELECT id, password FROM admin WHERE email = ?";
+    const sql = "SELECT id, type, password FROM admin WHERE email = ?";
     db.query(sql, [emailStr], (err, rows) => {
       if (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
@@ -57,6 +57,7 @@ function loginAdmin(req, res) {
           JSON.stringify({
             message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်။",
             id: user.id,
+            type: user.type
           })
         );
       });
