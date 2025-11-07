@@ -26,6 +26,13 @@ function createAdmin(req, res) {
 
             const { name, password, passcode, email, phone, gender, role } = fields;
             const photoFile = Array.isArray(files.photo) ? files.photo[0] : files.photo;
+            const nameStr = Array.isArray(name) ? name[0] : name;
+            const passwordStr = Array.isArray(password) ? password[0] : password;
+            const passcodeStr = Array.isArray(passcode) ? passcode[0] : passcode;
+            const emailStr = Array.isArray(email) ? email[0] : email;
+            const phoneStr = Array.isArray(phone) ? phone[0] : phone;
+            const genderStr = Array.isArray(gender) ? gender[0] : gender;
+            const roleStr = Array.isArray(role) ? role[0] : role;
 
             if (!name || !password || !email || !gender) {
                 res.statusCode = 400;
@@ -35,7 +42,7 @@ function createAdmin(req, res) {
             try {
                 // Check if email already exists
                 const checkEmailSql = "SELECT email FROM admin WHERE email = ?";
-                db.query(checkEmailSql, [email], async (err, results) => {
+                db.query(checkEmailSql, [emailStr], async (err, results) => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
@@ -47,8 +54,8 @@ function createAdmin(req, res) {
                     }
 
                     // Hash password and passcode
-                    const hashedPassword = await bcrypt.hash(password, 10);
-                    const hashedPasscode = passcode ? await bcrypt.hash(passcode, 10) : null;
+                    const hashedPassword = await bcrypt.hash(passwordStr, 10);
+                    const hashedPasscode = passcodeStr ? await bcrypt.hash(passcodeStr, 10) : null;
 
                     let photoName = null;
                     if (photoFile && photoFile.originalFilename) {
@@ -66,14 +73,14 @@ function createAdmin(req, res) {
                         insertSql,
                         [
                             newId,
-                            name,
+                            nameStr,
                             photoName,
                             hashedPassword,
                             hashedPasscode,
-                            email,
-                            phone || null,
-                            gender,
-                            role || "seller",
+                            emailStr,
+                            phoneStr || null,
+                            genderStr,
+                            roleStr || "seller",
                         ],
                         (err) => {
                             if (err) {
