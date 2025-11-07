@@ -300,6 +300,11 @@ const server = http.createServer(async (req, res) => {
     sales.sellTable(req, res);
   }
 
+  // --- Get deli table ---
+  else if (pathName === "/deliTable" && method === "GET") {
+    sales.deliTable(req, res);
+  }
+
   // --- Get summarys dashboard ---
   else if (pathName === "/dashboard-summarys" && method === "GET") {
     dashboard.summarys(req, res);

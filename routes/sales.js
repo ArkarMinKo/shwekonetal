@@ -1040,10 +1040,88 @@ function buyTable(req, res){
     });
 }
 
-// --- Buy table ---
+// --- Sell table ---
 function sellTable(req, res){
     const sql = `
         SELECT * FROM sales WHERE type = 'sell' and status = 'approved' ORDER BY created_at DESC
+    `;
+
+    db.query(sql, (err, rows) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const getLatestFormulaSql = `
+            SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+        `;
+
+        db.query(getLatestFormulaSql, (err, formulaResult) => {
+            if (err) {
+                console.error("Price fetch error:", err);
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+            const ywaybypal = latestyway / 16;
+
+            let priceTotal = 0;
+            let goldTotal = 0;
+
+            const formattedRows = rows.map((r) => {
+                const goldFloat = parseFloat(r.gold);
+                const basePrice = parseFloat(r.price);
+
+                // calculate new price
+                const calculatedPrice = goldFloat * basePrice / latestyway;
+
+                priceTotal += calculatedPrice;
+                goldTotal += goldFloat;
+
+                // convert gold to kyat-pal-yway string
+                const kyat = Math.floor(goldFloat / latestyway);
+                const palbyyway = goldFloat / ywaybypal;
+                const pal = Math.floor(palbyyway % 16);
+                const yway = (goldFloat % ywaybypal).toFixed(2);
+
+                let goldString = "";
+                if (kyat > 0) goldString += `${kyat} ကျပ် `;
+                if (pal > 0) goldString += `${pal} ပဲ `;
+                if (yway > 0) goldString += `${yway} ရွေး`;
+
+                if (!goldString.trim()) goldString = "0";
+
+                return {
+                    ...r,
+                    gold: goldString.trim(),
+                    price: calculatedPrice,
+                };
+            });
+
+            // convert gold to kyat-pal-yway string
+            const kyat = Math.floor(goldTotal / latestyway);
+            const palbyyway = goldTotal / ywaybypal;
+            const pal = Math.floor(palbyyway % 16);
+            const yway = (goldTotal % ywaybypal).toFixed(2);
+
+            let goldString = "";
+            if (kyat > 0) goldString += `${kyat} ကျပ် `;
+            if (pal > 0) goldString += `${pal} ပဲ `;
+            if (yway > 0) goldString += `${yway} ရွေး`;
+
+            if (!goldString.trim()) goldString = "0";
+
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: true, priceTotal: parseInt(priceTotal), goldTotal: goldString, data: formattedRows }));
+        });
+    });
+}
+
+// --- Delivery table ---
+function deliTable(req, res){
+    const sql = `
+        SELECT * FROM sales WHERE type = 'delivery' and status = 'approved' ORDER BY created_at DESC
     `;
 
     db.query(sql, (err, rows) => {
@@ -1132,5 +1210,6 @@ module.exports = {
         getAllApprove,
         compareBuyAndSellChart,
         buyTable,
-        sellTable
+        sellTable,
+        deliTable
     };
