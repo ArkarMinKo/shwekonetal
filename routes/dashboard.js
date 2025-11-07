@@ -10,6 +10,11 @@ function summarys(req, res) {
         SELECT gold, type
         FROM sales
         WHERE status = 'approved'
+    `;
+    const todayTransactionsSql = `
+        SELECT id
+        FROM sales
+        WHERE status = 'approved'
         AND DATE(created_at) = ?
     `;
     const usersSql = `SELECT id, DATE(create_at) AS created_at FROM users`;
@@ -29,118 +34,125 @@ function summarys(req, res) {
                 return res.end(JSON.stringify({ error: err.message }));
             }
 
-            db.query(transactionsSql, [date], (err, transactionsResult) => {
+            db.query(transactionsSql, (err, transactionsResult) => {
                 if (err) {
                     res.statusCode = 500;
                     return res.end(JSON.stringify({ error: err.message }));
                 }
 
-                db.query(usersSql, (err, usersResult) => {
+                db.query(todayTransactionsSql, [date], (err, todayTransactionsResult) => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
                     }
 
-                    db.query(getLatestFormulaSql, (err, formulaResult) => {
+                    db.query(usersSql, (err, usersResult) => {
                         if (err) {
-                            console.error("Price fetch error:", err);
                             res.statusCode = 500;
                             return res.end(JSON.stringify({ error: err.message }));
                         }
 
-                        if (!buyingPricesResult.length || !sellingPricesResult.length) {
-                            res.statusCode = 404;
-                            return res.end(JSON.stringify({ error: "Not enough price data" }));
-                        }
-
-                        const newBuyingPrice = parseInt(buyingPricesResult[0].price);
-                        const oldBuyingPrice = parseInt(buyingPricesResult[1]?.price || buyingPricesResult[0].price);
-                        const buyDifferentpercentage = parseFloat(((newBuyingPrice - oldBuyingPrice) / oldBuyingPrice * 100).toFixed(2));
-
-                        const formattedBuyDifferentPercentage = 
-                            buyDifferentpercentage > 0
-                                ?  `+ ${buyDifferentpercentage} %`
-                                : buyDifferentpercentage < 0
-                                ? `- ${Math.abs(buyDifferentpercentage)} %`
-                                : `0 %`
-                        
-                        const newSellingPrice = parseInt(sellingPricesResult[0].price);
-                        const oldSellingPrice = parseInt(sellingPricesResult[1]?.price || sellingPricesResult[0].price);
-                        const sellDifferentpercentage = parseFloat(((newSellingPrice - oldSellingPrice) / oldSellingPrice * 100).toFixed(2));
-
-                        const formattedSellDifferentPercentage =
-                            sellDifferentpercentage > 0
-                                ? `+ ${sellDifferentpercentage} %`
-                                : sellDifferentpercentage < 0
-                                ? `- ${Math.abs(sellDifferentpercentage)} %`
-                                : `0 %`;
-                        
-                        const transactionsCount = transactionsResult.length;
-                        const allUserCount = usersResult.length;
-                        const todayUserCount = usersResult.filter(user => user.created_at === date).length;
-
-                        let totalBuyGold = 0;
-                        let totalSellGold = 0;
-
-                        transactionsResult.forEach(data => {
-                            if(data.type === 'buy'){
-                                totalBuyGold += data.gold;
-                            }else if(data.type === 'sell'){
-                                totalSellGold += data.gold;
+                        db.query(getLatestFormulaSql, (err, formulaResult) => {
+                            if (err) {
+                                console.error("Price fetch error:", err);
+                                res.statusCode = 500;
+                                return res.end(JSON.stringify({ error: err.message }));
                             }
-                        })
 
-                        const differentGold = parseFloat((totalSellGold - totalBuyGold).toFixed(2));
-                        const dfGoldPst = Math.abs(differentGold);
+                            if (!buyingPricesResult.length || !sellingPricesResult.length) {
+                                res.statusCode = 404;
+                                return res.end(JSON.stringify({ error: "Not enough price data" }));
+                            }
 
-                        const latestyway = parseInt(formulaResult[0]?.yway) || 128;
-                        const ywaybypal = latestyway / 16;
+                            const newBuyingPrice = parseInt(buyingPricesResult[0].price);
+                            const oldBuyingPrice = parseInt(buyingPricesResult[1]?.price || buyingPricesResult[0].price);
+                            const buyDifferentpercentage = parseFloat(((newBuyingPrice - oldBuyingPrice) / oldBuyingPrice * 100).toFixed(2));
 
-                        // convert gold to kyat-pal-yway string
-                        const kyat = Math.floor(dfGoldPst / latestyway);
-                        const palbyyway = dfGoldPst / ywaybypal;
-                        const pal = Math.floor(palbyyway % 16);
-                        const yway = parseFloat((dfGoldPst % ywaybypal).toFixed(2));
+                            const formattedBuyDifferentPercentage = 
+                                buyDifferentpercentage > 0
+                                    ?  `+ ${buyDifferentpercentage} %`
+                                    : buyDifferentpercentage < 0
+                                    ? `- ${Math.abs(buyDifferentpercentage)} %`
+                                    : `0 %`
+                            
+                            const newSellingPrice = parseInt(sellingPricesResult[0].price);
+                            const oldSellingPrice = parseInt(sellingPricesResult[1]?.price || sellingPricesResult[0].price);
+                            const sellDifferentpercentage = parseFloat(((newSellingPrice - oldSellingPrice) / oldSellingPrice * 100).toFixed(2));
 
-                        let goldString = "";
-                        if (kyat > 0) goldString += `${kyat} ကျပ် `;
-                        if (pal > 0) goldString += `${pal} ပဲ `;
-                        if (yway > 0) goldString += `${yway} ရွေး`;
+                            const formattedSellDifferentPercentage =
+                                sellDifferentpercentage > 0
+                                    ? `+ ${sellDifferentpercentage} %`
+                                    : sellDifferentpercentage < 0
+                                    ? `- ${Math.abs(sellDifferentpercentage)} %`
+                                    : `0 %`;
+                            
+                            const transactionsCount = todayTransactionsResult.length;
+                            const allUserCount = usersResult.length;
+                            const todayUserCount = usersResult.filter(user => user.created_at === date).length;
 
-                        if (!goldString.trim()) goldString = "0 ရွေး";
+                            let totalBuyGold = 0;
+                            let totalSellGold = 0;
 
-                        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                        res.end(JSON.stringify(
-                            {
-                                success: true,
-                                buyingPrices: {
-                                    price: newBuyingPrice,
-                                    differentPercentage: formattedBuyDifferentPercentage
-                                },
-                                sellingPrices: {
-                                    price: newSellingPrice,
-                                    differentPercentage: formattedSellDifferentPercentage
-                                },
-                                transactions: {
-                                    count: transactionsCount
-                                },
-                                revenueGold: {
-                                    differentGold: 
-                                        differentGold > 0
-                                            ? `+ ${goldString}`
-                                            : differentGold < 0
-                                            ? `- ${goldString}`
-                                            : `${goldString}`
-                                },
-                                usersCount: {
-                                    allUsers: allUserCount,
-                                    todayUsers: 
-                                        todayUserCount > 0
-                                            ? `+ ${todayUserCount}`
-                                            : `0`
+                            transactionsResult.forEach(data => {
+                                if(data.type === 'buy'){
+                                    totalBuyGold += data.gold;
+                                }else if(data.type === 'sell'){
+                                    totalSellGold += data.gold;
                                 }
-                            }
-                        ));
+                            })
+
+                            const differentGold = parseFloat((totalSellGold - totalBuyGold).toFixed(2));
+                            const dfGoldPst = Math.abs(differentGold);
+
+                            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+                            const ywaybypal = latestyway / 16;
+
+                            // convert gold to kyat-pal-yway string
+                            const kyat = Math.floor(dfGoldPst / latestyway);
+                            const palbyyway = dfGoldPst / ywaybypal;
+                            const pal = Math.floor(palbyyway % 16);
+                            const yway = parseFloat((dfGoldPst % ywaybypal).toFixed(2));
+
+                            let goldString = "";
+                            if (kyat > 0) goldString += `${kyat} ကျပ် `;
+                            if (pal > 0) goldString += `${pal} ပဲ `;
+                            if (yway > 0) goldString += `${yway} ရွေး`;
+
+                            if (!goldString.trim()) goldString = "0 ရွေး";
+
+                            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                            res.end(JSON.stringify(
+                                {
+                                    success: true,
+                                    buyingPrices: {
+                                        price: newBuyingPrice,
+                                        differentPercentage: formattedBuyDifferentPercentage
+                                    },
+                                    sellingPrices: {
+                                        price: newSellingPrice,
+                                        differentPercentage: formattedSellDifferentPercentage
+                                    },
+                                    transactions: {
+                                        count: transactionsCount
+                                    },
+                                    revenueGold: {
+                                        differentGold: 
+                                            differentGold > 0
+                                                ? `+ ${goldString}`
+                                                : differentGold < 0
+                                                ? `- ${goldString}`
+                                                : `${goldString}`
+                                    },
+                                    usersCount: {
+                                        allUsers: allUserCount,
+                                        todayUsers: 
+                                            todayUserCount > 0
+                                                ? `+ ${todayUserCount}`
+                                                : `0`
+                                    }
+                                }
+                            ));
+                        })
                     })
                 })
             })
