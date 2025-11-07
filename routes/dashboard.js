@@ -4,8 +4,8 @@ const formidable = require("formidable");
 function summarys(req, res) {
     const date = new Date().toLocaleDateString("en-CA")
 
-    const buyingPricesSql = `SELECT price FROM buying_prices ORDER BY date DESC, time DESC LIMIT 2`;
-    const sellingPricesSql = `SELECT price FROM selling_prices ORDER BY date DESC, time DESC LIMIT 2`;
+    const buyingPricesSql = `SELECT price, date, time FROM buying_prices ORDER BY date DESC, time DESC LIMIT 2`;
+    const sellingPricesSql = `SELECT price, date, time FROM selling_prices ORDER BY date DESC, time DESC LIMIT 2`;
     const transactionsSql = `
         SELECT gold, type
         FROM sales
@@ -126,11 +126,15 @@ function summarys(req, res) {
                                     success: true,
                                     buyingPrices: {
                                         price: newBuyingPrice,
-                                        differentPercentage: formattedBuyDifferentPercentage
+                                        differentPercentage: formattedBuyDifferentPercentage,
+                                        buy_price_time: buyingPricesResult[0].time,
+                                        buy_price_date: buyingPricesResult[0].date
                                     },
                                     sellingPrices: {
                                         price: newSellingPrice,
-                                        differentPercentage: formattedSellDifferentPercentage
+                                        differentPercentage: formattedSellDifferentPercentage,
+                                        sell_price_time: sellingPricesResult[0].time,
+                                        sell_price_date: sellingPricesResult[0].date
                                     },
                                     transactions: {
                                         count: transactionsCount
