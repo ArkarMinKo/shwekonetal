@@ -129,6 +129,13 @@ function createAdmin(req, res) {
             const genderStr = Array.isArray(gender) ? gender[0] : gender;
             const roleStr = Array.isArray(role) ? role[0] : role;
 
+            if (roleStr === "owner") {
+                res.writeHead(403, { "Content-Type": "application/json" });
+                return res.end(JSON.stringify({
+                    message: "Owner account ဖွင့်ရန် ဒီ API မသုံးပါ။"
+                }));
+            }
+
             if (!name || !password || !email || !gender) {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({ error: "Missing required fields" }));
