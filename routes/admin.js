@@ -27,6 +27,25 @@ function getAdmins(req, res) {
     });
 }
 
+// GET ADMIN BY ID
+function getAdminsById(req, res, id) {
+    const sql = `
+        SELECT id, name, photo, email, phone, gender, role
+        FROM admin where id = ?
+        ORDER BY id DESC
+    `;
+
+    db.query(sql, id, (err, results) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        res.statusCode = 200;
+        res.end(JSON.stringify({ success: true, data: results }));
+    });
+}
+
 // --- CREATE ADMIN ---
 function createAdmin(req, res) {
     const form = new formidable.IncomingForm({ multiples: false, uploadDir: UPLOAD_DIR, keepExtensions: true });
@@ -128,5 +147,6 @@ function createAdmin(req, res) {
 
 module.exports = { 
     getAdmins,
-    createAdmin 
+    createAdmin,
+    getAdminsById
 };
