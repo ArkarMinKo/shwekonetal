@@ -1144,7 +1144,6 @@ function deliTable(req, res){
             const latestyway = parseInt(formulaResult[0]?.yway) || 128;
             const ywaybypal = latestyway / 16;
 
-            let priceTotal = 0;
             let goldTotal = 0;
 
             const formattedRows = rows.map((r) => {
@@ -1154,7 +1153,6 @@ function deliTable(req, res){
                 // calculate new price
                 const calculatedPrice = goldFloat * basePrice / latestyway;
 
-                priceTotal += calculatedPrice;
                 goldTotal += goldFloat;
 
                 // convert gold to kyat-pal-yway string
@@ -1191,7 +1189,7 @@ function deliTable(req, res){
             if (!goldString.trim()) goldString = "0";
 
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, priceTotal: parseInt(priceTotal), goldTotal: goldString, data: formattedRows }));
+            res.end(JSON.stringify({ success: true, goldTotal: goldString, data: formattedRows }));
         });
     });
 }
