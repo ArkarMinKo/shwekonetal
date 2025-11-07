@@ -308,7 +308,7 @@ function verifyAdminPasscode(req, res) {
         }
 
         try {
-            const sql = "SELECT passcode FROM admin WHERE passcode IS NOT NULL";
+            const sql = "SELECT passcode FROM admin WHERE role = 'owner' OR role = 'manager'";
             db.query(sql, async (err, results) => {
                 if (err) {
                     res.statusCode = 500;
