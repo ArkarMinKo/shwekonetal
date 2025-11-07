@@ -209,6 +209,86 @@ function createAdmin(req, res) {
     });
 }
 
+// --- UPDATE ADMIN INFO (EXCEPT PASSWORD, PASSCODE, EMAIL) ---
+function updateAdminInfo(req, res) {
+    const form = new formidable.IncomingForm({ multiples: false, uploadDir: UPLOAD_DIR, keepExtensions: true });
+
+    form.parse(req, async (err, fields, files) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const { strid, name, phone, gender, role } = fields;
+        const photoFile = Array.isArray(files.photo) ? files.photo[0] : files.photo;
+        const id = Array.isArray(strid) ? strid[0] : strid;
+        const nameStr = Array.isArray(name) ? name[0] : name;
+        const phoneStr = Array.isArray(phone) ? phone[0] : phone;
+        const genderStr = Array.isArray(gender) ? gender[0] : gender;
+        const roleStr = Array.isArray(role) ? role[0] : role;
+
+        try {
+            // Check if admin exists
+            const checkSql = "SELECT * FROM admin WHERE id = ?";
+            db.query(checkSql, [id], async (err, results) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+
+                if (results.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "Admin not found" }));
+                }
+
+                let updatedPhoto = results[0].photo;
+                if (photoFile && photoFile.originalFilename) {
+                    // Delete old photo if exists
+                    if (updatedPhoto) {
+                        const oldPath = path.join(UPLOAD_DIR, updatedPhoto);
+                        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+                    }
+
+                    // Save new photo
+                    const newPhotoName = generatePhotoName(id, photoFile.originalFilename);
+                    const newPath = path.join(UPLOAD_DIR, newPhotoName);
+                    fs.renameSync(photoFile.filepath, newPath);
+                    updatedPhoto = newPhotoName;
+                }
+
+                const updateSql = `
+                    UPDATE admin
+                    SET name = ?, phone = ?, gender = ?, role = ?, photo = ?
+                    WHERE id = ?
+                `;
+
+                db.query(
+                    updateSql,
+                    [nameStr, phoneStr, genderStr, roleStr, updatedPhoto, id],
+                    (err) => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: err.message }));
+                        }
+
+                        res.statusCode = 200;
+                        res.end(
+                            JSON.stringify({
+                                success: true,
+                                message: "Admin info updated successfully",
+                                updated: { id, name: nameStr, phone: phoneStr, gender: genderStr, role: roleStr, photo: updatedPhoto }
+                            })
+                        );
+                    }
+                );
+            });
+        } catch (error) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    });
+}
+
 // --- VERIFY ADMIN PASSCODE ---
 function verifyAdminPasscode(req, res) {
     const form = new formidable.IncomingForm();
@@ -274,6 +354,7 @@ function verifyAdminPasscode(req, res) {
 module.exports = { 
     getAdmins,
     createAdmin,
+    updateAdminInfo,
     getAdminsById,
     loginAdmin,
     verifyAdminPasscode
