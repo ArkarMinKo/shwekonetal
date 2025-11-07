@@ -102,13 +102,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- ‌Admin CRUD ---
-  else if (pathName === "/admin" && method === "POST") admin.createAdmin(req,res);
+  else if (pathName === "/admin" && method === "POST") admin.createAdmin(req, res);
   else if (pathName === "/admin" && method === "GET") admin.getAdmins(req, res);
 
   else if (pathName.startsWith("/admin/") && method === "GET") {
     const id = pathName.split("/")[2];
     admin.getAdminsById(req, res, id);
   }
+
+  else if (pathName === "/admin/verify-admin-passcode" && method === "POST") admin.verifyAdminPasscode(req, res)
 
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);

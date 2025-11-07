@@ -209,9 +209,63 @@ function createAdmin(req, res) {
     });
 }
 
+// --- VERIFY ADMIN PASSCODE ---
+function verifyAdminPasscode(req, res) {
+    const { passcode } = req.body;
+
+    if (!passcode) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "Passcode is required" }));
+    }
+
+    try {
+        const sql = "SELECT passcode FROM admin WHERE passcode IS NOT NULL";
+        db.query(sql, async (err, results) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            if (results.length === 0) {
+                res.statusCode = 404;
+                return res.end(JSON.stringify({ error: "No admin passcodes found" }));
+            }
+
+            // Compare given passcode with ALL stored hashed passcodes
+            let matched = false;
+
+            for (const row of results) {
+                const match = await bcrypt.compare(passcode, row.passcode);
+                if (match) {
+                    matched = true;
+                    break; // တစ်ခုပဲ တွေ့တာနဲ့ ရပ်
+                }
+            }
+
+            if (matched) {
+                res.statusCode = 200;
+                res.end(JSON.stringify({
+                    success: true,
+                    message: "Passcode verified successfully"
+                }));
+            } else {
+                res.statusCode = 403;
+                res.end(JSON.stringify({
+                    success: false,
+                    message: "Invalid passcode"
+                }));
+            }
+        });
+    } catch (error) {
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: error.message }));
+    }
+}
+
 module.exports = { 
     getAdmins,
     createAdmin,
     getAdminsById,
-    loginAdmin
+    loginAdmin,
+    verifyAdminPasscode
 };
