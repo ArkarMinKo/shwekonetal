@@ -344,9 +344,47 @@ function topWallet(req, res) {
   });
 }
 
+// --- buy vs sell
+function buyVSsell(req, res){
+    const transactionsSql = `
+        SELECT gold, type
+        FROM sales
+        WHERE status = 'approved'
+    `;
+
+    db.query(transactionsSql, [date], (err, transactionsResult) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        let buyTotal = 0;
+        let sellTotal = 0;
+
+        transactionsResult.forEach(sale => {
+            if(sale.type === 'buy'){
+                buyTotal += sale.gold;
+            }else if(sale.type === 'sell'){
+                sellTotal += sale.gold;
+            }
+        })
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(
+          {
+            label: "Buy", value: buyTotal
+          },
+          {
+            label: "Sell", value: sellTotal
+          }
+        ));
+    })
+}
+
 module.exports = {
     summarys,
     buyingPricesChart,
     revenueGoldChart,
-    topWallet
+    topWallet,
+    buyVSsell
 };

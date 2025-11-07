@@ -325,6 +325,11 @@ const server = http.createServer(async (req, res) => {
     dashboard.topWallet(req,res)
   }
 
+  // --- Get buy vs sell ---
+  else if (pathName === "/buy-vs-sell" && method === "GET") {
+    dashboard.buyVSsell(req,res)
+  }
+
   // --- Get notification on mobile ---
   else if (pathName.startsWith("/mobile-noti/") && method === "GET") {
     const userid = pathName.split("/")[2];
