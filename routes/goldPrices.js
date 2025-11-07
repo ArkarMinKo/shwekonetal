@@ -408,9 +408,9 @@ function insertFormula(req, res) {
   }); 
 }
 
-// --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
+// --- Get All Selling Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllSellingPrices(req, res) {
-  const sql = "SELECT * FROM selling_prices ORDER BY date ASC, time ASC"; // ASC for logic, DESC later
+  const sql = "SELECT * FROM selling_prices ORDER BY date ASC, time ASC";
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
@@ -423,108 +423,84 @@ function getAllSellingPrices(req, res) {
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    // Group records by date
+    // Group data by date
     const groupedByDate = {};
     results.forEach(row => {
       if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
       groupedByDate[row.date].push(row);
     });
 
-    // Helper to convert time "HH:MM[:SS]" → seconds
-    function timeToSeconds(time) {
-      const [h, m, s] = time.split(":").map(Number);
-      return h * 3600 + m * 60 + (s || 0);
-    }
-
-    // Helper to iterate date range
-    function getDateRange(start, end) {
-      const dates = [];
-      let current = new Date(start);
-      const last = new Date(end);
-      while (current <= last) {
-        dates.push(current.toISOString().split("T")[0]);
-        current.setDate(current.getDate() + 1);
-      }
-      return dates;
-    }
-
-    // Get date range
-    const allDatesInDB = Object.keys(groupedByDate).sort(); // ascending
-    const minDate = allDatesInDB[0];
-    const maxDate = allDatesInDB[allDatesInDB.length - 1];
-    const allDates = getDateRange(minDate, maxDate);
-
     const now = new Date();
-    // Local date string (YYYY-MM-DD)
-    const today = now.getFullYear() + "-" +
-                  String(now.getMonth() + 1).padStart(2, "0") + "-" +
-                  String(now.getDate()).padStart(2, "0");
+    const todayStr = now.toISOString().split("T")[0];
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-    // Local time (seconds since midnight)
-    const currentSec = now.getHours() * 3600 +
-                      now.getMinutes() * 60 +
-                      now.getSeconds();
+    function timeToSeconds(t) {
+      const [h, m] = t.split(":").map(Number);
+      return h * 3600 + m * 60;
+    }
+
+    const dbDates = Object.keys(groupedByDate).sort();
+    const minDate = dbDates[0];
+    const maxDate = dbDates[dbDates.length - 1];
+    const endDate = new Date(Math.max(new Date(maxDate), now));
+    const allDates = [];
+    let cur = new Date(minDate);
+    while (cur <= endDate) {
+      allDates.push(cur.toISOString().split("T")[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
 
     const finalOutput = {};
-    let lastDateData = null;
+    let lastPrice = results.length ? results[results.length - 1].price : null;
 
-    for (const date of allDates) {
-      const rows = groupedByDate[date];
+    allDates.forEach(date => {
       const dateData = {};
+      const rows = groupedByDate[date];
 
-      if (rows) {
-        // Compute nearest for each slot
-        timeSlots.forEach(slot => {
-          const slotSec = timeToSeconds(slot + ":00");
-          let nearest = null;
-          let minDiff = Infinity;
+      timeSlots.forEach(slot => {
+        const slotSec = timeToSeconds(slot);
+        const displayTime = slot.replace(/^0/, "");
 
-          for (const r of rows) {
-            const rowSec = timeToSeconds(r.time);
-            const diff = Math.abs(rowSec - slotSec);
-            if (diff < minDiff) {
-              minDiff = diff;
-              nearest = r;
-            }
-          }
-
-          const displayTime = slot.replace(/^0/, "");
-
-          // Today's future times → null
-          if (date === today && slotSec > currentSec) {
+        if (rows) {
+          // Today date → future slots null
+          if (date === todayStr && slotSec > currentSec) {
             dateData[displayTime] = null;
           } else {
-            dateData[displayTime] = nearest ? nearest.price : null;
+            // Find nearest price
+            let nearest = null;
+            let minDiff = Infinity;
+            rows.forEach(r => {
+              const diff = Math.abs(timeToSeconds(r.time) - slotSec);
+              if (diff < minDiff) {
+                minDiff = diff;
+                nearest = r;
+              }
+            });
+            dateData[displayTime] = nearest ? nearest.price : lastPrice;
           }
-        });
-
-        lastDateData = { ...dateData }; // update last known
-        finalOutput[date] = dateData;
-      } else {
-        // No data → copy previous
-        if (lastDateData) {
-          finalOutput[date] = { ...lastDateData };
+        } else {
+          // Missing date
+          if (date === todayStr && slotSec > currentSec) {
+            dateData[displayTime] = null;
+          } else {
+            dateData[displayTime] = lastPrice;
+          }
         }
-      }
-    }
-
-    if (!finalOutput[today] && lastDateData) {
-      const todayData = {};
-      Object.entries(lastDateData).forEach(([slot, value]) => {
-        const [h, m] = slot.split(":").map(Number);
-        const slotSec = h * 3600 + m * 60;
-        todayData[slot] = slotSec > currentSec ? null : value;
       });
-      finalOutput[today] = todayData;
-    }
 
-    // Convert to DESC order
-    const sortedDesc = Object.fromEntries(
+      // Update lastPrice if any non-null exists
+      const nonNulls = Object.values(dateData).filter(v => v !== null);
+      if (nonNulls.length) lastPrice = nonNulls[nonNulls.length - 1];
+
+      finalOutput[date] = dateData;
+    });
+
+    const sortedOutput = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
     );
 
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify(sortedDesc, null, 2));
+    res.end(JSON.stringify(sortedOutput, null, 2));
   });
 }
 
