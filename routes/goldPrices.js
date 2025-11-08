@@ -404,7 +404,7 @@ function insertFormula(req, res) {
 
 // --- Get All Selling Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllSellingPrices(req, res) {
-  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC";
+  const sql = "SELECT * FROM selling_prices ORDER BY date ASC, time ASC";
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
@@ -519,7 +519,7 @@ function getLatestSellingPrice(req, res) {
 
 // --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllBuyingPrices(req, res) {
-  const sql = "SELECT * FROM selling_prices ORDER BY date ASC, time ASC";
+  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC";
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
