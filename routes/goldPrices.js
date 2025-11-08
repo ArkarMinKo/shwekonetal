@@ -234,7 +234,7 @@ function getOpenStock(req, res){
           };
         });
 
-        const totalString = `${total_profit} ကျပ်`
+        const totalString = `ပိုင်ဆိုင်မှုတန်ဖိုး = ${total_profit} ကျပ်`
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, total: totalString, data: formattedRows }));
