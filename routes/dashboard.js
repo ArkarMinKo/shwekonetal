@@ -195,7 +195,7 @@ function buyingPricesChart(req, res) {
     rows.forEach(r => { if (!byDate[r.date]) byDate[r.date] = []; byDate[r.date].push(r); });
     const lastRowOverall = lastRow(rows);
 
-    // --- NEW 1D LOGIC START (replacing old) ---
+    // --- FIXED 1D LOGIC (exact match with getAllBuyingPrices behavior) ---
     const timeSlots = [
       "01:00", "03:00", "05:00", "07:00",
       "09:00", "11:00", "13:00", "15:00",
@@ -213,19 +213,19 @@ function buyingPricesChart(req, res) {
       cur.setDate(cur.getDate() + 1);
     }
 
-    let lastPrice1D = rows.length ? rows[rows.length - 1].price : null;
+    let lastPrice = rows.length ? rows[rows.length - 1].price : null;
     const todayRows = byDate[todayStr];
     const price1D = timeSlots.map((slot, index) => {
       const slotSec = timeToSeconds(slot);
-      const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
       const displayTime = slot.replace(/^0/, "");
+      const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
-      // Future slots today → null
-      if (slotSec > nowSec) {
-        return { time: displayTime, price: null };
-      }
+      // Future slots → null
+      if (slotSec > nowSec) return { time: displayTime, price: null };
 
-      if (todayRows) {
+      let price = lastPrice;
+
+      if (todayRows && todayRows.length) {
         const periodRows = todayRows
           .filter(r => {
             const tSec = timeToSeconds(r.time);
@@ -234,13 +234,14 @@ function buyingPricesChart(req, res) {
           .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
 
         if (periodRows.length) {
-          lastPrice1D = periodRows[periodRows.length - 1].price;
+          price = periodRows[periodRows.length - 1].price;
+          lastPrice = price; // update for next slot
         }
       }
 
-      return { time: displayTime, price: lastPrice1D };
+      return { time: displayTime, price };
     });
-    // --- NEW 1D LOGIC END ---
+    // --- FIXED 1D LOGIC END ---
 
     // --- 1W ---
     const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -284,7 +285,6 @@ function buyingPricesChart(req, res) {
       const datesInW = monthDates.filter(d => weekOfMonth(d) === w);
       let weekLast = null;
       for (const d of datesInW) if (byDate[d] && byDate[d].length) weekLast = lastRow(byDate[d]);
-
       if (weekLast) {
         lastPrice1M = weekLast.price;
       } else {
@@ -317,54 +317,6 @@ function buyingPricesChart(req, res) {
     const PRICE_DATA = { "1D": price1D, "1W": price1W, "1M": price1M, "1Y": price1Y };
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(JSON.stringify(PRICE_DATA, null, 2));
-  });
-}
-
-// --- Revenue Gold Chart ---
-function revenueGoldChart(req, res) {
-  const transactionsSql = `
-    SELECT gold, type, created_at
-    FROM sales
-    WHERE status = 'approved'
-  `;
-
-  db.query(transactionsSql, (err, transactionsResult) => {
-    if (err) {
-      console.error("Price fetch error:", err);
-      res.statusCode = 500;
-      return res.end(JSON.stringify({ error: err.message }));
-    }
-
-    // Prepare last 6 months (current + previous 5)
-    const now = new Date();
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = d.toLocaleString("default", { month: "short" });
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      months.push({ key, month: monthName, value: 0 });
-    }
-
-    // Calculate total buy/sell per month
-    transactionsResult.forEach((data) => {
-      const created = new Date(data.created_at);
-      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
-      const targetMonth = months.find((m) => m.key === key);
-      if (targetMonth) {
-        const gold = parseFloat(data.gold) || 0;
-        if (data.type === "buy") targetMonth.value -= gold;
-        else if (data.type === "sell") targetMonth.value += gold;
-      }
-    });
-
-    // Format final output safely
-    const REVENUE = months.map(({ month, value }) => ({
-      month,
-      value: parseFloat((Number(value) || 0).toFixed(2)),
-    }));
-
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(REVENUE));
   });
 }
 
