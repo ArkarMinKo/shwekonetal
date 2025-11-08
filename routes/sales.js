@@ -440,18 +440,10 @@ function rejectSale(req, res, saleId) {
 
             let managerName = null;
             for (const admin of admins) {
-                if (await bcrypt.compare(manager, admin.passcode)) {
+                if (await bcrypt.compare(manager.toString(), admin.passcode)) {
                     managerName = admin.name;
                     break;
                 }
-            }
-
-            if (!managerName) {
-                res.statusCode = 401;
-                return res.end(JSON.stringify({
-                    success: false,
-                    message: "Manager passcode မမှန်ပါ။"
-                }));
             }
 
             const getSaleSql = "SELECT id, userid, gold, type FROM sales WHERE id = ?";
