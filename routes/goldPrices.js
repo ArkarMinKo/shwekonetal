@@ -228,8 +228,8 @@ function getOpenStock(req, res){
 
           return {
               ...r,
-              kyat: kyat,
-              pal: pal,
+              kyat: kyat.toString,
+              pal: pal.toString,
               yway: yway,
           };
         });
