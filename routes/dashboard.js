@@ -184,75 +184,88 @@ function buyingPricesChart(req, res) {
     function lastRow(arr) { return arr && arr.length ? arr[arr.length - 1] : null; }
     function getDateRange(startStr, endStr) {
       const out = [];
-      let cur = new Date(startStr+"T00:00:00"), end = new Date(endStr+"T00:00:00");
-      while(cur <= end){ out.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+      let cur = new Date(startStr + "T00:00:00"), end = new Date(endStr + "T00:00:00");
+      while (cur <= end) { out.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
       return out;
     }
-    function weekOfMonth(dateStr){ return Math.ceil(new Date(dateStr+"T00:00:00").getDate()/7); }
+    function weekOfMonth(dateStr) { return Math.ceil(new Date(dateStr + "T00:00:00").getDate() / 7); }
 
     // group rows by date
     const byDate = {};
-    rows.forEach(r => { if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
+    rows.forEach(r => { if (!byDate[r.date]) byDate[r.date] = []; byDate[r.date].push(r); });
     const lastRowOverall = lastRow(rows);
-    const dayRows = byDate[todayStr] || [];
-    // --- 1D (period-based) ---
-    const slots1D = [
-      "01:00","03:00","05:00","07:00",
-      "09:00","11:00","13:00","15:00",
-      "17:00","19:00","21:00","23:00"
+
+    // --- NEW 1D LOGIC START (replacing old) ---
+    const timeSlots = [
+      "01:00", "03:00", "05:00", "07:00",
+      "09:00", "11:00", "13:00", "15:00",
+      "17:00", "19:00", "21:00", "23:00"
     ];
 
-    let lastPrice1D = lastRowOverall ? lastRowOverall.price : null;
-    const price1D = slots1D.map((slot, index) => {
+    const dbDates = Object.keys(byDate).sort();
+    const minDate = dbDates[0];
+    const maxDate = dbDates[dbDates.length - 1];
+    const endDate = new Date(Math.max(new Date(maxDate), now));
+    const allDates = [];
+    let cur = new Date(minDate);
+    while (cur <= endDate) {
+      allDates.push(cur.toISOString().split("T")[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    let lastPrice1D = rows.length ? rows[rows.length - 1].price : null;
+    const todayRows = byDate[todayStr];
+    const price1D = timeSlots.map((slot, index) => {
       const slotSec = timeToSeconds(slot);
-      const periodStartSec = index === 0 ? 0 : timeToSeconds(slots1D[index - 1]) + 1;
+      const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
+      const displayTime = slot.replace(/^0/, "");
 
       // Future slots today → null
-      if (todayStr && slotSec > nowSec) {
-        return { time: slot, price: null };
+      if (slotSec > nowSec) {
+        return { time: displayTime, price: null };
       }
 
-      const periodRows = dayRows
-        .filter(r => {
-          const tSec = timeToSeconds(r.time);
-          return tSec >= periodStartSec && tSec <= slotSec;
-        })
-        .sort((a,b)=> timeToSeconds(a.time) - timeToSeconds(b.time));
+      if (todayRows) {
+        const periodRows = todayRows
+          .filter(r => {
+            const tSec = timeToSeconds(r.time);
+            return tSec >= periodStartSec && tSec <= slotSec;
+          })
+          .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
 
-      if (periodRows.length) {
-        lastPrice1D = periodRows[periodRows.length - 1].price;
-        return { time: slot, price: lastPrice1D };
+        if (periodRows.length) {
+          lastPrice1D = periodRows[periodRows.length - 1].price;
+        }
       }
 
-      // No data in period → fallback to last known price
-      return { time: slot, price: lastPrice1D };
+      return { time: displayTime, price: lastPrice1D };
     });
+    // --- NEW 1D LOGIC END ---
 
     // --- 1W ---
-    const weekdayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-    function weekDatesThisWeek(){
-      const t = new Date(); 
+    const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    function weekDatesThisWeek() {
+      const t = new Date();
       const day = t.getDay();
-      const monday = new Date(t); 
-      monday.setDate(t.getDate() + (day===0?-6:1-day));
-      return Array.from({length:7},(_,i)=>{
-        const d = new Date(monday); 
-        d.setDate(monday.getDate()+i); 
-        return d.toISOString().slice(0,10); 
+      const monday = new Date(t);
+      monday.setDate(t.getDate() + (day === 0 ? -6 : 1 - day));
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d.toISOString().slice(0, 10);
       });
     }
     const weekDates = weekDatesThisWeek();
     let lastPrice1W = null;
-    const allDatesSorted = rows.map(r=>r.date).sort(); // all dates in DB sorted
-    const price1W = weekDates.map((d,i)=>{
-      if(d > todayStr) return { time: weekdayLabels[i], price: null }; // future day => null
+    const allDatesSorted = rows.map(r => r.date).sort();
+    const price1W = weekDates.map((d, i) => {
+      if (d > todayStr) return { time: weekdayLabels[i], price: null };
       const last = lastRow(byDate[d]);
-      if(last){
+      if (last) {
         lastPrice1W = last.price;
       } else {
-        // find latest price before this day in DB
-        const prevDate = allDatesSorted.filter(dd=>dd<d).pop();
-        if(prevDate && byDate[prevDate].length){
+        const prevDate = allDatesSorted.filter(dd => dd < d).pop();
+        if (prevDate && byDate[prevDate].length) {
           lastPrice1W = lastRow(byDate[prevDate]).price;
         }
       }
@@ -260,46 +273,45 @@ function buyingPricesChart(req, res) {
     });
 
     // --- 1M ---
-    const mNow = new Date(); 
-    const monthStart = new Date(mNow.getFullYear(), mNow.getMonth(),1);
-    const monthEnd = new Date(mNow.getFullYear(), mNow.getMonth()+1,0);
-    const monthDates = getDateRange(monthStart.toISOString().slice(0,10), monthEnd.toISOString().slice(0,10));
-    const weeksSet = Array.from(new Set(monthDates.map(d=>weekOfMonth(d)))).sort((a,b)=>a-b);
+    const mNow = new Date();
+    const monthStart = new Date(mNow.getFullYear(), mNow.getMonth(), 1);
+    const monthEnd = new Date(mNow.getFullYear(), mNow.getMonth() + 1, 0);
+    const monthDates = getDateRange(monthStart.toISOString().slice(0, 10), monthEnd.toISOString().slice(0, 10));
+    const weeksSet = Array.from(new Set(monthDates.map(d => weekOfMonth(d)))).sort((a, b) => a - b);
     let lastPrice1M = null;
     const weekPriceMap = {};
-    for(const w of weeksSet){
-      const datesInW = monthDates.filter(d=>weekOfMonth(d)===w);
+    for (const w of weeksSet) {
+      const datesInW = monthDates.filter(d => weekOfMonth(d) === w);
       let weekLast = null;
-      for(const d of datesInW) if(byDate[d] && byDate[d].length) weekLast = lastRow(byDate[d]);
-      
-      if(weekLast){
+      for (const d of datesInW) if (byDate[d] && byDate[d].length) weekLast = lastRow(byDate[d]);
+
+      if (weekLast) {
         lastPrice1M = weekLast.price;
       } else {
-        // find latest price before first day of this week in DB
         const firstDay = datesInW[0];
-        const prevDate = allDatesSorted.filter(dd=>dd<firstDay).pop();
-        if(prevDate && byDate[prevDate].length){
+        const prevDate = allDatesSorted.filter(dd => dd < firstDay).pop();
+        if (prevDate && byDate[prevDate].length) {
           lastPrice1M = lastRow(byDate[prevDate]).price;
         }
       }
       weekPriceMap[w] = lastPrice1M;
     }
     const currentWeekNum = weekOfMonth(todayStr);
-    const price1M = weeksSet.map(w => w>currentWeekNum ? { time:`Week ${w}`, price:null } : { time:`Week ${w}`, price:weekPriceMap[w] });
+    const price1M = weeksSet.map(w => w > currentWeekNum ? { time: `Week ${w}`, price: null } : { time: `Week ${w}`, price: weekPriceMap[w] });
 
     // --- 1Y ---
-    const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const thisYear = now.getFullYear();
     let lastYearPrice = null;
-    const price1Y = monthNames.map((mName,idx)=>{
-      const s = new Date(thisYear,idx,1).toISOString().slice(0,10);
-      const e = new Date(thisYear,idx+1,0).toISOString().slice(0,10);
-      const datesInMonth = getDateRange(s,e);
+    const price1Y = monthNames.map((mName, idx) => {
+      const s = new Date(thisYear, idx, 1).toISOString().slice(0, 10);
+      const e = new Date(thisYear, idx + 1, 0).toISOString().slice(0, 10);
+      const datesInMonth = getDateRange(s, e);
       let monthLast = null;
-      for(const d of datesInMonth) if(byDate[d] && byDate[d].length) monthLast = lastRow(byDate[d]).price;
-      if(monthLast!==null){ lastYearPrice = monthLast; return { time:mName, price:monthLast }; }
-      if(idx>now.getMonth()) return { time:mName, price:null };
-      return { time:mName, price:lastYearPrice };
+      for (const d of datesInMonth) if (byDate[d] && byDate[d].length) monthLast = lastRow(byDate[d]).price;
+      if (monthLast !== null) { lastYearPrice = monthLast; return { time: mName, price: monthLast }; }
+      if (idx > now.getMonth()) return { time: mName, price: null };
+      return { time: mName, price: lastYearPrice };
     });
 
     const PRICE_DATA = { "1D": price1D, "1W": price1W, "1M": price1M, "1Y": price1Y };
