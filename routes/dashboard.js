@@ -194,43 +194,36 @@ function buyingPricesChart(req, res) {
     const byDate = {};
     rows.forEach(r => { if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
 
-    // --- 1D ---
+    // --- 1D (period-based) ---
     const slots1D = [
       "01:00","03:00","05:00","07:00",
       "09:00","11:00","13:00","15:00",
       "17:00","19:00","21:00","23:00"
     ];
 
-    function timeToSeconds(t) {
-      const [h, m] = t.split(":").map(Number);
-      return h * 3600 + m * 60;
-    }
-
-    const dayRows = byDate[todayStr] || [];
-    const lastRowOverall = rows.length ? rows[rows.length - 1] : null; // db ထဲကနောက်ဆုံး record
-
-    let lastPrice1D = null;
-    const price1D = slots1D.map(slot => {
+    let lastPrice1D = lastRowOverall ? lastRowOverall.price : null;
+    const price1D = slots1D.map((slot, index) => {
       const slotSec = timeToSeconds(slot);
+      const periodStartSec = index === 0 ? 0 : timeToSeconds(slots1D[index - 1]) + 1;
 
-      // အနာဂတ် slot => null
-      if (slotSec > nowSec) {
+      // Future slots today → null
+      if (todayStr && slotSec > nowSec) {
         return { time: slot, price: null };
       }
 
-      // ဒီနေ့အတွက် slot time အထိရှိတဲ့ records
-      const slotRows = dayRows.filter(r => timeToSeconds(r.time) <= slotSec);
+      const periodRows = dayRows
+        .filter(r => {
+          const tSec = timeToSeconds(r.time);
+          return tSec >= periodStartSec && tSec <= slotSec;
+        })
+        .sort((a,b)=> timeToSeconds(a.time) - timeToSeconds(b.time));
 
-      if (slotRows.length) {
-        lastPrice1D = slotRows[slotRows.length - 1].price;
+      if (periodRows.length) {
+        lastPrice1D = periodRows[periodRows.length - 1].price;
         return { time: slot, price: lastPrice1D };
       }
 
-      // ဒီနေ့မှာမရှိရင် နောက်ဆုံး db record ရှိရင် ယူ
-      if (!slotRows.length && lastPrice1D === null && lastRowOverall) {
-        lastPrice1D = lastRowOverall.price;
-      }
-
+      // No data in period → fallback to last known price
       return { time: slot, price: lastPrice1D };
     });
 
