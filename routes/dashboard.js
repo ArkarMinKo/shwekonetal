@@ -194,6 +194,7 @@ function buyingPricesChart(req, res) {
     const byDate = {};
     rows.forEach(r => { if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
     const lastRowOverall = lastRow(rows);
+    const dayRows = byDate[todayStr] || [];
     // --- 1D (period-based) ---
     const slots1D = [
       "01:00","03:00","05:00","07:00",
