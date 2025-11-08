@@ -333,7 +333,7 @@ function updateAdminPassword(req, res) {
                     return res.end(JSON.stringify({ error: "Passcode not set for owner" }));
                 }
 
-                const isMatch = await bcrypt.compare(passcode, owner.passcode);
+                const isMatch = await bcrypt.compare(passcode.toString(), owner.passcode);
                 if (!isMatch) {
                     res.statusCode = 403;
                     return res.end(JSON.stringify({ error: "Passcode does not match!" }));
@@ -352,6 +352,88 @@ function updateAdminPassword(req, res) {
 
                     res.statusCode = 200;
                     res.end(JSON.stringify({ success: true, message: "Password updated successfully" }));
+                });
+            });
+        } catch (error) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    });
+}
+
+// --- UPDATE admin passcode ---
+function updateAdminPasscode(req, res) {
+    const form = new formidable.IncomingForm({ multiples: false });
+
+    form.parse(req, async (err, fields) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const { email, newpasscode, passcode } = fields;
+
+        if (!email || !newpasscode || !passcode) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Email, new passcode, and passcode are required" }));
+        }
+
+        try {
+            const checkRoleSql = "SELECT role FROM admin WHERE email = ?";
+            db.query(checkRoleSql, [email], async (err, roleResults) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+
+                if (roleResults.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "Account not found" }));
+                }
+
+                if (roleResults[0].role === "seller") {
+                    res.statusCode = 403;
+                    return res.end(JSON.stringify({ error: "You cannot update seller's passcode" }));
+                }
+
+                const getPasscodeSql = "SELECT passcode FROM admin WHERE id = 'A001'";
+                db.query(getPasscodeSql, async (err, results) => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+
+                    if (results.length === 0) {
+                        res.statusCode = 404;
+                        return res.end(JSON.stringify({ error: "Admin not found" }));
+                    }
+
+                    const owner = results[0];
+
+                    // Check if passcode matches
+                    if (!owner.passcode) {
+                        res.statusCode = 403;
+                        return res.end(JSON.stringify({ error: "Passcode not set for owner" }));
+                    }
+
+                    const isMatch = await bcrypt.compare(passcode.toString(), owner.passcode);
+                    if (!isMatch) {
+                        res.statusCode = 403;
+                        return res.end(JSON.stringify({ error: "Passcode does not match!" }));
+                    }
+
+                    const hashedPasscode = await bcrypt.hash(newpasscode, 10);
+
+                    const updateSql = "UPDATE admin SET passcode = ? WHERE email = ?";
+                    db.query(updateSql, [hashedPasscode, email], (err) => {
+                        if (err) {
+                            res.statusCode = 500;
+                            return res.end(JSON.stringify({ error: err.message }));
+                        }
+
+                        res.statusCode = 200;
+                        res.end(JSON.stringify({ success: true, message: "Passcode updated successfully" }));
+                    });
                 });
             });
         } catch (error) {
@@ -490,6 +572,7 @@ module.exports = {
     createAdmin,
     updateAdminInfo,
     updateAdminPassword,
+    updateAdminPasscode,
     getAdminsById,
     loginAdmin,
     verifyAdminPasscode,
