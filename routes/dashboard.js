@@ -193,59 +193,56 @@ function buyingPricesChart(req, res) {
     // group rows by date
     const byDate = {};
     rows.forEach(r => { if (!byDate[r.date]) byDate[r.date] = []; byDate[r.date].push(r); });
-    const lastRowOverall = lastRow(rows);
 
-    // --- FIXED 1D LOGIC (exact match with getAllBuyingPrices behavior) ---
+    // --- FIXED 1D LOGIC ---
     const timeSlots = [
       "01:00", "03:00", "05:00", "07:00",
       "09:00", "11:00", "13:00", "15:00",
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    const dbDates = Object.keys(byDate).sort();
-    const minDate = dbDates[0];
-    const maxDate = dbDates[dbDates.length - 1];
-    const endDate = new Date(Math.max(new Date(maxDate), now));
-    const allDates = [];
-    let cur = new Date(minDate);
-    while (cur <= endDate) {
-      allDates.push(cur.toISOString().split("T")[0]);
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    let lastPrice = rows.length ? rows[rows.length - 1].price : null;
     const todayRows = byDate[todayStr];
+    const lastRowOverall = lastRow(rows);
+    let lastPrice = null;
+
     const price1D = timeSlots.map((slot, index) => {
       const slotSec = timeToSeconds(slot);
       const displayTime = slot.replace(/^0/, "");
       const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
-      // Future slots → null
+      // future slots → null
       if (slotSec > nowSec) return { time: displayTime, price: null };
 
       let price = lastPrice;
 
       if (todayRows && todayRows.length) {
-        const periodRows = rows
+        // ✅ only use today's data if present
+        const periodRows = todayRows
           .filter(r => {
             const tSec = timeToSeconds(r.time);
-            // ✅ CHANGE: include current slot exactly equal (not only <=)
-            return tSec <= slotSec;
+            return tSec >= periodStartSec && tSec <= slotSec;
           })
           .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
 
         if (periodRows.length) {
           price = periodRows[periodRows.length - 1].price;
-          lastPrice = price; // update for next slot
+        }
+        else if (lastPrice === null) {
+          // if no earlier today data, find yesterday's last price
+          const prevDates = Object.keys(byDate).filter(d => d < todayStr);
+          if (prevDates.length) {
+            const prevLast = lastRow(byDate[prevDates.pop()]);
+            price = prevLast ? prevLast.price : null;
+          }
         }
       } else {
-        // ✅ FIX: no data for today → use DB last row price for past slots
+        // ✅ today has no data at all
         price = slotSec <= nowSec ? lastRowOverall?.price ?? null : null;
       }
 
+      lastPrice = price;
       return { time: displayTime, price };
     });
-    // --- FIXED 1D LOGIC END ---
 
     // --- 1W ---
     const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
