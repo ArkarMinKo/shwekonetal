@@ -560,26 +560,32 @@ function getAllBuyingPrices(req, res) {
       const dateData = {};
       const rows = groupedByDate[date];
 
-      timeSlots.forEach(slot => {
+      timeSlots.forEach((slot, index) => {
         const slotSec = timeToSeconds(slot);
         const displayTime = slot.replace(/^0/, "");
+
+        // Determine period start (previous slot) and end (current slot)
+        const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
         if (rows) {
           // Today date → future slots null
           if (date === todayStr && slotSec > currentSec) {
             dateData[displayTime] = null;
           } else {
-            // Find nearest price
-            let nearest = null;
-            let minDiff = Infinity;
-            rows.forEach(r => {
-              const diff = Math.abs(timeToSeconds(r.time) - slotSec);
-              if (diff < minDiff) {
-                minDiff = diff;
-                nearest = r;
-              }
-            });
-            dateData[displayTime] = nearest ? nearest.price : lastPrice;
+            // Find last price within period
+            const periodRows = rows
+              .filter(r => {
+                const tSec = timeToSeconds(r.time);
+                return tSec >= periodStartSec && tSec <= slotSec;
+              })
+              .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
+
+            if (periodRows.length) {
+              dateData[displayTime] = periodRows[periodRows.length - 1].price;
+            } else {
+              // No data in period → fallback to last overall price
+              dateData[displayTime] = lastPrice;
+            }
           }
         } else {
           // Missing date
