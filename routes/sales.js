@@ -540,7 +540,11 @@ function rejectSale(req, res, saleId) {
 
 function getAllApprove(req, res) {
     const sql = `
-        SELECT * FROM sales WHERE status = 'approved' ORDER BY created_at DESC
+        SELECT s.*, u.fullname 
+        FROM sales s 
+        LEFT JOIN users u ON s.userid = u.id
+        WHERE s.status = 'approved' AND DATE(s.created_at) = DATE(NOW())
+        ORDER BY s.created_at DESC
     `;
 
     db.query(sql, (err, rows) => {
