@@ -294,6 +294,73 @@ function updateAdminInfo(req, res) {
     });
 }
 
+// --- UPDATE ADMIN PASSWORD ---
+function updateAdminPassword(req, res) {
+    const form = new formidable.IncomingForm({ multiples: false });
+
+    form.parse(req, async (err, fields) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const { email, password, passcode } = fields;
+
+        if (!email || !password || !passcode) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Email, password, and passcode are required" }));
+        }
+
+        try {
+            // Get owner passcode
+            const getPasscodeSql = "SELECT passcode FROM admin WHERE id = 'A001'";
+            db.query(getPasscodeSql, async (err, results) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+
+                if (results.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "Admin not found" }));
+                }
+
+                const owner = results[0];
+
+                // Check if passcode matches
+                if (!owner.passcode) {
+                    res.statusCode = 403;
+                    return res.end(JSON.stringify({ error: "Passcode not set for owner" }));
+                }
+
+                const isMatch = await bcrypt.compare(passcode, owner.passcode);
+                if (!isMatch) {
+                    res.statusCode = 403;
+                    return res.end(JSON.stringify({ error: "Passcode does not match!" }));
+                }
+
+                // Hash new password
+                const hashedPassword = await bcrypt.hash(password, 10);
+
+                // Update password
+                const updateSql = "UPDATE admin SET password = ? WHERE email = ?";
+                db.query(updateSql, [hashedPassword, email], (err) => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
+                    }
+
+                    res.statusCode = 200;
+                    res.end(JSON.stringify({ success: true, message: "Password updated successfully" }));
+                });
+            });
+        } catch (error) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    });
+}
+
 // --- VERIFY ADMIN PASSCODE ---
 function verifyAdminPasscode(req, res) {
     const form = new formidable.IncomingForm();
@@ -422,6 +489,7 @@ module.exports = {
     getAdmins,
     createAdmin,
     updateAdminInfo,
+    updateAdminPassword,
     getAdminsById,
     loginAdmin,
     verifyAdminPasscode,
