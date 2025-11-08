@@ -193,7 +193,7 @@ function buyingPricesChart(req, res) {
     // group rows by date
     const byDate = {};
     rows.forEach(r => { if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
-
+    const lastRowOverall = lastRow(rows);
     // --- 1D (period-based) ---
     const slots1D = [
       "01:00","03:00","05:00","07:00",
