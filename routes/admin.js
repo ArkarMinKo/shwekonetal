@@ -209,6 +209,36 @@ function createAdmin(req, res) {
     });
 }
 
+// --- DELETE ADMIN (except A001) ---
+function deleteAdmin(req, res, id) {
+    if (!id) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "Missing admin ID" }));
+    }
+
+    if (id === "A001") {
+        res.statusCode = 403;
+        return res.end(JSON.stringify({ error: "Owner account ကိုဖျက်ခွင့်မရှိပါ" }));
+    }
+
+    const sql = "DELETE FROM admin WHERE id = ? AND TRIM(id) != 'A001'";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        if (result.affectedRows === 0) {
+            res.statusCode = 404;
+            return res.end(JSON.stringify({ error: "Admin not found or cannot delete owner" }));
+        }
+
+        res.statusCode = 200;
+        res.end(JSON.stringify({ success: true, message: "Admin deleted successfully" }));
+    });
+}
+
 // --- UPDATE ADMIN INFO (EXCEPT PASSWORD, PASSCODE, EMAIL) ---
 function updateAdminInfo(req, res) {
     const form = new formidable.IncomingForm({ multiples: false, uploadDir: UPLOAD_DIR, keepExtensions: true });
@@ -571,10 +601,11 @@ module.exports = {
     getAdmins,
     createAdmin,
     updateAdminInfo,
+    deleteAdmin,
     updateAdminPassword,
     updateAdminPasscode,
     getAdminsById,
     loginAdmin,
     verifyAdminPasscode,
-    verifyOwnerPasscode
+    verifyOwnerPasscode,
 };

@@ -472,8 +472,11 @@ function patchUserPasscode(req, res, userid) {
 }
 
 // Delete user
-function deleteUser(req, res) {
-  const id = req.url.split("/")[2];
+function deleteUser(req, res, id) {
+  if (!id) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "Missing admin ID" }));
+  }
 
   db.query("SELECT photo, id_front_photo, id_back_photo FROM users WHERE id=?", [id], (err, rows) => {
     if (err) {
