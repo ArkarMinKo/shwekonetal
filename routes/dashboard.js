@@ -237,6 +237,9 @@ function buyingPricesChart(req, res) {
           price = periodRows[periodRows.length - 1].price;
           lastPrice = price; // update for next slot
         }
+      } else {
+        // ✅ FIX: no data for today → use DB last row price for past slots
+        price = slotSec <= nowSec ? lastRowOverall?.price ?? null : null;
       }
 
       return { time: displayTime, price };
