@@ -532,84 +532,59 @@ function getAllBuyingPrices(req, res) {
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    // Group data by date
+    function timeToSeconds(t) {
+      const [h, m] = t.split(":").map(Number);
+      return h * 3600 + m * 60;
+    }
+
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+    // Group rows by date
     const groupedByDate = {};
     results.forEach(row => {
       if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
       groupedByDate[row.date].push(row);
     });
 
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    // Sort rows within each date
+    Object.values(groupedByDate).forEach(rows =>
+      rows.sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time))
+    );
 
-    function timeToSeconds(t) {
-      const [h, m] = t.split(":").map(Number);
-      return h * 3600 + m * 60;
-    }
-
-    const dbDates = Object.keys(groupedByDate).sort();
-    const minDate = dbDates[0];
-    const maxDate = dbDates[dbDates.length - 1];
-    const endDate = new Date(Math.max(new Date(maxDate), now));
-    const allDates = [];
-    let cur = new Date(minDate);
-    while (cur <= endDate) {
-      allDates.push(cur.toISOString().split("T")[0]);
-      cur.setDate(cur.getDate() + 1);
-    }
-
+    const allDates = Object.keys(groupedByDate).sort();
     const finalOutput = {};
-    let lastPrice = results.length ? results[results.length - 1].price : null;
 
     allDates.forEach(date => {
-      const dateData = {};
       const rows = groupedByDate[date];
+      const dateData = {};
+      let lastPriceForDate = null;
 
-      timeSlots.forEach((slot, index) => {
-        const slotSec = timeToSeconds(slot);
+      timeSlots.forEach(slot => {
         const displayTime = slot.replace(/^0/, "");
+        const slotSec = timeToSeconds(slot);
 
-        // Determine period start (previous slot) and end (current slot)
-        const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
-
-        if (rows) {
-          // Today date → future slots null
-          if (date === todayStr && slotSec > currentSec) {
-            dateData[displayTime] = null;
-          } else {
-            // Find last price within period
-            const periodRows = rows
-              .filter(r => {
-                const tSec = timeToSeconds(r.time);
-                return tSec >= periodStartSec && tSec <= slotSec;
-              })
-              .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
-
-            if (periodRows.length) {
-              dateData[displayTime] = periodRows[periodRows.length - 1].price;
-            } else {
-              // No data in period → fallback to last overall price
-              dateData[displayTime] = lastPrice;
-            }
-          }
+        // check if there is exact match for this time
+        const record = rows.find(r => r.time === slot);
+        if (record) {
+          dateData[displayTime] = record.price;
+          lastPriceForDate = record.price;
         } else {
-          // Missing date
+          // for today → future slots null
           if (date === todayStr && slotSec > currentSec) {
             dateData[displayTime] = null;
           } else {
-            dateData[displayTime] = lastPrice;
+            // fallback to last known within this date only
+            dateData[displayTime] = lastPriceForDate;
           }
         }
       });
 
-      // Update lastPrice if any non-null exists
-      const nonNulls = Object.values(dateData).filter(v => v !== null);
-      if (nonNulls.length) lastPrice = nonNulls[nonNulls.length - 1];
-
       finalOutput[date] = dateData;
     });
 
+    // Sort output by date desc
     const sortedOutput = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
     );
