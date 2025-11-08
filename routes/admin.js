@@ -242,17 +242,22 @@ function updateAdminInfo(req, res) {
                 }
 
                 let updatedPhoto = results[0].photo;
-                if (photoFile && photoFile.originalFilename) {
-                    // Delete old photo if exists
+
+                if (photoFile && photoFile.size > 0) { // file ရှိလားစစ်
+                    // Delete old photo
                     if (updatedPhoto) {
                         const oldPath = path.join(UPLOAD_DIR, updatedPhoto);
                         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
                     }
 
                     // Save new photo
-                    const newPhotoName = generatePhotoName(id, photoFile.originalFilename);
+                    const originalName = photoFile.originalFilename || photoFile.newFilename || "unknown.jpg";
+                    const newPhotoName = generatePhotoName(id, originalName);
                     const newPath = path.join(UPLOAD_DIR, newPhotoName);
+
+                    // Rename temp file to final
                     fs.renameSync(photoFile.filepath, newPath);
+
                     updatedPhoto = newPhotoName;
                 }
 
