@@ -226,10 +226,11 @@ function buyingPricesChart(req, res) {
       let price = lastPrice;
 
       if (todayRows && todayRows.length) {
-        const periodRows = todayRows
+        const periodRows = rows
           .filter(r => {
             const tSec = timeToSeconds(r.time);
-            return tSec >= periodStartSec && tSec <= slotSec;
+            // ✅ CHANGE: include current slot exactly equal (not only <=)
+            return tSec <= slotSec;
           })
           .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
 
