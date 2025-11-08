@@ -69,7 +69,7 @@ function loginAdmin(req, res) {
 function getAdmins(req, res) {
     const sql = `
         SELECT id, name, photo, email, phone, gender, role
-        FROM admin WHERE TRIM(id) != 'A001'
+        FROM admin WHERE id NOT LIKE '%A001%'
         ORDER BY id DESC
     `;
 
