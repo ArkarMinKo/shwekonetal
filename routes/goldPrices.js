@@ -526,65 +526,91 @@ function getAllBuyingPrices(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
+    // ✅ FIX: normalize time format to match "01:00" style
+    results = results.map(r => {
+      const [h, m] = r.time.split(":");
+      r.time = `${h.padStart(2, "0")}:${m}`;
+      return r;
+    });
+
     const timeSlots = [
       "01:00", "03:00", "05:00", "07:00",
       "09:00", "11:00", "13:00", "15:00",
       "17:00", "19:00", "21:00", "23:00"
     ];
 
-    function timeToSeconds(t) {
-      const [h, m] = t.split(":").map(Number);
-      return h * 3600 + m * 60;
-    }
-
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-
-    // Group rows by date
+    // Group data by date
     const groupedByDate = {};
     results.forEach(row => {
       if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
       groupedByDate[row.date].push(row);
     });
 
-    // Sort rows within each date
-    Object.values(groupedByDate).forEach(rows =>
-      rows.sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time))
-    );
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-    const allDates = Object.keys(groupedByDate).sort();
+    function timeToSeconds(t) {
+      const [h, m] = t.split(":").map(Number);
+      return h * 3600 + m * 60;
+    }
+
+    const dbDates = Object.keys(groupedByDate).sort();
+    const minDate = dbDates[0];
+    const maxDate = dbDates[dbDates.length - 1];
+    const endDate = new Date(Math.max(new Date(maxDate), now));
+    const allDates = [];
+    let cur = new Date(minDate);
+    while (cur <= endDate) {
+      allDates.push(cur.toISOString().split("T")[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+
     const finalOutput = {};
+    let lastPrice = results.length ? results[results.length - 1].price : null;
 
     allDates.forEach(date => {
-      const rows = groupedByDate[date];
       const dateData = {};
-      let lastPriceForDate = null;
+      const rows = groupedByDate[date];
 
-      timeSlots.forEach(slot => {
-        const displayTime = slot.replace(/^0/, "");
+      timeSlots.forEach((slot, index) => {
         const slotSec = timeToSeconds(slot);
+        const displayTime = slot.replace(/^0/, "");
 
-        // check if there is exact match for this time
-        const record = rows.find(r => r.time === slot);
-        if (record) {
-          dateData[displayTime] = record.price;
-          lastPriceForDate = record.price;
-        } else {
-          // for today → future slots null
+        const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
+
+        if (rows) {
           if (date === todayStr && slotSec > currentSec) {
             dateData[displayTime] = null;
           } else {
-            // fallback to last known within this date only
-            dateData[displayTime] = lastPriceForDate;
+            const periodRows = rows
+              .filter(r => {
+                const tSec = timeToSeconds(r.time);
+                return tSec >= periodStartSec && tSec <= slotSec;
+              })
+              .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
+
+            if (periodRows.length) {
+              dateData[displayTime] = periodRows[periodRows.length - 1].price;
+            } else {
+              dateData[displayTime] = lastPrice;
+            }
+          }
+        } else {
+          if (date === todayStr && slotSec > currentSec) {
+            dateData[displayTime] = null;
+          } else {
+            dateData[displayTime] = lastPrice;
           }
         }
       });
 
+      const nonNulls = Object.values(dateData).filter(v => v !== null);
+      if (nonNulls.length) lastPrice = nonNulls[nonNulls.length - 1];
+
       finalOutput[date] = dateData;
     });
 
-    // Sort output by date desc
     const sortedOutput = Object.fromEntries(
       Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
     );
