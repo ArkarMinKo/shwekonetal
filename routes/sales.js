@@ -421,76 +421,116 @@ function rejectSale(req, res, saleId) {
         return res.end(JSON.stringify({ error: "saleId is required" }));
     }
 
-    const getSaleSql = "SELECT id, userid, gold, type FROM sales WHERE id = ?";
-    db.query(getSaleSql, [saleId], (err, salesResult) => {
+    const form = new formidable.IncomingForm();
+    form.parse(req, (err, fields) => {
         if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        if (salesResult.length === 0) {
-            res.statusCode = 404;
-            return res.end(JSON.stringify({ error: "Sale not found" }));
-        }
+        const { seller, manager } = fields;
 
-        const sale = salesResult[0];
-
-        // First update sale status to rejected
-        db.query("UPDATE sales SET status = 'rejected' WHERE id = ?", [saleId], (err, result) => {
+        // --- Check manager passcode first ---
+        const getAdminSql = "SELECT name, passcode FROM admin";
+        db.query(getAdminSql, async (err, admins) => {
             if (err) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
             }
 
-            // --- SELL & DELIVERY user.gold / point / level restore logic ---
-            if (sale.type === "sell" || sale.type === "delivery") {
-                const getUserSql = "SELECT gold, member_point FROM users WHERE id = ?";
-                db.query(getUserSql, [sale.userid], (err, userResult) => {
-                    if (err || userResult.length === 0) {
+            let managerName = null;
+            for (const admin of admins) {
+                if (await bcrypt.compare(manager, admin.passcode)) {
+                    managerName = admin.name;
+                    break;
+                }
+            }
+
+            if (!managerName) {
+                res.statusCode = 401;
+                return res.end(JSON.stringify({
+                    success: false,
+                    message: "Manager passcode မမှန်ပါ။"
+                }));
+            }
+
+            const getSaleSql = "SELECT id, userid, gold, type FROM sales WHERE id = ?";
+            db.query(getSaleSql, [saleId], (err, salesResult) => {
+                if (err) {
+                    res.statusCode = 500;
+                    return res.end(JSON.stringify({ error: err.message }));
+                }
+
+                if (salesResult.length === 0) {
+                    res.statusCode = 404;
+                    return res.end(JSON.stringify({ error: "Sale not found" }));
+                }
+
+                const sale = salesResult[0];
+
+                // --- Update sale status to rejected and save seller + manager ---
+                const updateSaleSql = `
+                    UPDATE sales 
+                    SET status = 'rejected', seller = ?, manager = ? 
+                    WHERE id = ?
+                `;
+                db.query(updateSaleSql, [seller, managerName, saleId], (err, result) => {
+                    if (err) {
                         res.statusCode = 500;
-                        return res.end(JSON.stringify({ error: "User fetch failed" }));
+                        return res.end(JSON.stringify({ error: err.message }));
                     }
 
-                    let user = userResult[0];
-                    let newGold = parseFloat(user.gold || 0) + parseFloat(sale.gold);
-                    let newPoint = parseInt(user.member_point || 0) + Math.round(parseFloat(sale.gold));
+                    // --- SELL & DELIVERY user.gold / point / level restore logic ---
+                    if (sale.type === "sell" || sale.type === "delivery") {
+                        const getUserSql = "SELECT gold, member_point FROM users WHERE id = ?";
+                        db.query(getUserSql, [sale.userid], (err, userResult) => {
+                            if (err || userResult.length === 0) {
+                                res.statusCode = 500;
+                                return res.end(JSON.stringify({ error: "User fetch failed" }));
+                            }
 
-                    // Recalculate level
-                    let newLevel = "level1";
-                    if (newPoint >= 200) newLevel = "level4";
-                    else if (newPoint >= 150) newLevel = "level3";
-                    else if (newPoint >= 100) newLevel = "level2";
+                            let user = userResult[0];
+                            let newGold = parseFloat(user.gold || 0) + parseFloat(sale.gold);
+                            let newPoint = parseInt(user.member_point || 0) + Math.round(parseFloat(sale.gold));
 
-                    const updateUserSql = `
-                        UPDATE users 
-                        SET gold = ?, member_point = ?, level = ? 
-                        WHERE id = ?
-                    `;
+                            // Recalculate level
+                            let newLevel = "level1";
+                            if (newPoint >= 200) newLevel = "level4";
+                            else if (newPoint >= 150) newLevel = "level3";
+                            else if (newPoint >= 100) newLevel = "level2";
 
-                    db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], err => {
-                        if (err) {
-                            res.statusCode = 500;
-                            return res.end(JSON.stringify({ error: "Failed to update user", detail: err.message }));
-                        }
+                            const updateUserSql = `
+                                UPDATE users 
+                                SET gold = ?, member_point = ?, level = ? 
+                                WHERE id = ?
+                            `;
 
-                        // If SALE type → also restore stock
-                        if (sale.type === "sell") {
-                            db.query("UPDATE stock SET gold = gold - ? WHERE id = 1", [parseFloat(sale.gold)], err => {
+                            db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], err => {
                                 if (err) {
                                     res.statusCode = 500;
-                                    return res.end(JSON.stringify({ error: "Stock update failed", detail: err.message }));
+                                    return res.end(JSON.stringify({ error: "Failed to update user", detail: err.message }));
                                 }
-                                return res.end(JSON.stringify({ success: true, restored: "SELL user + stock" }));
+
+                                // If SALE type → also restore stock
+                                if (sale.type === "sell") {
+                                    db.query("UPDATE stock SET gold = gold - ? WHERE id = 1", [parseFloat(sale.gold)], err => {
+                                        if (err) {
+                                            res.statusCode = 500;
+                                            return res.end(JSON.stringify({ error: "Stock update failed", detail: err.message }));
+                                        }
+                                        return res.end(JSON.stringify({ success: true, restored: "SELL user + stock" }));
+                                    });
+                                } else {
+                                    return res.end(JSON.stringify({ success: true, restored: "DELIVERY user only" }));
+                                }
                             });
-                        } else {
-                            return res.end(JSON.stringify({ success: true, restored: "DELIVERY user only" }));
-                        }
-                    });
+                        });
+                    } 
+                    else {
+                        return res.end(JSON.stringify({ success: true, note: "BUY ignored (no user change)" }));
+                    }
                 });
-            } 
-            else {
-                return res.end(JSON.stringify({ success: true, note: "BUY ignored (no user change)" }));
-            }
+            });
         });
     });
 }
