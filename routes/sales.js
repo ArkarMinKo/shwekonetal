@@ -205,6 +205,12 @@ function approveSale(req, res, saleId) {
         }
 
         const { deli_fees, service_fees, seller, manager } = fields;
+
+        if (!manager) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Manager passcode is required for approved." }));
+        }
+
         const managerStr = Array.isArray(manager) ? manager[0].toString() : manager.toString();
 
         const getSaleSql = "SELECT * FROM sales WHERE id = ?";
@@ -429,6 +435,11 @@ function rejectSale(req, res, saleId) {
         }
 
         const { seller, manager } = fields;
+
+        if (!manager) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "Manager passcode is required for rejection." }));
+        }
 
         // --- Check manager passcode first ---
         const getAdminSql = "SELECT name, passcode FROM admin";
