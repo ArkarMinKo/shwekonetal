@@ -217,12 +217,6 @@ function getOpenStock(req, res){
 
         const total_profit = (rows[0].gold * buying_prices / latestyway).toFixed(2);
 
-        // English → Myanmar number converter
-        const toMyanmarNumber = (num) => {
-            const map = { 0: "၀", 1: "၁", 2: "၂", 3: "၃", 4: "၄", 5: "၅", 6: "၆", 7: "၇", 8: "၈", 9: "၉", ".":"." };
-            return num.toString().split("").map(d => map[d] || d).join("");
-        };
-
         const formattedRows = rows.map((r) => {
           const goldFloat = parseFloat(r.gold);
 
@@ -234,13 +228,13 @@ function getOpenStock(req, res){
 
           return {
               ...r,
-              kyat: toMyanmarNumber(kyat),
-              pal: toMyanmarNumber(pal),
-              yway: toMyanmarNumber(yway),
+              kyat: kyat,
+              pal: pal,
+              yway: yway,
           };
         });
 
-        const totalString = `${toMyanmarNumber(total_profit)} ကျပ်`
+        const totalString = `${total_profit} ကျပ်`
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, total: totalString, data: formattedRows }));
