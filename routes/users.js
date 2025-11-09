@@ -131,18 +131,14 @@ function createUser(req, res) {
     keepExtensions: true,
     encoding: 'utf-8'
   });
-  form.multiples = false;
-  form.uploadDir = UPLOAD_DIR;
-  form.keepExtensions = true;
-  form.encoding = 'utf-8';
 
-  form.parse(req, (err, fields, files) => {
+  form.parse(req, async (err, fields, files) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    generateId(db, (err, id) => {
+    generateId(db, async (err, id) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -152,28 +148,36 @@ function createUser(req, res) {
       let frontFile = null;
       let backFile = null;
 
-      const photo = Array.isArray(files.photo) ? files.photo[0] : files.photo;
-      const front = Array.isArray(files.id_front_photo) ? files.id_front_photo[0] : files.id_front_photo;
-      const back = Array.isArray(files.id_back_photo) ? files.id_back_photo[0] : files.id_back_photo;
+      // --- Base64 decode logic only (no structure change) ---
+      try {
+        if (fields.photo && fields.photo.startsWith("data:image")) {
+          const base64Data = fields.photo.replace(/^data:image\/\w+;base64,/, "");
+          const ext = fields.photo.substring("data:image/".length, fields.photo.indexOf(";base64"));
+          const photoName = generatePhotoName(id, `photo.${ext}`);
+          fs.writeFileSync(path.join(UPLOAD_DIR, photoName), Buffer.from(base64Data, "base64"));
+          photoFile = photoName;
+        }
 
-      if (photo && photo.filepath && photo.originalFilename && photo.size > 0) {
-        const photoName = generatePhotoName(id, photo.originalFilename);
-        fs.renameSync(photo.filepath, path.join(UPLOAD_DIR, photoName));
-        photoFile = photoName;
+        if (fields.id_front_photo && fields.id_front_photo.startsWith("data:image")) {
+          const base64Data = fields.id_front_photo.replace(/^data:image\/\w+;base64,/, "");
+          const ext = fields.id_front_photo.substring("data:image/".length, fields.id_front_photo.indexOf(";base64"));
+          const frontName = generateIdFrontPhotoName(id, `front.${ext}`);
+          fs.writeFileSync(path.join(UPLOAD_DIR, frontName), Buffer.from(base64Data, "base64"));
+          frontFile = frontName;
+        }
+
+        if (fields.id_back_photo && fields.id_back_photo.startsWith("data:image")) {
+          const base64Data = fields.id_back_photo.replace(/^data:image\/\w+;base64,/, "");
+          const ext = fields.id_back_photo.substring("data:image/".length, fields.id_back_photo.indexOf(";base64"));
+          const backName = generateIdBackPhotoName(id, `back.${ext}`);
+          fs.writeFileSync(path.join(UPLOAD_DIR, backName), Buffer.from(base64Data, "base64"));
+          backFile = backName;
+        }
+      } catch (e) {
+        console.error("Base64 decode error:", e);
       }
 
-      if (front && front.filepath && front.originalFilename && front.size > 0) {
-        const frontName = generateIdFrontPhotoName(id, front.originalFilename);
-        fs.renameSync(front.filepath, path.join(UPLOAD_DIR, frontName));
-        frontFile = frontName;
-      }
-
-      if (back && back.filepath && back.originalFilename && back.size > 0) {
-        const backName = generateIdBackPhotoName(id, back.originalFilename);
-        fs.renameSync(back.filepath, path.join(UPLOAD_DIR, backName));
-        backFile = backName;
-      }
-
+      // --- original DB insert logic (unchanged) ---
       db.query(
         `INSERT INTO users 
         (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, promoter)
@@ -210,17 +214,16 @@ function createUser(req, res) {
                 ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
                 : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါတယ်";
               res.statusCode = 400;
-              res.writeHead(400, { "Content-Type": "application/json" })
+              res.writeHead(400, { "Content-Type": "application/json" });
               return res.end(JSON.stringify({ error: msg }));
             }
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
           }
 
-          // Fetch full user
           db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
             if (err || rows.length === 0) {
-              res.writeHead(203, { "Content-Type": "application/json" })
+              res.writeHead(203, { "Content-Type": "application/json" });
               return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် ဆွဲယူခြင်း မအောင်မြင်ပါ" }));
             }
 
@@ -229,11 +232,7 @@ function createUser(req, res) {
             user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
             user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
 
-            sendMail(
-              fields.email,
-              fields.fullname,
-              "pending"
-            );
+            sendMail(fields.email, fields.fullname, "pending");
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ", user }));
           });
