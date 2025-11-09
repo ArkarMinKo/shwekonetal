@@ -660,6 +660,34 @@ function getLatestFormula(req, res) {
   });
 }
 
+// --- Get buying prices data ---
+function getBuyingPricesData(req, res){
+  const sql = "SELECT * FROM buying_prices ORDER BY date DESC, time DESC";
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify(results));
+  });
+}
+
+// --- Get buying prices data ---
+function getSellingPricesData(req, res){
+  const sql = "SELECT * FROM selling_prices ORDER BY date DESC, time DESC";
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify(results));
+  });
+}
+
 module.exports = {
     insertSellingPrice,
     insertBuyingPrice,
@@ -673,5 +701,7 @@ module.exports = {
     postOpenStock,
     getOpenStock,
     openServer,
-    getServer
+    getServer,
+    getSellingPricesData,
+    getBuyingPricesData
 };

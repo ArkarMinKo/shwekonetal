@@ -205,6 +205,11 @@ const server = http.createServer(async (req, res) => {
     goldPrices.insertSellingPrice(req, res);
   }
 
+  // --- GET buying price Data
+  else if (pathName === "/selling-prices-data" && method === "GET") {
+    goldPrices.getSellingPricesData(req, res);
+  }
+
   // --- Getting All Buying Price ---
   else if (pathName === "/buying-prices" && method === "GET") {
     goldPrices.getAllBuyingPrices(req, res);
@@ -218,6 +223,11 @@ const server = http.createServer(async (req, res) => {
   // --- Buying Price Update ---
   else if (pathName === "/buying-prices" && method === "POST") {
     goldPrices.insertBuyingPrice(req, res);
+  }
+
+  // --- GET buying price Data
+  else if (pathName === "/buying-prices-data" && method === "GET") {
+    goldPrices.getBuyingPricesData(req, res);
   }
 
   // --- Get Sales ---
