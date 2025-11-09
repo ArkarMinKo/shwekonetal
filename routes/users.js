@@ -125,7 +125,12 @@ function getUserById(req, res, userid) {
 
 // --- CREATE USER ---
 function createUser(req, res) {
-  const form = new formidable.IncomingForm();
+  const form = new formidable.IncomingForm({
+    multiples: false,
+    uploadDir: UPLOAD_DIR,
+    keepExtensions: true,
+    encoding: 'utf-8'
+  });
   form.multiples = false;
   form.uploadDir = UPLOAD_DIR;
   form.keepExtensions = true;
