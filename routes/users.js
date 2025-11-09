@@ -228,7 +228,7 @@ function createUser(req, res) {
               fields.fullname,
               "pending"
             );
-            res.writeHead(200, { "Content-Type": "application/json" });
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ", user }));
           });
         }
