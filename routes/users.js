@@ -134,6 +134,7 @@ function createUser(req, res) {
   form.multiples = false;
   form.uploadDir = UPLOAD_DIR;
   form.keepExtensions = true;
+  form.encoding = 'utf-8';
 
   form.parse(req, (err, fields, files) => {
     if (err) {
