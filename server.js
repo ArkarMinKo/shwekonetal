@@ -134,10 +134,6 @@ const server = http.createServer(async (req, res) => {
     const id = pathName.split("/")[2];
     users.updateUser(req, res, id);
   }
-  else if (pathName.startsWith("/users/") && method === "DELETE") {
-    const id = pathName.split("/")[2];
-    users.deleteUser(req, res, id);
-  }
   else if (pathName.startsWith("/users/approve/") && method === "PATCH") {
     const id = pathName.split("/")[3];
     users.approveUser(req, res, id);

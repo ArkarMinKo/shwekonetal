@@ -2,6 +2,7 @@ const db = require("../db");
 const formidable = require("formidable");
 const path = require("path");
 const fs = require("fs");
+const bcrypt = require("bcrypt");
 const { generateId } = require("../utils/idUserGenerator");
 const { generatePhotoName } = require("../utils/photoNameGenerator");
 const { generateIdFrontPhotoName } = require("../utils/idFrontPhotoNameGenerator");
@@ -129,7 +130,7 @@ function createUser(req, res) {
     multiples: false,
     uploadDir: UPLOAD_DIR,
     keepExtensions: true,
-    encoding: 'utf-8'
+    encoding: "utf-8",
   });
 
   form.parse(req, async (err, fields, files) => {
@@ -148,7 +149,7 @@ function createUser(req, res) {
       let frontFile = null;
       let backFile = null;
 
-      // --- Base64 decode logic only (no structure change) ---
+      // --- Base64 decode logic ---
       try {
         if (fields.photo && fields.photo.startsWith("data:image")) {
           const base64Data = fields.photo.replace(/^data:image\/\w+;base64,/, "");
@@ -177,67 +178,68 @@ function createUser(req, res) {
         console.error("Base64 decode error:", e);
       }
 
-      // --- original DB insert logic (unchanged) ---
-      db.query(
-        `INSERT INTO users 
-        (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, promoter)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [
-          id,
-          fields.fullname,
-          fields.gender,
-          fields.id_type,
-          fields.id_number,
-          photoFile || null,
-          frontFile || null,
-          backFile || null,
-          fields.email,
-          fields.phone,
-          fields.state,
-          fields.city,
-          fields.address,
-          fields.password,
-          "pending",
-          fields.gold || 0,
-          fields.member_point || 0,
-          fields.passcode || null,
-          fields.level || "level1",
-          fields.promoter || "Normal",
-        ],
-        (err) => {
-          if (err) {
-            console.error("Insert error:", err);
-            if (err.code === "ER_DUP_ENTRY") {
-              const msg = err.message.includes("email")
-                ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
-                : err.message.includes("phone")
-                ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
-                : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါတယ်";
-              res.statusCode = 400;
-              res.writeHead(400, { "Content-Type": "application/json" });
-              return res.end(JSON.stringify({ error: msg }));
+      try {
+        // --- Hash password & passcode ---
+        const hashedPassword = await bcrypt.hash(fields.password, 10);
+        let hashedPasscode = null;
+
+        if (fields.passcode && fields.passcode.trim() !== "") {
+          hashedPasscode = await bcrypt.hash(fields.passcode, 10);
+        }
+
+        // --- Insert to DB ---
+        db.query(
+          `INSERT INTO users 
+          (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, promoter)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            id,
+            fields.fullname,
+            fields.gender,
+            fields.id_type,
+            fields.id_number,
+            photoFile || null,
+            frontFile || null,
+            backFile || null,
+            fields.email,
+            fields.phone,
+            fields.state,
+            fields.city,
+            fields.address,
+            hashedPassword,
+            "pending",
+            fields.gold || 0,
+            fields.member_point || 0,
+            hashedPasscode, // hashed or null
+            fields.level || "level1",
+            fields.promoter || "Normal",
+          ],
+          (err) => {
+            if (err) {
+              console.error("Insert error:", err);
+              if (err.code === "ER_DUP_ENTRY") {
+                const msg = err.message.includes("email")
+                  ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
+                  : err.message.includes("phone")
+                  ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
+                  : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါတယ်";
+                res.statusCode = 400;
+                res.writeHead(400, { "Content-Type": "application/json" });
+                return res.end(JSON.stringify({ error: msg }));
+              }
+              res.statusCode = 500;
+              return res.end(JSON.stringify({ error: err.message }));
             }
-            res.statusCode = 500;
-            return res.end(JSON.stringify({ error: err.message }));
-          }
-
-          db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
-            if (err || rows.length === 0) {
-              res.writeHead(203, { "Content-Type": "application/json" });
-              return res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ သို့သော် ဆွဲယူခြင်း မအောင်မြင်ပါ" }));
-            }
-
-            const user = rows[0];
-            user.profile = user.photo ? `${filepath}${user.photo}` : null;
-            user.id_front = user.id_front_photo ? `${filepath}${user.id_front_photo}` : null;
-            user.id_back = user.id_back_photo ? `${filepath}${user.id_back_photo}` : null;
-
             sendMail(fields.email, fields.fullname, "pending");
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ", user }));
-          });
-        }
-      );
+            res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ" }));
+          }
+        );
+      } catch (hashErr) {
+        console.error("Hashing error:", hashErr);
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: "Password hashing failed" }));
+      }
     });
   });
 }
@@ -328,12 +330,12 @@ function updateUser(req, res, userid) {
   });
 }
 
-// --- PATCH USER PASSWORD WITH OTP (using email) ---
+// --- PATCH USER PASSWORD WITH OTP (using email, hashed) ---
 function patchUserPasswordWithOTP(req, res) {
   const form = new formidable.IncomingForm();
   form.multiples = false;
 
-  form.parse(req, (err, fields) => {
+  form.parse(req, async (err, fields) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
@@ -344,12 +346,14 @@ function patchUserPasswordWithOTP(req, res) {
     if (!email || !password) {
       res.statusCode = 400;
       return res.end(
-        JSON.stringify({ error: "Email နဲ့ စကားဝှက် အသစ် ၂ခုလုံး ထည့်ပါ" })
+        JSON.stringify({
+          error: "Email နဲ့ စကားဝှက် အသစ် ၂ခုလုံး ထည့်ပါ",
+        })
       );
     }
 
     // --- Check if user exists ---
-    db.query("SELECT id FROM users WHERE email=?", [email], (err, rows) => {
+    db.query("SELECT id FROM users WHERE email=?", [email], async (err, rows) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -360,28 +364,40 @@ function patchUserPasswordWithOTP(req, res) {
         return res.end(JSON.stringify({ error: "အကောင့်မတွေ့ပါ" }));
       }
 
-      // --- Update only password ---
-      const sql = `UPDATE users SET password=? WHERE email=?`;
-      db.query(sql, [password, email], (err) => {
-        if (err) {
-          res.statusCode = 500;
-          return res.end(JSON.stringify({ error: err.message }));
-        }
+      try {
+        // 🔒 Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ message: "စကားဝှက် ပြောင်းလဲပြီးပါပြီ" }));
-      });
+        const sql = `UPDATE users SET password=? WHERE email=?`;
+        db.query(sql, [hashedPassword, email], (err) => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
+
+          res.writeHead(200, {
+            "Content-Type": "application/json; charset=utf-8",
+          });
+          res.end(
+            JSON.stringify({ message: "စကားဝှက် ပြောင်းလဲပြီးပါပြီ" })
+          );
+        });
+      } catch (hashErr) {
+        console.error("Password hash error:", hashErr);
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: "Password hashing failed" }));
+      }
     });
   });
 }
 
-// --- PATCH USER PASSWORD WITH OLD PASSWORD CHECK ---
+// --- PATCH USER PASSWORD WITH OLD PASSWORD CHECK (hashed) ---
 function patchUserPassword(req, res, userid) {
   const id = userid;
   const form = new formidable.IncomingForm();
   form.multiples = false;
 
-  form.parse(req, (err, fields) => {
+  form.parse(req, async (err, fields) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
@@ -391,11 +407,15 @@ function patchUserPassword(req, res, userid) {
 
     if (!old_password || !new_password) {
       res.statusCode = 400;
-      return res.end(JSON.stringify({ error: "အဟောင်းနှင့်အသစ် စကားဝှက်နှစ်ခုလုံး ထည့်ပါ" }));
+      return res.end(
+        JSON.stringify({
+          error: "အဟောင်းနှင့်အသစ် စကားဝှက်နှစ်ခုလုံး ထည့်ပါ",
+        })
+      );
     }
 
     // --- Check if user exists ---
-    db.query("SELECT password FROM users WHERE id=?", [id], (err, rows) => {
+    db.query("SELECT password FROM users WHERE id=?", [id], async (err, rows) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -408,35 +428,49 @@ function patchUserPassword(req, res, userid) {
 
       const currentPassword = rows[0].password;
 
-      // --- Verify old password ---
-      if (old_password !== currentPassword) {
-        res.statusCode = 400;
-        return res.end(JSON.stringify({ error: "အဟောင်းစကားဝှက် မှားနေပါသည်" }));
-      }
+      try {
+        // 🔍 Compare old password (hashed check)
+        const isMatch = await bcrypt.compare(old_password, currentPassword);
 
-      // --- Update to new password ---
-      const sql = `UPDATE users SET password=? WHERE id=?`;
-      db.query(sql, [new_password, id], (err) => {
-        if (err) {
-          res.statusCode = 500;
-          return res.end(JSON.stringify({ error: err.message }));
+        if (!isMatch) {
+          res.statusCode = 400;
+          return res.end(
+            JSON.stringify({ error: "အဟောင်းစကားဝှက် မှားနေပါသည်" })
+          );
         }
 
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ message: "စကားဝှက် အသစ်ပြောင်းပြီးပါပြီ" }));
-      });
+        // 🔒 Hash new password
+        const hashedNewPassword = await bcrypt.hash(new_password, 10);
+
+        // --- Update to new hashed password ---
+        const sql = `UPDATE users SET password=? WHERE id=?`;
+        db.query(sql, [hashedNewPassword, id], (err) => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
+
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({ message: "စကားဝှက် အသစ်ပြောင်းပြီးပါပြီ" })
+          );
+        });
+      } catch (hashErr) {
+        console.error("Password update error:", hashErr);
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: "Password hashing failed" }));
+      }
     });
   });
 }
 
-
-// --- PATCH USER PASSCODE ---
+// --- PATCH USER PASSCODE (hashed) ---
 function patchUserPasscode(req, res, userid) {
   const id = userid;
   const form = new formidable.IncomingForm();
   form.multiples = false;
 
-  form.parse(req, (err, fields) => {
+  form.parse(req, async (err, fields) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
@@ -444,13 +478,13 @@ function patchUserPasscode(req, res, userid) {
 
     const { passcode } = fields;
 
-    if (!passcode) {
+    if (!passcode || passcode.trim() === "") {
       res.statusCode = 400;
       return res.end(JSON.stringify({ error: "passcode အသစ် ထည့်ပါ" }));
     }
 
     // --- Check if user exists ---
-    db.query("SELECT id FROM users WHERE id=?", [id], (err, rows) => {
+    db.query("SELECT id FROM users WHERE id=?", [id], async (err, rows) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -461,49 +495,26 @@ function patchUserPasscode(req, res, userid) {
         return res.end(JSON.stringify({ error: "User not found" }));
       }
 
-      // --- Update only password ---
-      const sql = `UPDATE users SET passcode=? WHERE id=?`;
-      db.query(sql, [passcode, id], (err) => {
-        if (err) {
-          res.statusCode = 500;
-          return res.end(JSON.stringify({ error: err.message }));
-        }
+      try {
+        // 🔒 Hash the new passcode before saving
+        const hashedPasscode = await bcrypt.hash(passcode, 10);
 
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ message: "Passcode ပြောင်းလဲပြီးပါပြီ" }));
-      });
-    });
-  });
-}
+        // --- Update hashed passcode only ---
+        const sql = `UPDATE users SET passcode=? WHERE id=?`;
+        db.query(sql, [hashedPasscode, id], (err) => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
 
-// Delete user
-function deleteUser(req, res, id) {
-  if (!id) {
-      res.statusCode = 400;
-      return res.end(JSON.stringify({ error: "Missing admin ID" }));
-  }
-
-  db.query("SELECT photo, id_front_photo, id_back_photo FROM users WHERE id=?", [id], (err, rows) => {
-    if (err) {
-      res.statusCode = 500;
-      return res.end(JSON.stringify({ error: err.message }));
-    }
-
-    const { photo, id_front_photo, id_back_photo } = rows[0] || {};
-
-    db.query("DELETE FROM users WHERE id=?", [id], (err) => {
-      if (err) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ message: "Passcode ပြောင်းလဲပြီးပါပြီ" }));
+        });
+      } catch (hashErr) {
+        console.error("Hash error:", hashErr);
         res.statusCode = 500;
-        return res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: "Passcode hashing failed" }));
       }
-
-      [photo, id_front_photo, id_back_photo].forEach((file) => {
-        if (file && fs.existsSync(path.join(UPLOAD_DIR, file))) {
-          fs.unlinkSync(path.join(UPLOAD_DIR, file));
-        }
-      });
-
-      res.end(JSON.stringify({ message: "User and photos deleted" }));
     });
   });
 }
@@ -561,46 +572,74 @@ function loginUser(req, res, body) {
 
     if (!email || !password) {
       res.writeHead(400, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး" }));
+      return res.end(
+        JSON.stringify({
+          message: "Email နဲ့ Password နှစ်ခုပေါင်းဖြည့်ပေးပါအုံး",
+        })
+      );
     }
 
-    db.query("SELECT id, fullname, email, password, status, passcode FROM users WHERE email=?", [email], (err, rows) => {
-      if (err) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Server error" }));
-      }
+    db.query(
+      "SELECT id, fullname, email, password, status, passcode FROM users WHERE email=?",
+      [email],
+      async (err, rows) => {
+        if (err) {
+          console.error("DB error:", err);
+          res.writeHead(500, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "Server error" }));
+        }
 
-      if (rows.length === 0) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "ဒီ Email နဲ့အကောင့် မတွေ့ပါ" }));
-      }
+        if (rows.length === 0) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          return res.end(
+            JSON.stringify({ message: "ဒီ Email နဲ့အကောင့် မတွေ့ပါ" })
+          );
+        }
 
-      const user = rows[0];
+        const user = rows[0];
 
-      if (user.password !== password) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ" }));
-      }
-      
-      if (user.status !== "approved") {
-        res.writeHead(403, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး" }));
-      }
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          return res.end(
+            JSON.stringify({
+              message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ",
+            })
+          );
+        }
 
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်", id: user.id, fullname: user.fullname, passcode: user.passcode }));
-    });
+        if (user.status !== "approved") {
+          res.writeHead(403, { "Content-Type": "application/json" });
+          return res.end(
+            JSON.stringify({
+              message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး",
+            })
+          );
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်",
+            id: user.id,
+            fullname: user.fullname,
+            passcode: user.passcode,
+          })
+        );
+      }
+    );
   } catch (e) {
+    console.error("Login parse error:", e);
     res.writeHead(400, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ message: "Invalid request format" }));
   }
 }
 
-// --- PATCH: Update user passcode only ---
+// --- PATCH: Update user passcode only (hashed) ---
 function updatePasscode(req, res, id) {
   const form = new formidable.IncomingForm();
 
-  form.parse(req, (err, fields) => {
+  form.parse(req, async (err, fields) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
@@ -608,38 +647,51 @@ function updatePasscode(req, res, id) {
 
     const { passcode } = fields;
 
-    if (!passcode) {
+    if (!passcode || passcode.trim() === "") {
       res.statusCode = 400;
       return res.end(JSON.stringify({ error: "Passcode is required" }));
     }
 
-    db.query(
-      "UPDATE users SET passcode=? WHERE id=?",
-      [passcode, id],
-      (err) => {
-        if (err) {
-          res.statusCode = 500;
-          return res.end(JSON.stringify({ error: err.message }));
-        }
+    try {
+      // 🔒 Hash the passcode before saving
+      const hashedPasscode = await bcrypt.hash(passcode, 10);
 
-        db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
-          if (err || rows.length === 0) {
-            return res.end(JSON.stringify({ message: "Passcode updated, but fetch failed" }));
+      db.query(
+        "UPDATE users SET passcode=? WHERE id=?",
+        [hashedPasscode, id],
+        (err) => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
           }
 
-          const user = rows[0];
-          res.end(JSON.stringify({ message: "Passcode updated", user }));
-        });
-      }
-    );
+          db.query("SELECT * FROM users WHERE id=?", [id], (err, rows) => {
+            if (err || rows.length === 0) {
+              return res.end(
+                JSON.stringify({
+                  message: "Passcode updated, but fetch failed",
+                })
+              );
+            }
+
+            const user = rows[0];
+            res.end(JSON.stringify({ message: "Passcode updated", user }));
+          });
+        }
+      );
+    } catch (hashErr) {
+      console.error("Passcode hash error:", hashErr);
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: "Failed to hash passcode" }));
+    }
   });
 }
 
-// --- POST: Verify user's passcode ---
+// --- POST: Verify user's passcode (compare hash) ---
 function verifyPasscode(req, res, id) {
   const form = new formidable.IncomingForm();
 
-  form.parse(req, (err, fields) => {
+  form.parse(req, async (err, fields) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
@@ -647,12 +699,12 @@ function verifyPasscode(req, res, id) {
 
     const { passcode } = fields;
 
-    if (!passcode) {
+    if (!passcode || passcode.trim() === "") {
       res.statusCode = 400;
       return res.end(JSON.stringify({ error: "Passcode is required" }));
     }
 
-    db.query("SELECT passcode FROM users WHERE id=?", [id], (err, rows) => {
+    db.query("SELECT passcode FROM users WHERE id=?", [id], async (err, rows) => {
       if (err) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: err.message }));
@@ -665,7 +717,10 @@ function verifyPasscode(req, res, id) {
 
       const userPasscode = rows[0].passcode;
 
-      if (userPasscode === passcode) {
+      // 🔐 Compare entered passcode with hashed passcode
+      const isMatch = await bcrypt.compare(passcode, userPasscode);
+
+      if (isMatch) {
         return res.end(JSON.stringify({ message: "Passcode matched" }));
       } else {
         res.statusCode = 401;
@@ -733,7 +788,6 @@ module.exports = {
   getUsers,
   createUser,
   updateUser,
-  deleteUser,
   approveUser,
   rejectUser,
   loginUser,
