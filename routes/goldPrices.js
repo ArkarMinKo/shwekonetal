@@ -215,7 +215,7 @@ function getOpenStock(req, res){
         const latestyway = parseInt(formulaResult[0]?.yway) || 128;
         const ywaybypal = latestyway / 16;
 
-        const total_profit = (rows[0].gold * buying_prices / latestyway).toFixed(2);
+        const total_profit = parseInt(rows[0].gold * buying_prices / latestyway).toLocaleString();
 
         const formattedRows = rows.map((r) => {
           const goldFloat = parseFloat(r.gold);
