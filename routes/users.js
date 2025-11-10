@@ -719,11 +719,12 @@ function verifyPasscode(req, res, id) {
 
       // 🔐 Compare entered passcode with hashed passcode
       const isMatch = await bcrypt.compare(passcode, userPasscode);
-      res.writeHead(200, { "Content-Type": "application/json" });
+      
       if (isMatch) {
+        res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "Passcode မှန်ပါသည်" }));
       } else {
-        res.statusCode = 401;
+        res.writeHead(401, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "passcode မှားယွင်းနေပါသည်" }));
       }
     });
