@@ -472,12 +472,8 @@ function getAllPrices(req, res, tableName) {
 
         let price = null;
 
-        // FUTURE slots today -> null
-        if(date === todayStr && slotSec > currentSec){
-          price = null;
-        }
-        // rows exist
-        else if(rows.length>0){
+        if(rows.length>0){
+          // today/older date rows exist
           const periodRows = rows
             .filter(r=>{ const tSec = timeToSeconds(r.time); return tSec>=periodStartSec && tSec<=slotSec; })
             .sort((a,b)=>timeToSeconds(a.time)-timeToSeconds(b.time));
@@ -487,30 +483,17 @@ function getAllPrices(req, res, tableName) {
             price = lastPrice;
           }
         }
-        // today has no rows
         else if(date===todayStr){
-          price = slotSec<=currentSec ? lastPrice : null;
+          // today has no rows → fill until currentSec
+          price = slotSec <= currentSec ? lastPrice : null;
         }
-        // old date has no rows
         else{
+          // older date has no rows → carry-over
           price = lastPrice;
         }
 
         lastPrice = price;
         dateData[displayTime] = price;
-
-        // ✅ Debug info
-        console.log({
-          date,
-          slot,
-          displayTime,
-          currentSec,
-          todayStr,
-          rowsLength: rows.length,
-          prevLastPrice: prevLast ? prevLast.price : null,
-          lastPrice,
-          assignedPrice: price
-        });
       });
 
       finalOutput[date] = dateData;
