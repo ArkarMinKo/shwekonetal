@@ -485,14 +485,14 @@ function getAllPrices(req, res, tableName) {
 
         let price = lastPrice;
 
-        // FUTURE slots always null for today
+        // ✅ FUTURE slot always null for today
         if (date === todayStr && slotSec > currentSec) {
           dateData[displayTime] = null;
           return;
         }
 
-        // ✅ CASE 1: today or past with rows
-        if (rows.length) {
+        // --- Case 1: There is data for this date ---
+        if (rows.length > 0) {
           const periodRows = rows
             .filter(r => {
               const tSec = timeToSeconds(r.time);
@@ -500,26 +500,27 @@ function getAllPrices(req, res, tableName) {
             })
             .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
 
-          if (periodRows.length) {
+          if (periodRows.length > 0) {
             price = periodRows[periodRows.length - 1].price;
           } else if (lastPrice === null) {
-            price = (date === todayStr ? lastRowOverall : prevLast)
-              ? (date === todayStr ? lastRowOverall.price : prevLast.price)
-              : null;
+            // fallback for empty start of day
+            price = prevLast ? prevLast.price : null;
           }
         }
 
-        // ✅ CASE 2: today has no data at all
+        // --- Case 2: today has NO rows in DB ---
         else if (date === todayStr) {
           if (slotSec <= currentSec) {
-            price = prevLast ? prevLast.price : null; // use yesterday's last known price
+            // before current time → yesterday's last known price
+            price = prevLast ? prevLast.price : null;
           } else {
-            price = null; // future time slots
+            // after current time → null
+            price = null;
           }
         }
 
-        // ✅ CASE 3: old date with no data
-        else {
+        // --- Case 3: old date has no data ---
+        else if (!rows.length && date !== todayStr) {
           price = prevLast ? prevLast.price : null;
         }
 
