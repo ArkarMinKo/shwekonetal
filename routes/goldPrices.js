@@ -432,7 +432,13 @@ function getAllSellingPrices(req, res) {
     });
 
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
+
+    // ✅ Get today's date string using local time (not UTC)
+    const todayStr = now.getFullYear() + "-" +
+      String(now.getMonth() + 1).padStart(2, "0") + "-" +
+      String(now.getDate()).padStart(2, "0");
+
+    // ✅ Local time in seconds
     const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
     function timeToSeconds(t) {
@@ -559,7 +565,13 @@ function getAllBuyingPrices(req, res) {
     });
 
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
+
+    // ✅ Get today's date string using local time (not UTC)
+    const todayStr = now.getFullYear() + "-" +
+      String(now.getMonth() + 1).padStart(2, "0") + "-" +
+      String(now.getDate()).padStart(2, "0");
+
+    // ✅ Local time in seconds
     const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
     function timeToSeconds(t) {

@@ -30,7 +30,7 @@ function createSale(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        const { userid, type, gold, method, Payment_name, payment_phone, address, deli_type} = fields;
+        const { userid, type, gold, method, payment_name, payment_phone, address, deli_type} = fields;
         if (!userid || !type || !gold) {
             res.statusCode = 400;
             return res.end(JSON.stringify({ error: "userid, type, gold are required" }));
@@ -169,7 +169,7 @@ function createSale(req, res) {
                         INSERT INTO sales (id, userid, type, gold, price, photos, method, payment_phone, payment_name, address, deli_type)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `;
-                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method || "KBZ Pay", payment_phone || null, Payment_name || null, address || null, deli_type || null], (err) => {
+                    db.query(sql, [id, userid, saleType, requestedGold, price, JSON.stringify(photoArray), method || "KBZ Pay", payment_phone || null, payment_name || null, address || null, deli_type || null], (err) => {
                         if (err) {
                             res.statusCode = 500;
                             return res.end(JSON.stringify({ error: err.message }));
