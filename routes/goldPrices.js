@@ -403,8 +403,12 @@ function insertFormula(req, res) {
 }
 
 // ✅ Utility to format date in device's local timezone: YYYY-MM-DD
-function formatLocalDate(d) {
-  return d.toISOString().split("T")[0];
+// Server local date format
+function formatLocalDate(d){
+  const year = d.getFullYear();
+  const month = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${year}-${month}-${day}`;
 }
 
 // Generic function to get all prices
@@ -511,7 +515,6 @@ function getAllPrices(req, res, tableName) {
     res.end(JSON.stringify(sortedOutput,null,2));
   });
 }
-
 
 // --- Get All Selling Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllSellingPrices(req, res) {
