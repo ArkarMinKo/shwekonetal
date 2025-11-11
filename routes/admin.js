@@ -108,62 +108,45 @@ function createAdmin(req, res) {
     const form = new formidable.IncomingForm({ multiples: false, uploadDir: UPLOAD_DIR, keepExtensions: true });
 
     generateAdminId(db, (idErr, newId) => {
-        if (idErr) {
-            res.statusCode = 500;
-            return res.end(JSON.stringify({ error: idErr.message }));
-        }
+        if (idErr) return res.end(JSON.stringify({ error: idErr.message }));
 
         form.parse(req, async (err, fields, files) => {
-            if (err) {
-                res.statusCode = 500;
-                return res.end(JSON.stringify({ error: err.message }));
-            }
+            if (err) return res.end(JSON.stringify({ error: err.message }));
 
             const { name, password, passcode, email, phone, gender, role } = fields;
             const photoFile = Array.isArray(files.photo) ? files.photo[0] : files.photo;
-            const nameStr = Array.isArray(name) ? name[0] : name;
-            const passwordStr = Array.isArray(password) ? password[0] : password;
-            const passcodeStr = Array.isArray(passcode) ? passcode[0] : passcode;
-            const emailStr = Array.isArray(email) ? email[0] : email;
-            const phoneStr = Array.isArray(phone) ? phone[0] : phone;
-            const genderStr = Array.isArray(gender) ? gender[0] : gender;
-            const roleStr = Array.isArray(role) ? role[0] : role;
+            const nameStr = (Array.isArray(name) ? name[0] : name)?.trim();
+            const passwordStr = (Array.isArray(password) ? password[0] : password)?.trim();
+            const passcodeStr = (Array.isArray(passcode) ? passcode[0] : passcode)?.trim();
+            const emailStr = (Array.isArray(email) ? email[0] : email)?.trim();
+            const phoneStr = (Array.isArray(phone) ? phone[0] : phone)?.trim();
+            const genderStr = (Array.isArray(gender) ? gender[0] : gender)?.trim();
+            const roleStr = (Array.isArray(role) ? role[0] : role)?.trim() || "seller";
 
             if (roleStr === "owner") {
-                res.writeHead(403, { "Content-Type": "application/json" });
-                return res.end(JSON.stringify({
-                    message: "Owner account ဖွင့်ခွင့်မရှိပါ"
-                }));
+                return res.end(JSON.stringify({ message: "Owner account ဖန်တီးခွင့်မရှိပါ" }));
             }
 
-            if (!name || !password || !email || !gender) {
-                res.statusCode = 400;
-                return res.end(JSON.stringify({ error: "Missing required fields" }));
+            if (!nameStr || !passwordStr || !emailStr || !genderStr) {
+                return res.end(JSON.stringify({ message: "လိုအပ်တဲ့အချက်အလက်များ မပြည့်စုံပါ" }));
             }
 
-            try {
-                // Check if email already exists
-                const checkEmailSql = "SELECT email FROM admin WHERE email = ?";
-                db.query(checkEmailSql, [emailStr], async (err, results) => {
-                    if (err) {
-                        res.statusCode = 500;
-                        return res.end(JSON.stringify({ error: err.message }));
-                    }
+            // ✅ Email unique check
+            const checkEmailSql = "SELECT 1 FROM admin WHERE email = ? LIMIT 1";
+            db.query(checkEmailSql, [emailStr], async (err, results) => {
+                if (err) return res.end(JSON.stringify({ error: "Database error ဖြစ်နေပါသည်" }));
+                if (results.length > 0) {
+                    return res.end(JSON.stringify({ message: "ဒီ Email နဲ့ အကောင့်ရှိပြီးသား ဖြစ်နေပါသည်" }));
+                }
 
-                    if (results.length > 0) {
-                        res.statusCode = 409; // Conflict
-                        return res.end(JSON.stringify({ error: "Email already exists" }));
-                    }
-
-                    // Hash password and passcode
+                try {
                     const hashedPassword = await bcrypt.hash(passwordStr, 10);
                     const hashedPasscode = passcodeStr ? await bcrypt.hash(passcodeStr, 10) : null;
 
                     let photoName = null;
-                    if (photoFile && photoFile.originalFilename) {
+                    if (photoFile?.originalFilename) {
                         photoName = generatePhotoName(newId, photoFile.originalFilename);
-                        const newPath = path.join(UPLOAD_DIR, photoName);
-                        fs.renameSync(photoFile.filepath, newPath);
+                        fs.renameSync(photoFile.filepath, path.join(UPLOAD_DIR, photoName));
                     }
 
                     const insertSql = `
@@ -173,38 +156,20 @@ function createAdmin(req, res) {
 
                     db.query(
                         insertSql,
-                        [
-                            newId,
-                            nameStr,
-                            photoName,
-                            hashedPassword,
-                            hashedPasscode,
-                            emailStr,
-                            phoneStr || null,
-                            genderStr,
-                            roleStr || "seller",
-                        ],
+                        [newId, nameStr, photoName, hashedPassword, hashedPasscode, emailStr, phoneStr || null, genderStr, roleStr],
                         (err) => {
-                            if (err) {
-                                res.statusCode = 500;
-                                return res.end(JSON.stringify({ error: err.message }));
-                            }
-
-                            res.statusCode = 201;
-                            res.end(
-                                JSON.stringify({
-                                    success: true,
-                                    message: "Admin created successfully",
-                                    id: newId,
-                                })
-                            );
+                            if (err) return res.end(JSON.stringify({ message: "အကောင့်ဖန်တီးရာတွင် ပြဿနာရှိနေပါသည်" }));
+                            res.end(JSON.stringify({
+                                success: true,
+                                message: "Admin အကောင့်အသစ် ဖန်တီးပြီးပါပြီ",
+                                id: newId
+                            }));
                         }
                     );
-                });
-            } catch (error) {
-                res.statusCode = 500;
-                res.end(JSON.stringify({ error: error.message }));
-            }
+                } catch (error) {
+                    res.end(JSON.stringify({ message: "အကောင့်ဖန်တီးမှု မအောင်မြင်ပါ" }));
+                }
+            });
         });
     });
 }
@@ -218,7 +183,7 @@ function deleteAdmin(req, res, id) {
 
     if (id === "A001") {
         res.statusCode = 403;
-        return res.end(JSON.stringify({ error: "Owner account ကိုဖျက်ခွင့်မရှိပါ" }));
+        return res.end(JSON.stringify({ message: "Owner account ကိုဖျက်ခွင့်မရှိပါ" }));
     }
 
     const sql = "DELETE FROM admin WHERE id = ? AND TRIM(id) != 'A001'";
@@ -231,11 +196,11 @@ function deleteAdmin(req, res, id) {
 
         if (result.affectedRows === 0) {
             res.statusCode = 404;
-            return res.end(JSON.stringify({ error: "Admin not found or cannot delete owner" }));
+            return res.end(JSON.stringify({ message: "Admin ကို မတွေ့ပါ" }));
         }
 
         res.statusCode = 200;
-        res.end(JSON.stringify({ success: true, message: "Admin deleted successfully" }));
+        res.end(JSON.stringify({ success: true, message: "Admin ကို ဖျက်ပြီးပါပြီ" }));
     });
 }
 
@@ -250,6 +215,9 @@ function updateAdminInfo(req, res) {
         }
 
         const { strid, name, phone, gender } = fields;
+        if (!strid || !name || !phone || !gender) {
+            return res.end(JSON.stringify({ message: "လိုအပ်တဲ့အချက်အလက်များ မပြည့်စုံပါ" }));
+        }
         const photoFile = Array.isArray(files.photo) ? files.photo[0] : files.photo;
         const id = Array.isArray(strid) ? strid[0] : strid;
         const nameStr = Array.isArray(name) ? name[0] : name;
@@ -267,7 +235,7 @@ function updateAdminInfo(req, res) {
 
                 if (results.length === 0) {
                     res.statusCode = 404;
-                    return res.end(JSON.stringify({ error: "Admin not found" }));
+                    return res.end(JSON.stringify({ error: "Admin ကို မတွေ့ပါ" }));
                 }
 
                 let updatedPhoto = results[0].photo;
@@ -309,7 +277,7 @@ function updateAdminInfo(req, res) {
                         res.end(
                             JSON.stringify({
                                 success: true,
-                                message: "Admin info updated successfully",
+                                message: "Admin အချက်အလက် ပြင်ပြီးပါပြီ",
                                 updated: { id, name: nameStr, phone: phoneStr, gender: genderStr, photo: updatedPhoto }
                             })
                         );
@@ -337,7 +305,7 @@ function updateAdminPassword(req, res) {
 
         if (!email || !password || !passcode) {
             res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "Email, password, and passcode are required" }));
+            return res.end(JSON.stringify({ message: "လိုအပ်တဲ့အချက်အလက်များ မပြည့်စုံပါ" }));
         }
 
         try {
@@ -351,7 +319,7 @@ function updateAdminPassword(req, res) {
 
                 if (results.length === 0) {
                     res.statusCode = 404;
-                    return res.end(JSON.stringify({ error: "Admin not found" }));
+                    return res.end(JSON.stringify({ message: "Admin ကို မတွေ့ပါ" }));
                 }
 
                 const owner = results[0];
@@ -359,13 +327,13 @@ function updateAdminPassword(req, res) {
                 // Check if passcode matches
                 if (!owner.passcode) {
                     res.statusCode = 403;
-                    return res.end(JSON.stringify({ error: "Passcode not set for owner" }));
+                    return res.end(JSON.stringify({ message: "Passcode not set for owner" }));
                 }
 
                 const isMatch = await bcrypt.compare(passcode.toString(), owner.passcode);
                 if (!isMatch) {
                     res.statusCode = 403;
-                    return res.end(JSON.stringify({ error: "Passcode does not match!" }));
+                    return res.end(JSON.stringify({ error: "Passcode မှားနေပါသည်" }));
                 }
 
                 // Hash new password
@@ -404,7 +372,7 @@ function updateAdminPasscode(req, res) {
 
         if (!email || !newpasscode || !passcode) {
             res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "Email, new passcode, and passcode are required" }));
+            return res.end(JSON.stringify({ message: "လိုအပ်တဲ့အချက်အလက်များ မပြည့်စုံပါ" }));
         }
 
         try {
@@ -417,12 +385,12 @@ function updateAdminPasscode(req, res) {
 
                 if (roleResults.length === 0) {
                     res.statusCode = 404;
-                    return res.end(JSON.stringify({ error: "Account not found" }));
+                    return res.end(JSON.stringify({ message: "Account not found" }));
                 }
 
                 if (roleResults[0].role === "seller") {
                     res.statusCode = 403;
-                    return res.end(JSON.stringify({ error: "You cannot update seller's passcode" }));
+                    return res.end(JSON.stringify({ message: "Seller ၏ Passcode ကို ပြင်ခွင့်မရှိပါ" }));
                 }
 
                 const getPasscodeSql = "SELECT passcode FROM admin WHERE id = 'A001'";
@@ -434,7 +402,7 @@ function updateAdminPasscode(req, res) {
 
                     if (results.length === 0) {
                         res.statusCode = 404;
-                        return res.end(JSON.stringify({ error: "Admin not found" }));
+                        return res.end(JSON.stringify({ message: "Admin ကို မတွေ့ပါ" }));
                     }
 
                     const owner = results[0];
@@ -442,13 +410,13 @@ function updateAdminPasscode(req, res) {
                     // Check if passcode matches
                     if (!owner.passcode) {
                         res.statusCode = 403;
-                        return res.end(JSON.stringify({ error: "Passcode not set for owner" }));
+                        return res.end(JSON.stringify({ message: "Owner ၏ Passcode မသတ်မှတ်ရသေးပါ" }));
                     }
 
                     const isMatch = await bcrypt.compare(passcode.toString(), owner.passcode);
                     if (!isMatch) {
                         res.statusCode = 403;
-                        return res.end(JSON.stringify({ error: "Passcode does not match!" }));
+                        return res.end(JSON.stringify({ error: "Passcode မှားနေပါသည်" }));
                     }
 
                     const hashedPasscode = await bcrypt.hash(newpasscode, 10);
@@ -461,7 +429,7 @@ function updateAdminPasscode(req, res) {
                         }
 
                         res.statusCode = 200;
-                        res.end(JSON.stringify({ success: true, message: "Passcode updated successfully" }));
+                        res.end(JSON.stringify({ success: true, message: "Passcode ပြင်ပြီးပါပြီ" }));
                     });
                 });
             });
@@ -487,7 +455,7 @@ function verifyAdminPasscode(req, res) {
 
         if (!passcode) {
             res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "Passcode is required" }));
+            return res.end(JSON.stringify({ message: "Passcode ထည့်ရန် လိုအပ်ပါသည်" }));
         }
 
         try {
@@ -500,7 +468,7 @@ function verifyAdminPasscode(req, res) {
 
                 if (results.length === 0) {
                     res.statusCode = 404;
-                    return res.end(JSON.stringify({ error: "No admin passcodes found" }));
+                    return res.end(JSON.stringify({ error: "Admin Passcode မရှိပါ" }));
                 }
 
                 let matched = false;
@@ -517,13 +485,13 @@ function verifyAdminPasscode(req, res) {
                     res.statusCode = 200;
                     res.end(JSON.stringify({
                         success: true,
-                        message: "Passcode verified successfully"
+                        message: "Passcode စစ်ဆေးမှု အောင်မြင်ပါသည်"
                     }));
                 } else {
                     res.statusCode = 403;
                     res.end(JSON.stringify({
                         success: false,
-                        message: "Invalid passcode"
+                        message: "Passcode မမှန်ပါ"
                     }));
                 }
             });
@@ -549,7 +517,7 @@ function verifyOwnerPasscode(req, res) {
 
         if (!passcode) {
             res.statusCode = 400;
-            return res.end(JSON.stringify({ error: "Passcode is required" }));
+            return res.end(JSON.stringify({ message: "Passcode ထည့်ရန် လိုအပ်ပါသည်" }));
         }
 
         try {
@@ -562,7 +530,7 @@ function verifyOwnerPasscode(req, res) {
 
                 if (results.length === 0) {
                     res.statusCode = 404;
-                    return res.end(JSON.stringify({ error: "No admin passcodes found" }));
+                    return res.end(JSON.stringify({ error: "Owner ၏ Passcode မရှိပါ" }));
                 }
 
                 let matched = false;
@@ -579,13 +547,13 @@ function verifyOwnerPasscode(req, res) {
                     res.statusCode = 200;
                     res.end(JSON.stringify({
                         success: true,
-                        message: "Passcode verified successfully"
+                        message: "Passcode စစ်ဆေးမှု အောင်မြင်ပါသည်"
                     }));
                 } else {
                     res.statusCode = 403;
                     res.end(JSON.stringify({
                         success: false,
-                        message: "Invalid passcode"
+                        message: "Owner Passcode မမှန်ပါ"
                     }));
                 }
             });
