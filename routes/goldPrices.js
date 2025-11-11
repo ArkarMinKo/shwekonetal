@@ -402,16 +402,25 @@ function insertFormula(req, res) {
   }); 
 }
 
-// --- Get All Selling Prices (Formatted by Date & Nearest Hour Slot) ---
-function getAllSellingPrices(req, res) {
-  const sql = "SELECT * FROM selling_prices ORDER BY date ASC, time ASC";
+// Utility to format date in local timezone: YYYY-MM-DD
+function formatLocalDate(d) {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+// --- Generic function to get all prices (buying or selling) ---
+function getAllPrices(req, res, tableName) {
+  const sql = `SELECT * FROM ${tableName} ORDER BY date ASC, time ASC`;
   db.query(sql, (err, results) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    // ✅ normalize time format
+    // Normalize time format
     results = results.map(r => {
       const [h, m] = r.time.split(":");
       r.time = `${h.padStart(2, "0")}:${m}`;
@@ -426,35 +435,32 @@ function getAllSellingPrices(req, res) {
 
     // Group by date
     const groupedByDate = {};
-    results.forEach(row => {
-      if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
-      groupedByDate[row.date].push(row);
+    results.forEach(r => {
+      if (!groupedByDate[r.date]) groupedByDate[r.date] = [];
+      groupedByDate[r.date].push(r);
     });
 
     const now = new Date();
-
-    // ✅ Get today's date string using local time (not UTC)
-    const todayStr = now.getFullYear() + "-" +
-      String(now.getMonth() + 1).padStart(2, "0") + "-" +
-      String(now.getDate()).padStart(2, "0");
-
-    // ✅ Local time in seconds
+    const todayStr = formatLocalDate(now);
     const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
     function timeToSeconds(t) {
       const [h, m] = t.split(":").map(Number);
       return h * 3600 + m * 60;
     }
+
     function lastRow(arr) { return arr && arr.length ? arr[arr.length - 1] : null; }
 
+    // Collect all dates from earliest DB date to today
     const dbDates = Object.keys(groupedByDate).sort();
-    const minDate = dbDates[0];
-    const maxDate = dbDates[dbDates.length - 1];
+    const minDate = dbDates[0] || todayStr;
+    const maxDate = dbDates[dbDates.length - 1] || todayStr;
     const endDate = new Date(Math.max(new Date(maxDate), now));
+
     const allDates = [];
     let cur = new Date(minDate);
     while (cur <= endDate) {
-      allDates.push(cur.toISOString().split("T")[0]);
+      allDates.push(formatLocalDate(cur));
       cur.setDate(cur.getDate() + 1);
     }
 
@@ -466,16 +472,17 @@ function getAllSellingPrices(req, res) {
       const rows = groupedByDate[date];
       let lastPrice = null;
 
-      const todayRows = groupedByDate[todayStr];
-      const prevDates = Object.keys(groupedByDate).filter(d => d < date);
-      const prevLast = prevDates.length ? lastRow(groupedByDate[prevDates.pop()]) : null;
+      // find last previous date with data
+      const prevDates = Object.keys(groupedByDate).filter(d => d < date).sort();
+      const prevDateWithData = prevDates.length ? prevDates[prevDates.length - 1] : null;
+      const prevLast = prevDateWithData ? lastRow(groupedByDate[prevDateWithData]) : null;
 
       timeSlots.forEach((slot, index) => {
         const slotSec = timeToSeconds(slot);
         const displayTime = slot.replace(/^0/, "");
         const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
-        // future slots → null
+        // future slots for today → null
         if (date === todayStr && slotSec > currentSec) {
           dateData[displayTime] = null;
           return;
@@ -494,15 +501,19 @@ function getAllSellingPrices(req, res) {
           if (periodRows.length) {
             price = periodRows[periodRows.length - 1].price;
           } else if (lastPrice === null) {
-            // no earlier data today → use yesterday’s last
-            price = prevLast ? prevLast.price : null;
+            // no data yet in this date → fallback
+            if (date === todayStr) {
+              price = lastRowOverall ? lastRowOverall.price : null;
+            } else {
+              price = prevLast ? prevLast.price : null;
+            }
           }
         } else {
-          // today (or this date) has no data at all
-          if (slotSec <= currentSec) {
+          // date has no data at all
+          if (date === todayStr) {
             price = lastRowOverall ? lastRowOverall.price : null;
           } else {
-            price = null;
+            price = prevLast ? prevLast.price : null;
           }
         }
 
@@ -520,6 +531,11 @@ function getAllSellingPrices(req, res) {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(JSON.stringify(sortedOutput, null, 2));
   });
+}
+
+// --- Get All Selling Prices (Formatted by Date & Nearest Hour Slot) ---
+function getAllBuyingPrices(req, res) {
+  getAllPrices(req, res, "buying_prices");
 }
 
 // --- Get Latest Selling Price ---
@@ -537,122 +553,7 @@ function getLatestSellingPrice(req, res) {
 
 // --- Get All Buying Prices (Formatted by Date & Nearest Hour Slot) ---
 function getAllBuyingPrices(req, res) {
-  const sql = "SELECT * FROM buying_prices ORDER BY date ASC, time ASC";
-  db.query(sql, (err, results) => {
-    if (err) {
-      res.statusCode = 500;
-      return res.end(JSON.stringify({ error: err.message }));
-    }
-
-    // ✅ normalize time format
-    results = results.map(r => {
-      const [h, m] = r.time.split(":");
-      r.time = `${h.padStart(2, "0")}:${m}`;
-      return r;
-    });
-
-    const timeSlots = [
-      "01:00", "03:00", "05:00", "07:00",
-      "09:00", "11:00", "13:00", "15:00",
-      "17:00", "19:00", "21:00", "23:00"
-    ];
-
-    // Group by date
-    const groupedByDate = {};
-    results.forEach(row => {
-      if (!groupedByDate[row.date]) groupedByDate[row.date] = [];
-      groupedByDate[row.date].push(row);
-    });
-
-    const now = new Date();
-
-    // ✅ Get today's date string using local time (not UTC)
-    const todayStr = now.getFullYear() + "-" +
-      String(now.getMonth() + 1).padStart(2, "0") + "-" +
-      String(now.getDate()).padStart(2, "0");
-
-    // ✅ Local time in seconds
-    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-
-    function timeToSeconds(t) {
-      const [h, m] = t.split(":").map(Number);
-      return h * 3600 + m * 60;
-    }
-    function lastRow(arr) { return arr && arr.length ? arr[arr.length - 1] : null; }
-
-    const dbDates = Object.keys(groupedByDate).sort();
-    const minDate = dbDates[0];
-    const maxDate = dbDates[dbDates.length - 1];
-    const endDate = new Date(Math.max(new Date(maxDate), now));
-    const allDates = [];
-    let cur = new Date(minDate);
-    while (cur <= endDate) {
-      allDates.push(cur.toISOString().split("T")[0]);
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    const finalOutput = {};
-    const lastRowOverall = lastRow(results);
-
-    allDates.forEach(date => {
-      const dateData = {};
-      const rows = groupedByDate[date];
-      let lastPrice = null;
-
-      const todayRows = groupedByDate[todayStr];
-      const prevDates = Object.keys(groupedByDate).filter(d => d < date);
-      const prevLast = prevDates.length ? lastRow(groupedByDate[prevDates.pop()]) : null;
-
-      timeSlots.forEach((slot, index) => {
-        const slotSec = timeToSeconds(slot);
-        const displayTime = slot.replace(/^0/, "");
-        const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
-
-        // future slots → null
-        if (date === todayStr && slotSec > currentSec) {
-          dateData[displayTime] = null;
-          return;
-        }
-
-        let price = lastPrice;
-
-        if (rows && rows.length) {
-          const periodRows = rows
-            .filter(r => {
-              const tSec = timeToSeconds(r.time);
-              return tSec >= periodStartSec && tSec <= slotSec;
-            })
-            .sort((a, b) => timeToSeconds(a.time) - timeToSeconds(b.time));
-
-          if (periodRows.length) {
-            price = periodRows[periodRows.length - 1].price;
-          } else if (lastPrice === null) {
-            // no earlier data today → use yesterday’s last
-            price = prevLast ? prevLast.price : null;
-          }
-        } else {
-          // today (or this date) has no data at all
-          if (slotSec <= currentSec) {
-            price = lastRowOverall ? lastRowOverall.price : null;
-          } else {
-            price = null;
-          }
-        }
-
-        lastPrice = price;
-        dateData[displayTime] = price;
-      });
-
-      finalOutput[date] = dateData;
-    });
-
-    const sortedOutput = Object.fromEntries(
-      Object.entries(finalOutput).sort((a, b) => (a[0] < b[0] ? 1 : -1))
-    );
-
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify(sortedOutput, null, 2));
-  });
+  getAllPrices(req, res, "buying_prices");
 }
 
 // --- Get Latest Buying Price ---
