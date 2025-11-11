@@ -1019,7 +1019,11 @@ function compareBuyAndSellChart(req, res) {
 // --- Buy table ---
 function buyTable(req, res){
     const sql = `
-        SELECT * FROM sales WHERE type = 'buy' and status = 'approved' ORDER BY created_at DESC
+        SELECT s.*, u.fullname 
+        FROM sales s
+        LEFT JOIN users u ON s.userid = u.id
+        WHERE s.type = 'buy' AND  s.status = 'approved'
+        ORDER BY s.created_at DESC
     `;
 
     db.query(sql, (err, rows) => {
@@ -1097,7 +1101,11 @@ function buyTable(req, res){
 // --- Sell table ---
 function sellTable(req, res){
     const sql = `
-        SELECT * FROM sales WHERE type = 'sell' and status = 'approved' ORDER BY created_at DESC
+        SELECT s.*, u.fullname 
+        FROM sales s
+        LEFT JOIN users u ON s.userid = u.id
+        WHERE s.type = 'sell' AND  s.status = 'approved'
+        ORDER BY s.created_at DESC
     `;
 
     db.query(sql, (err, rows) => {
@@ -1175,7 +1183,11 @@ function sellTable(req, res){
 // --- Delivery table ---
 function deliTable(req, res){
     const sql = `
-        SELECT * FROM sales WHERE type = 'delivery' and status = 'approved' ORDER BY created_at DESC
+        SELECT s.*, u.fullname 
+        FROM sales s
+        LEFT JOIN users u ON s.userid = u.id
+        WHERE s.type = 'delivery' AND  s.status = 'approved'
+        ORDER BY s.created_at DESC
     `;
 
     db.query(sql, (err, rows) => {
