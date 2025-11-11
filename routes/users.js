@@ -537,7 +537,7 @@ function approveUser(req, res, idParam) {
         "approved"
       );
 
-      res.end(JSON.stringify({ message: "User approved" }));
+      res.end(JSON.stringify({ message: "User ကို အောင်မြင်စွာ approve လိုက်ပါပြီ" }));
     });
   });
 }
@@ -545,22 +545,21 @@ function approveUser(req, res, idParam) {
 // --- reject user ---
 function rejectUser(req, res, idParam) {
   const id = idParam || req.url.split("/")[3];
+
   db.query("SELECT fullname, email FROM users WHERE id=?", [id], (err, rows) => {
     if (err || rows.length === 0)
       return res.end(JSON.stringify({ error: err ? err.message : "User not found" }));
 
     const { fullname, email } = rows[0];
 
-    db.query("UPDATE users SET status='rejected' WHERE id=?", [id], (err) => {
+    // Send email first before deleting
+    sendMail(email, fullname, "rejected");
+
+    // Delete the user directly from database
+    db.query("DELETE FROM users WHERE id=?", [id], (err) => {
       if (err) return res.end(JSON.stringify({ error: err.message }));
 
-      sendMail(
-        email,
-        fullname,
-        "rejected"
-      );
-
-      res.end(JSON.stringify({ message: "User rejected" }));
+      res.end(JSON.stringify({ message: "User အား reject ပြီးပါပြီ" }));
     });
   });
 }
