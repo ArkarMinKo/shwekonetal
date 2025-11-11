@@ -402,27 +402,23 @@ function insertFormula(req, res) {
   }); 
 }
 
-// ✅ Utility to format date in device's local timezone: YYYY-MM-DD
-// Server local date format
-function formatLocalDate(d){
-  const year = d.getFullYear();
-  const month = String(d.getMonth()+1).padStart(2,'0');
-  const day = String(d.getDate()).padStart(2,'0');
-  return `${year}-${month}-${day}`;
+// ✅ Format date in server local timezone: YYYY-MM-DD
+function formatLocalDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 
-// Generic function to get all prices
+// --- Generic function to get all prices (buying or selling)
 function getAllPrices(req, res, tableName) {
   const sql = `SELECT * FROM ${tableName} ORDER BY date ASC, time ASC`;
   db.query(sql, (err, results) => {
-    if (err) {
+    if(err) {
       res.statusCode = 500;
-      return res.end(JSON.stringify({ error: err.message }));
+      return res.end(JSON.stringify({error: err.message}));
     }
 
-    // Normalize time
+    // Normalize time to HH:MM
     results = results.map(r => {
-      const [h, m] = r.time.split(":");
+      const [h,m] = r.time.split(":");
       r.time = `${h.padStart(2,"0")}:${m}`;
       return r;
     });
@@ -432,11 +428,12 @@ function getAllPrices(req, res, tableName) {
 
     // Group by date
     const groupedByDate = {};
-    results.forEach(r => {
+    results.forEach(r=>{
       if(!groupedByDate[r.date]) groupedByDate[r.date]=[];
       groupedByDate[r.date].push(r);
     });
 
+    // Server local time
     const now = new Date();
     const todayStr = formatLocalDate(now);
     const currentSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
@@ -449,9 +446,13 @@ function getAllPrices(req, res, tableName) {
     const maxDate = dbDates[dbDates.length-1] || todayStr;
     const endDate = new Date(Math.max(new Date(maxDate), now));
 
+    // Build all dates from min → today
     const allDates = [];
     let cur = new Date(minDate);
-    while(cur<=endDate){ allDates.push(formatLocalDate(cur)); cur.setDate(cur.getDate()+1); }
+    while(cur <= endDate){
+      allDates.push(formatLocalDate(cur));
+      cur.setDate(cur.getDate()+1);
+    }
 
     const finalOutput = {};
     const lastRowOverall = lastRow(results);
@@ -460,7 +461,7 @@ function getAllPrices(req, res, tableName) {
       const dateData = {};
       const rows = groupedByDate[date] || [];
 
-      // yesterday's last row
+      // yesterday last row
       const prevDates = Object.keys(groupedByDate).filter(d=>d<date).sort();
       const prevDateWithData = prevDates.length ? prevDates[prevDates.length-1] : null;
       const prevLast = prevDateWithData ? lastRow(groupedByDate[prevDateWithData]) : null;
@@ -474,27 +475,28 @@ function getAllPrices(req, res, tableName) {
 
         let price = null;
 
-        // FUTURE slots today = null
-        if(date===todayStr && slotSec>currentSec){
-          dateData[displayTime]=null;
+        // FUTURE slots today → null
+        if(date === todayStr && slotSec > currentSec){
+          dateData[displayTime] = null;
           return;
         }
 
         // CASE 1: rows exist for this date
-        if(rows.length>0){
-          const periodRows = rows
-            .filter(r=>{ const tSec=timeToSeconds(r.time); return tSec>=periodStartSec && tSec<=slotSec; })
-            .sort((a,b)=>timeToSeconds(a.time)-timeToSeconds(b.time));
+        if(rows.length > 0){
+          const periodRows = rows.filter(r=>{
+            const tSec = timeToSeconds(r.time);
+            return tSec >= periodStartSec && tSec <= slotSec;
+          }).sort((a,b)=>timeToSeconds(a.time)-timeToSeconds(b.time));
 
-          if(periodRows.length>0) price=periodRows[periodRows.length-1].price;
-          else if(lastPrice!==null) price=lastPrice;
+          if(periodRows.length>0) price = periodRows[periodRows.length-1].price;
+          else if(lastPrice!==null) price = lastPrice;
           else price = prevLast ? prevLast.price : null;
         }
-        // CASE 2: today no rows
-        else if(date===todayStr){
-          price = slotSec<=currentSec ? (prevLast ? prevLast.price : null) : null;
+        // CASE 2: today has no rows
+        else if(date === todayStr){
+          price = slotSec <= currentSec ? (prevLast ? prevLast.price : null) : null;
         }
-        // CASE 3: old date no rows
+        // CASE 3: old date has no rows
         else{
           price = prevLast ? prevLast.price : null;
         }
@@ -503,7 +505,7 @@ function getAllPrices(req, res, tableName) {
         dateData[displayTime] = price;
       });
 
-      finalOutput[date]=dateData;
+      finalOutput[date] = dateData;
     });
 
     // sort descending by date
