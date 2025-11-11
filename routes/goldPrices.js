@@ -402,13 +402,11 @@ function insertFormula(req, res) {
   }); 
 }
 
-// ✅ Format date in server local timezone: YYYY-MM-DD
 function formatLocalDate(d) {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return local.toISOString().split("T")[0];
 }
 
-// --- Generic function to get all prices (buying/selling)
 function getAllPrices(req, res, tableName) {
   const sql = `SELECT * FROM ${tableName} ORDER BY date ASC, time ASC`;
   db.query(sql, (err, results) => {
@@ -424,11 +422,8 @@ function getAllPrices(req, res, tableName) {
       return r;
     });
 
-    const timeSlots = [
-      "01:00","03:00","05:00","07:00",
-      "09:00","11:00","13:00","15:00",
-      "17:00","19:00","21:00","23:00"
-    ];
+    const timeSlots = ["01:00","03:00","05:00","07:00","09:00","11:00",
+                       "13:00","15:00","17:00","19:00","21:00","23:00"];
 
     // Group by date
     const groupedByDate = {};
@@ -441,11 +436,7 @@ function getAllPrices(req, res, tableName) {
     const todayStr = formatLocalDate(now);
     const currentSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
 
-    function timeToSeconds(t) { 
-      const [h,m] = t.split(":").map(Number); 
-      return h*3600 + m*60; 
-    }
-
+    function timeToSeconds(t) { const [h,m]=t.split(":").map(Number); return h*3600+m*60; }
     function lastRow(arr) { return arr && arr.length ? arr[arr.length-1] : null; }
 
     const dbDates = Object.keys(groupedByDate).sort();
@@ -455,76 +446,83 @@ function getAllPrices(req, res, tableName) {
 
     const allDates = [];
     let cur = new Date(minDate);
-    while(cur <= endDate) {
+    while(cur <= endDate){
       allDates.push(formatLocalDate(cur));
-      cur.setDate(cur.getDate() + 1);
+      cur.setDate(cur.getDate()+1);
     }
 
     const finalOutput = {};
     const lastRowOverall = lastRow(results);
 
-    allDates.forEach(date => {
+    allDates.forEach(date=>{
       const dateData = {};
       const rows = groupedByDate[date] || [];
 
-      // find yesterday's last record
-      const prevDates = Object.keys(groupedByDate).filter(d => d < date).sort();
+      // yesterday's last row
+      const prevDates = Object.keys(groupedByDate).filter(d=>d<date).sort();
       const prevDateWithData = prevDates.length ? prevDates[prevDates.length-1] : null;
       const prevLast = prevDateWithData ? lastRow(groupedByDate[prevDateWithData]) : null;
 
-      let lastPrice = null;
+      let lastPrice = prevLast ? prevLast.price : null;
 
-      timeSlots.forEach((slot, index) => {
+      timeSlots.forEach((slot,index)=>{
         const slotSec = timeToSeconds(slot);
         const displayTime = slot.replace(/^0/,"");
-        const periodStartSec = index===0 ? 0 : timeToSeconds(timeSlots[index-1])+1;
+        const periodStartSec = index===0?0:timeToSeconds(timeSlots[index-1])+1;
 
         let price = null;
 
-        // --- CASE 1: Today date → future slots null
-        if(date === todayStr && slotSec > currentSec) {
+        // FUTURE slots today -> null
+        if(date === todayStr && slotSec > currentSec){
           price = null;
-        } 
-        // --- CASE 2: Rows exist for this date
-        else if(rows.length > 0) {
+        }
+        // rows exist
+        else if(rows.length>0){
           const periodRows = rows
-            .filter(r => {
-              const tSec = timeToSeconds(r.time);
-              return tSec >= periodStartSec && tSec <= slotSec;
-            })
-            .sort((a,b) => timeToSeconds(a.time) - timeToSeconds(b.time));
-
-          if(periodRows.length > 0) price = periodRows[periodRows.length-1].price;
-          else if(lastPrice !== null) price = lastPrice;
-          else price = prevLast ? prevLast.price : null;
-        } 
-        // --- CASE 3: No rows for old date
-        else {
-          price = prevLast ? prevLast.price : null;
+            .filter(r=>{ const tSec = timeToSeconds(r.time); return tSec>=periodStartSec && tSec<=slotSec; })
+            .sort((a,b)=>timeToSeconds(a.time)-timeToSeconds(b.time));
+          if(periodRows.length>0){
+            price = periodRows[periodRows.length-1].price;
+          } else {
+            price = lastPrice;
+          }
+        }
+        // today has no rows
+        else if(date===todayStr){
+          price = slotSec<=currentSec ? lastPrice : null;
+        }
+        // old date has no rows
+        else{
+          price = lastPrice;
         }
 
-        // Carry-over lastPrice for next slot
         lastPrice = price;
         dateData[displayTime] = price;
 
-        // ✅ Debug console
+        // ✅ Debug info
         console.log({
-          date, slot, displayTime, currentSec, todayStr,
-          rowsLength: rows.length, prevLastPrice: prevLast ? prevLast.price : null,
-          lastPrice, assignedPrice: price
+          date,
+          slot,
+          displayTime,
+          currentSec,
+          todayStr,
+          rowsLength: rows.length,
+          prevLastPrice: prevLast ? prevLast.price : null,
+          lastPrice,
+          assignedPrice: price
         });
       });
 
       finalOutput[date] = dateData;
     });
 
-    // Sort descending by date
+    // sort descending by date
     const sortedOutput = Object.fromEntries(
       Object.entries(finalOutput).sort((a,b)=> a[0]<b[0]?1:-1)
     );
 
     res.setHeader("Content-Type","application/json; charset=utf-8");
-    res.end(JSON.stringify(sortedOutput, null, 2));
+    res.end(JSON.stringify(sortedOutput,null,2));
   });
 }
 
