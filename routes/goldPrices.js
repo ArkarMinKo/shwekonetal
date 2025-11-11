@@ -469,10 +469,11 @@ function getAllPrices(req, res, tableName) {
 
     allDates.forEach(date => {
       const dateData = {};
-      const rows = groupedByDate[date];
+
+      const rows = groupedByDate[date] || [];
+
       let lastPrice = null;
 
-      // find last previous date with data
       const prevDates = Object.keys(groupedByDate).filter(d => d < date).sort();
       const prevDateWithData = prevDates.length ? prevDates[prevDates.length - 1] : null;
       const prevLast = prevDateWithData ? lastRow(groupedByDate[prevDateWithData]) : null;
@@ -482,7 +483,7 @@ function getAllPrices(req, res, tableName) {
         const displayTime = slot.replace(/^0/, "");
         const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
-        // future slots for today → null
+        // future slot → null
         if (date === todayStr && slotSec > currentSec) {
           dateData[displayTime] = null;
           return;
@@ -490,7 +491,7 @@ function getAllPrices(req, res, tableName) {
 
         let price = lastPrice;
 
-        if (rows && rows.length) {
+        if (rows.length) {
           const periodRows = rows
             .filter(r => {
               const tSec = timeToSeconds(r.time);
@@ -501,20 +502,14 @@ function getAllPrices(req, res, tableName) {
           if (periodRows.length) {
             price = periodRows[periodRows.length - 1].price;
           } else if (lastPrice === null) {
-            // no data yet in this date → fallback
-            if (date === todayStr) {
-              price = lastRowOverall ? lastRowOverall.price : null;
-            } else {
-              price = prevLast ? prevLast.price : null;
-            }
+            // no earlier data today → fallback
+            price = (date === todayStr ? lastRowOverall : prevLast) ? 
+                    (date === todayStr ? lastRowOverall.price : prevLast.price) : null;
           }
         } else {
-          // date has no data at all
-          if (date === todayStr) {
-            price = lastRowOverall ? lastRowOverall.price : null;
-          } else {
-            price = prevLast ? prevLast.price : null;
-          }
+          // date has no data → fallback
+          price = (date === todayStr ? lastRowOverall : prevLast) ? 
+                  (date === todayStr ? lastRowOverall.price : prevLast.price) : null;
         }
 
         lastPrice = price;
