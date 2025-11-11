@@ -483,7 +483,7 @@ function getAllPrices(req, res, tableName) {
         const displayTime = slot.replace(/^0/, "");
         const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
-        // ✅ FUTURE slot (for today) → null
+        // ✅ FUTURE slot always null for today
         if (date === todayStr && slotSec > currentSec) {
           dateData[displayTime] = null;
           return;
@@ -491,8 +491,8 @@ function getAllPrices(req, res, tableName) {
 
         let price = lastPrice;
 
-        if (rows.length > 0) {
-          // normal case (has data)
+        if (rows.length) {
+          // normal case
           const periodRows = rows
             .filter(r => {
               const tSec = timeToSeconds(r.time);
@@ -503,19 +503,24 @@ function getAllPrices(req, res, tableName) {
           if (periodRows.length) {
             price = periodRows[periodRows.length - 1].price;
           } else if (lastPrice === null) {
-            // first slot, fallback
-            price = prevLast ? prevLast.price : null;
-          }
-        } else if (todayHasNoData && date === todayStr) {
-          // ✅ TODAY has no data → use yesterday's last price for past slots
-          if (slotSec <= currentSec) {
-            price = prevLast ? prevLast.price : null;
-          } else {
-            price = null;
+            price = (date === todayStr ? lastRowOverall : prevLast)
+              ? (date === todayStr ? lastRowOverall.price : prevLast.price)
+              : null;
           }
         } else {
-          // old date no data → fallback to prev day last price
-          price = prevLast ? prevLast.price : null;
+          // ✅ No data for this date
+          if (date === todayStr) {
+            // 👉 today has no data at all
+            if (slotSec <= currentSec) {
+              // show yesterday’s last known price
+              price = prevLast ? prevLast.price : null;
+            } else {
+              price = null;
+            }
+          } else {
+            // 👉 past date has no data — carry from previous day if any
+            price = prevLast ? prevLast.price : null;
+          }
         }
 
         lastPrice = price;
