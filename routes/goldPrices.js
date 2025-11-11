@@ -402,13 +402,10 @@ function insertFormula(req, res) {
   }); 
 }
 
-// Utility to format date in local timezone: YYYY-MM-DD
+// ✅ Utility to format date in device's local timezone: YYYY-MM-DD
 function formatLocalDate(d) {
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, "0"),
-    String(d.getDate()).padStart(2, "0")
-  ].join("-");
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().split("T")[0];
 }
 
 // --- Generic function to get all prices (buying or selling) ---
@@ -440,6 +437,7 @@ function getAllPrices(req, res, tableName) {
       groupedByDate[r.date].push(r);
     });
 
+    // ✅ Get local device time properly
     const now = new Date();
     const todayStr = formatLocalDate(now);
     const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -449,7 +447,9 @@ function getAllPrices(req, res, tableName) {
       return h * 3600 + m * 60;
     }
 
-    function lastRow(arr) { return arr && arr.length ? arr[arr.length - 1] : null; }
+    function lastRow(arr) {
+      return arr && arr.length ? arr[arr.length - 1] : null;
+    }
 
     const dbDates = Object.keys(groupedByDate).sort();
     const minDate = dbDates[0] || todayStr;
@@ -490,7 +490,7 @@ function getAllPrices(req, res, tableName) {
         let price = lastPrice;
 
         if (rows.length) {
-          // normal case (today or old date has data)
+          // normal case
           const periodRows = rows
             .filter(r => {
               const tSec = timeToSeconds(r.time);
@@ -507,8 +507,6 @@ function getAllPrices(req, res, tableName) {
           }
         } else if (todayHasNoData && date === todayStr) {
           // ✅ TODAY has NO data
-          // past slots → use previous day's last price
-          // future slots → null (handled above)
           if (slotSec <= currentSec) {
             price = prevLast ? prevLast.price : null;
           } else {
