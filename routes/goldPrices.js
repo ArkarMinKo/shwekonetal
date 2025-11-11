@@ -534,8 +534,8 @@ function getAllPrices(req, res, tableName) {
 }
 
 // --- Get All Selling Prices (Formatted by Date & Nearest Hour Slot) ---
-function getAllBuyingPrices(req, res) {
-  getAllPrices(req, res, "buying_prices");
+function getAllSellingPrices(req, res) {
+  getAllPrices(req, res, "selling_prices");
 }
 
 // --- Get Latest Selling Price ---
