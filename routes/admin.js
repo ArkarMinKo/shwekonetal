@@ -249,13 +249,12 @@ function updateAdminInfo(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        const { strid, name, phone, gender, role } = fields;
+        const { strid, name, phone, gender } = fields;
         const photoFile = Array.isArray(files.photo) ? files.photo[0] : files.photo;
         const id = Array.isArray(strid) ? strid[0] : strid;
         const nameStr = Array.isArray(name) ? name[0] : name;
         const phoneStr = Array.isArray(phone) ? phone[0] : phone;
         const genderStr = Array.isArray(gender) ? gender[0] : gender;
-        const roleStr = Array.isArray(role) ? role[0] : role;
 
         try {
             // Check if admin exists
@@ -293,13 +292,13 @@ function updateAdminInfo(req, res) {
 
                 const updateSql = `
                     UPDATE admin
-                    SET name = ?, phone = ?, gender = ?, role = ?, photo = ?
+                    SET name = ?, phone = ?, gender = ?, photo = ?
                     WHERE id = ?
                 `;
 
                 db.query(
                     updateSql,
-                    [nameStr, phoneStr, genderStr, roleStr, updatedPhoto, id],
+                    [nameStr, phoneStr, genderStr, updatedPhoto, id],
                     (err) => {
                         if (err) {
                             res.statusCode = 500;
@@ -311,7 +310,7 @@ function updateAdminInfo(req, res) {
                             JSON.stringify({
                                 success: true,
                                 message: "Admin info updated successfully",
-                                updated: { id, name: nameStr, phone: phoneStr, gender: genderStr, role: roleStr, photo: updatedPhoto }
+                                updated: { id, name: nameStr, phone: phoneStr, gender: genderStr, photo: updatedPhoto }
                             })
                         );
                     }
