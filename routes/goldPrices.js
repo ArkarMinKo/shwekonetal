@@ -437,7 +437,7 @@ function getAllPrices(req, res, tableName) {
       groupedByDate[r.date].push(r);
     });
 
-    // ✅ Get local device time properly
+    // ✅ Get server (device) local time
     const now = new Date();
     const todayStr = formatLocalDate(now);
     const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -470,18 +470,20 @@ function getAllPrices(req, res, tableName) {
       const dateData = {};
       const rows = groupedByDate[date] || [];
 
-      let lastPrice = null;
+      // find yesterday's last record if exists
       const prevDates = Object.keys(groupedByDate).filter(d => d < date).sort();
       const prevDateWithData = prevDates.length ? prevDates[prevDates.length - 1] : null;
       const prevLast = prevDateWithData ? lastRow(groupedByDate[prevDateWithData]) : null;
+
       const todayHasNoData = date === todayStr && rows.length === 0;
+      let lastPrice = null;
 
       timeSlots.forEach((slot, index) => {
         const slotSec = timeToSeconds(slot);
         const displayTime = slot.replace(/^0/, "");
         const periodStartSec = index === 0 ? 0 : timeToSeconds(timeSlots[index - 1]) + 1;
 
-        // ✅ FUTURE slot always null for today
+        // ✅ FUTURE slot (for today) → null
         if (date === todayStr && slotSec > currentSec) {
           dateData[displayTime] = null;
           return;
@@ -489,8 +491,8 @@ function getAllPrices(req, res, tableName) {
 
         let price = lastPrice;
 
-        if (rows.length) {
-          // normal case
+        if (rows.length > 0) {
+          // normal case (has data)
           const periodRows = rows
             .filter(r => {
               const tSec = timeToSeconds(r.time);
@@ -501,19 +503,18 @@ function getAllPrices(req, res, tableName) {
           if (periodRows.length) {
             price = periodRows[periodRows.length - 1].price;
           } else if (lastPrice === null) {
-            price = (date === todayStr ? lastRowOverall : prevLast)
-              ? (date === todayStr ? lastRowOverall.price : prevLast.price)
-              : null;
+            // first slot, fallback
+            price = prevLast ? prevLast.price : null;
           }
         } else if (todayHasNoData && date === todayStr) {
-          // ✅ TODAY has NO data
+          // ✅ TODAY has no data → use yesterday's last price for past slots
           if (slotSec <= currentSec) {
             price = prevLast ? prevLast.price : null;
           } else {
             price = null;
           }
         } else {
-          // old date has no data
+          // old date no data → fallback to prev day last price
           price = prevLast ? prevLast.price : null;
         }
 
