@@ -511,6 +511,18 @@ function getAllPrices(req, res, tableName) {
 
         lastPrice = price;
         dateData[displayTime] = price;
+
+        console.log({
+          date,
+          slot,
+          displayTime,
+          currentSec,
+          todayStr,
+          rowsLength: rows.length,
+          prevLastPrice: prevLast ? prevLast.price : null,
+          lastPrice,
+          assignedPrice: price
+        });
       });
 
       finalOutput[date] = dateData;
