@@ -518,6 +518,39 @@ function getAllSellingPrices(req, res) {
   getAllPrices(req, res, "selling_prices");
 }
 
+function insertYesterdayLastRowAtMidnight() {
+  const now = new Date();
+  const todayStr = formatLocalDate(now);
+
+  // 00:00:00 ဖြစ်တဲ့အချိန်မှာ run
+  if(now.getHours() === 0 && now.getMinutes() === 0) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = formatLocalDate(yesterday);
+
+    const tables = ["buying_prices", "selling_prices"];
+
+    tables.forEach(tableName => {
+      const sqlLast = `SELECT * FROM ${tableName} WHERE date=? ORDER BY time DESC LIMIT 1`;
+      db.query(sqlLast, [yesterdayStr], (err, rows) => {
+        if(err || rows.length === 0) {
+          return console.error(`No ${tableName} row for yesterday or error:`, err);
+        }
+
+        const lastRow = rows[0];
+        const insertSql = `INSERT INTO ${tableName} (date, time, price) VALUES (?, ?, ?)`;
+        db.query(insertSql, [todayStr, "00:00", lastRow.price], (err2) => {
+          if(err2) console.error(`Failed to insert yesterday last row into ${tableName}:`, err2);
+          else console.log(`Inserted yesterday last row into ${tableName} 00:00 slot`);
+        });
+      });
+    });
+  }
+}
+
+// server start or cron job
+setInterval(insertYesterdayLastRowAtMidnight, 60*1000);
+
 // --- Get Latest Selling Price ---
 function getLatestSellingPrice(req, res) {
   const sql = "SELECT * FROM selling_prices ORDER BY date DESC, time DESC LIMIT 1";
