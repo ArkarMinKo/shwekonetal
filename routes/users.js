@@ -219,10 +219,10 @@ function createUser(req, res) {
               console.error("Insert error:", err);
               if (err.code === "ER_DUP_ENTRY") {
                 const msg = err.message.includes("email")
-                  ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
+                  ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
                   : err.message.includes("phone")
-                  ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါတယ်"
-                  : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါတယ်";
+                  ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
+                  : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်";
                 res.statusCode = 400;
                 res.writeHead(400, { "Content-Type": "application/json" });
                 return res.end(JSON.stringify({ error: msg }));
@@ -602,7 +602,7 @@ function loginUser(req, res, body) {
           res.writeHead(401, { "Content-Type": "application/json" });
           return res.end(
             JSON.stringify({
-              message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ",
+              message: "Password မှားနေပါသည် ထပ်စမ်းကြည့်ပါ",
             })
           );
         }
@@ -611,7 +611,7 @@ function loginUser(req, res, body) {
           res.writeHead(403, { "Content-Type": "application/json" });
           return res.end(
             JSON.stringify({
-              message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ။ စောင့်ပါဦး",
+              message: "သင့်အကောင့်ကို မခွင့်ပြုပေးသေးပါ စောင့်ပါဦး",
             })
           );
         }
@@ -619,7 +619,7 @@ function loginUser(req, res, body) {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({
-            message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်",
+            message: "ဝင်ရောက်မှုအောင်မြင်ပါပြီ ကြိုဆိုပါသည်",
             id: user.id,
             fullname: user.fullname,
             passcode: user.passcode,
@@ -755,7 +755,7 @@ function requestEmailConfirmation(req, res) {
       { code: `${code}`}
     );
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပီ။ ၃ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ", email }));
+    res.end(JSON.stringify({ message: "email အတည်ပြုကုဒ် ပို့ပေးလိုက်ပါပြီ ၃ မိနစ်အတွင်း ရိုက်ထည့်ပေးပါ", email }));
   });
 }
 
