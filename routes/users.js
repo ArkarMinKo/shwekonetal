@@ -197,7 +197,7 @@ function createUser(req, res) {
               return res.end(JSON.stringify({ error: err.message }));
             }
             if (rows.length === 0) {
-              res.statusCode = 400;
+              res.writeHead(400, { "Content-Type": "application/json" });
               return res.end(JSON.stringify({ error: "Agent code မှားနေပါသည်" }));
             }
             const agentName = rows[0].name;
