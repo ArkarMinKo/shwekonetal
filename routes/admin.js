@@ -613,7 +613,7 @@ function createAgent(req, res) {
 }
 
 function getAgents(req, res) {
-  const sql = `SELECT id, name FROM agent ORDER BY id DESC`;
+  const sql = `SELECT * FROM agent ORDER BY id DESC`;
 
   db.query(sql, (err, results) => {
     if (err) {
