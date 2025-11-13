@@ -190,7 +190,7 @@ function createUser(req, res) {
         // --- Insert to DB ---
         db.query(
           `INSERT INTO users 
-          (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, promoter)
+          (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, agent)
           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
             id,
@@ -208,11 +208,11 @@ function createUser(req, res) {
             fields.address,
             hashedPassword,
             "pending",
-            fields.gold || 0,
-            fields.member_point || 0,
-            hashedPasscode, // hashed or null
+            0,
+            0,
+            hashedPasscode,
             fields.level || "level1",
-            fields.promoter || "Normal",
+            fields.agent || null,
           ],
           (err) => {
             if (err) {
@@ -220,8 +220,6 @@ function createUser(req, res) {
               if (err.code === "ER_DUP_ENTRY") {
                 const msg = err.message.includes("email")
                   ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
-                  : err.message.includes("phone")
-                  ? "ဤ phone number သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
                   : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်";
                 res.statusCode = 400;
                 res.writeHead(400, { "Content-Type": "application/json" });
