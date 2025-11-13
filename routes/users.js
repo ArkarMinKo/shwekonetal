@@ -187,52 +187,73 @@ function createUser(req, res) {
           hashedPasscode = await bcrypt.hash(fields.passcode, 10);
         }
 
-        // --- Insert to DB ---
-        db.query(
-          `INSERT INTO users 
-          (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, agent)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [
-            id,
-            fields.fullname,
-            fields.gender,
-            fields.id_type,
-            fields.id_number,
-            photoFile || null,
-            frontFile || null,
-            backFile || null,
-            fields.email,
-            fields.phone,
-            fields.state,
-            fields.city,
-            fields.address,
-            hashedPassword,
-            "pending",
-            0,
-            0,
-            hashedPasscode,
-            fields.level || "level1",
-            fields.agent || null,
-          ],
-          (err) => {
+        // --- Check agent code ---
+        const agentCode = fields.agent && fields.agent.trim() !== "" ? fields.agent.trim() : null;
+
+        if (agentCode) {
+          db.query("SELECT id FROM agent WHERE id = ?", [agentCode], (err, rows) => {
             if (err) {
-              console.error("Insert error:", err);
-              if (err.code === "ER_DUP_ENTRY") {
-                const msg = err.message.includes("email")
-                  ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
-                  : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်";
-                res.statusCode = 400;
-                res.writeHead(400, { "Content-Type": "application/json" });
-                return res.end(JSON.stringify({ error: msg }));
-              }
               res.statusCode = 500;
               return res.end(JSON.stringify({ error: err.message }));
             }
-            sendMail(fields.email, fields.fullname, "pending");
-            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ" }));
-          }
-        );
+            if (rows.length === 0) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: "Agent code မှားနေပါသည်" }));
+            }
+            const agentName = rows[0].name;
+            insertUser(agentName);
+          });
+        } else {
+          insertUser(null);
+        }
+
+        function insertUser(agentName) {
+          db.query(
+            `INSERT INTO users 
+            (id, fullname, gender, id_type, id_number, photo, id_front_photo, id_back_photo, email, phone, state, city, address, password, status, gold, member_point, passcode, level, agent)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              id,
+              fields.fullname,
+              fields.gender,
+              fields.id_type,
+              fields.id_number,
+              photoFile || null,
+              frontFile || null,
+              backFile || null,
+              fields.email,
+              fields.phone,
+              fields.state,
+              fields.city,
+              fields.address,
+              hashedPassword,
+              "pending",
+              0,
+              0,
+              hashedPasscode,
+              fields.level || "level1",
+              agentName
+            ],
+            (err) => {
+              if (err) {
+                console.error("Insert error:", err);
+                if (err.code === "ER_DUP_ENTRY") {
+                  const msg = err.message.includes("email")
+                    ? "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
+                    : "ဝင်ရောက်လာသော အချက်အလက်များ ထပ်နေပါသည်";
+                  res.statusCode = 400;
+                  res.writeHead(400, { "Content-Type": "application/json" });
+                  return res.end(JSON.stringify({ error: msg }));
+                }
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+              }
+              sendMail(fields.email, fields.fullname, "pending");
+              res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ message: "အသုံးပြုသူ ဖန်တီးပြီးပါပြီ" }));
+            }
+          );
+        }
       } catch (hashErr) {
         console.error("Hashing error:", hashErr);
         res.statusCode = 500;
