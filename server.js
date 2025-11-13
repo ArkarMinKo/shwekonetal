@@ -121,6 +121,10 @@ const server = http.createServer(async (req, res) => {
   else if(pathName === "/admin/password" && method === "PATCH") admin.updateAdminPassword(req, res);
   else if(pathName === "/admin/passcode" && method === "PATCH") admin.updateAdminPasscode(req, res);
 
+  // --- Agents CRUD ---
+  else if (pathName === "/agents" && method === "POST") admin.createAgent(req, res);
+  else if (pathName === "/agents" && method === "GET") admin.getAgents(req, res);
+
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
   else if (pathName === "/users" && method === "GET") users.getUsers(req, res);

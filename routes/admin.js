@@ -564,6 +564,69 @@ function verifyOwnerPasscode(req, res) {
     });
 }
 
+// --- CREATE Agent ---
+function createAgent(req, res) {
+  const form = new formidable.IncomingForm({
+    multiples: false,
+    encoding: "utf-8",
+  });
+
+  form.parse(req, (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: "Form parse error: " + err.message }));
+    }
+
+    const { id, name } = fields;
+
+    // --- Validate required fields ---
+    if (!id || !name) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: "id နှင့် name သည် လိုအပ်ပါသည်" }));
+    }
+
+    // --- Insert into 'agent' table ---
+    const sql = `INSERT INTO agent (id, name) VALUES (?, ?)`;
+
+    db.query(sql, [id.trim(), name.trim()], (err, result) => {
+      if (err) {
+        console.error("Agent insert error:", err);
+
+        // Duplicate entry check
+        if (err.code === "ER_DUP_ENTRY") {
+          const msg = err.message.includes("id")
+            ? "ဤ ID သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်"
+            : "ဤအမည် သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်";
+          res.statusCode = 400;
+          return res.end(JSON.stringify({ error: msg }));
+        }
+
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      // --- Success response ---
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ message: "Agent အသစ် ဖန်တီးပြီးပါပြီ" }));
+    });
+  });
+}
+
+function getAgents(req, res) {
+  const sql = `SELECT id, name FROM agent ORDER BY id DESC`;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Get agents error:", err);
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: "Database error: " + err.message }));
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ success: true, data: results }));
+  });
+}
+
 module.exports = { 
     getAdmins,
     createAdmin,
@@ -575,4 +638,6 @@ module.exports = {
     loginAdmin,
     verifyAdminPasscode,
     verifyOwnerPasscode,
+    createAgent,
+    getAgents
 };
