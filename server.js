@@ -124,6 +124,10 @@ const server = http.createServer(async (req, res) => {
   // --- Agents CRUD ---
   else if (pathName === "/agents" && method === "POST") admin.createAgent(req, res);
   else if (pathName === "/agents" && method === "GET") admin.getAgents(req, res);
+  else if (pathName.startsWith("/agents/") && method === "DELETE") {
+    const id = pathName.split("/")[2];
+    admin.deleteAgent(req, res, id);
+  }
 
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);

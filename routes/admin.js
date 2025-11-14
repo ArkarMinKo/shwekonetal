@@ -174,7 +174,7 @@ function createAdmin(req, res) {
     });
 }
 
-// --- DELETE ADMIN (except A001) ---
+// --- DELETE ADMIN (with photo delete) ---
 function deleteAdmin(req, res, id) {
     if (!id) {
         res.statusCode = 400;
@@ -186,23 +186,50 @@ function deleteAdmin(req, res, id) {
         return res.end(JSON.stringify({ message: "Owner account ကိုဖျက်ခွင့်မရှိပါ" }));
     }
 
-    const sql = "DELETE FROM admin WHERE id = ? AND TRIM(id) != 'A001'";
+    // STEP 1: Find admin first to get the photo name
+    const findSql = "SELECT photo FROM admin WHERE id = ? LIMIT 1";
 
-    db.query(sql, [id], (err, result) => {
+    db.query(findSql, [id], (err, rows) => {
         if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        if (result.affectedRows === 0) {
+        if (rows.length === 0) {
             res.statusCode = 404;
             return res.end(JSON.stringify({ message: "Admin ကို မတွေ့ပါ" }));
         }
 
-        res.statusCode = 200;
-        res.end(JSON.stringify({ success: true, message: "Admin ကို ဖျက်ပြီးပါပြီ" }));
+        const photoName = rows[0].photo;
+
+        // STEP 2: Delete admin record
+        const deleteSql = "DELETE FROM admin WHERE id = ? AND TRIM(id) != 'A001'";
+
+        db.query(deleteSql, [id], (err, result) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            if (result.affectedRows === 0) {
+                res.statusCode = 404;
+                return res.end(JSON.stringify({ message: "Admin ကို မတွေ့ပါ" }));
+            }
+
+            // STEP 3: Delete photo file
+            if (photoName) {
+                const photoPath = path.join(UPLOAD_DIR, photoName);
+                fs.unlink(photoPath, (err) => {
+
+                });
+            }
+
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true, message: "Admin ကို ဖျက်ပြီးပါပြီ" }));
+        });
     });
 }
+
 
 // --- UPDATE ADMIN INFO (EXCEPT PASSWORD, PASSCODE, EMAIL) ---
 function updateAdminInfo(req, res) {
@@ -627,6 +654,54 @@ function getAgents(req, res) {
   });
 }
 
+function deleteAgent(req, res, id) {
+  if (!id) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "Agent ID မရှိပါ" }));
+  }
+
+  // --- Step 1: Find agent by ID ---
+  db.query("SELECT name FROM agent WHERE id=?", [id], (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    if (rows.length === 0) {
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ error: "Agent မတွေ့ပါ" }));
+    }
+
+    const agentName = rows[0].name;
+
+    // --- Step 2: Update users table (set agent = NULL where agent=agentName) ---
+    const updateUsersSql = "UPDATE users SET agent=NULL WHERE agent=?";
+    db.query(updateUsersSql, [agentName], (err) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: "Users update error: " + err.message }));
+      }
+
+      // --- Step 3: Delete agent from agent table ---
+      const deleteSql = "DELETE FROM agent WHERE id=?";
+      db.query(deleteSql, [id], (err2) => {
+        if (err2) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ error: "Agent delete error: " + err2.message }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(
+          JSON.stringify({
+            message: "Agent ကို ဖျက်ပြီးပါပြီ။ တူညီတဲ့ Agent အမည်ရှိသော user များကို Normal User သို့ ပြင်ပြီးပါပြီ",
+          })
+        );
+      });
+    });
+  });
+}
+
+
 module.exports = { 
     getAdmins,
     createAdmin,
@@ -639,5 +714,6 @@ module.exports = {
     verifyAdminPasscode,
     verifyOwnerPasscode,
     createAgent,
-    getAgents
+    getAgents,
+    deleteAgent
 };
