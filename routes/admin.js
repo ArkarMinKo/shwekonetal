@@ -661,7 +661,7 @@ function deleteAgent(req, res, id) {
   }
 
   // --- Step 1: Find agent by ID ---
-  db.query("SELECT name FROM agent WHERE id=?", [id], (err, rows) => {
+  db.query("SELECT id FROM agent WHERE id=?", [id], (err, rows) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
