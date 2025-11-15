@@ -625,7 +625,7 @@ function getApprovedSales(req, res, userid) {
 
 function getAllSales(req, res) {
   const sql = `
-    SELECT s.*, u.fullname 
+    SELECT s.*, u.fullname, u.agent 
     FROM sales s
     LEFT JOIN users u ON s.userid = u.id
     ORDER BY s.created_at DESC
@@ -1019,7 +1019,7 @@ function compareBuyAndSellChart(req, res) {
 // --- Buy table ---
 function buyTable(req, res){
     const sql = `
-        SELECT s.*, u.fullname 
+        SELECT s.*, u.fullname, u.agent
         FROM sales s
         LEFT JOIN users u ON s.userid = u.id
         WHERE s.type = 'buy' AND  s.status = 'approved'
@@ -1101,7 +1101,7 @@ function buyTable(req, res){
 // --- Sell table ---
 function sellTable(req, res){
     const sql = `
-        SELECT s.*, u.fullname 
+        SELECT s.*, u.fullname, u.agent 
         FROM sales s
         LEFT JOIN users u ON s.userid = u.id
         WHERE s.type = 'sell' AND  s.status = 'approved'
@@ -1183,7 +1183,7 @@ function sellTable(req, res){
 // --- Delivery table ---
 function deliTable(req, res){
     const sql = `
-        SELECT s.*, u.fullname 
+        SELECT s.*, u.fullname, u.agent
         FROM sales s
         LEFT JOIN users u ON s.userid = u.id
         WHERE s.type = 'delivery' AND  s.status = 'approved'
