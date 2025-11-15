@@ -208,7 +208,7 @@ function createUser(req, res) {
         const agentCode = fields.agent && fields.agent.trim() !== "" ? fields.agent.trim() : null;
 
         if (agentCode) {
-          db.query("SELECT id FROM agent WHERE id = ?", [agentCode], (err, rows) => {
+          db.query("SELECT id, name FROM agent WHERE id = ?", [agentCode], (err, rows) => {
             if (err) {
               res.statusCode = 500;
               return res.end(JSON.stringify({ error: err.message }));
