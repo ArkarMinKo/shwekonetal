@@ -49,8 +49,8 @@ function getUsers(req, res) {
     // Send both
     res.end(
       JSON.stringify({
-        users: result,
         new_users: new_users,
+        users: result
       })
     );
   });
