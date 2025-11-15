@@ -24,31 +24,35 @@ function getUsers(req, res) {
       return res.end(JSON.stringify({ error: err.message }));
     }
 
-    // Calculate today's start (local time)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const file = filepath;
 
-    // Count new users (created today)
+    const result = rows.map((r) => ({
+      ...r,
+      profile: r.photo ? `${file}${r.photo}` : null,
+      id_front: r.id_front_photo ? `${file}${r.id_front_photo}` : null,
+      id_back: r.id_back_photo ? `${file}${r.id_back_photo}` : null,
+    }));
+
+    // ------------------------------
+    // 🔥 Count today's new users
+    // ------------------------------
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // start of today (local time)
+
     const new_users = rows.filter((u) => {
-      const createdAt = new Date(u.create_at); // ensure your field is correct
+      const createdAt = new Date(u.create_at);
       if (isNaN(createdAt)) return false;
       createdAt.setHours(0, 0, 0, 0);
       return createdAt.getTime() === today.getTime();
     }).length;
 
-    const result = rows.map((r) => ({
-      ...r,
-      new_users: new_users,
-      profile: r.photo ? `${filepath}${r.photo}` : null,
-      id_front: r.id_front_photo
-        ? `${filepath}${r.id_front_photo}`
-        : null,
-      id_back: r.id_back_photo
-        ? `${filepath}${r.id_back_photo}`
-        : null,
-    }));
-
-    res.end(JSON.stringify(result));
+    // Send both
+    res.end(
+      JSON.stringify({
+        users: result,
+        new_users: new_users,
+      })
+    );
   });
 }
 
