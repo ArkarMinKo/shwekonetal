@@ -161,6 +161,9 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/users/password-with-OTP" && method === "PATCH") {
     users.patchUserPasswordWithOTP(req, res);
   }
+  else if (pathName === "/users/summarys" && method === "GET") {
+    users.usersSummarys(req, res);
+  }
 
   // --- Users PATCH update passcode routes ---
   else if (pathName.startsWith("/users/update-passcode/") && method === "PATCH") {

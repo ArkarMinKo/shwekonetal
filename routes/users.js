@@ -16,6 +16,28 @@ const filepath = 'http://38.60.244.74:3000/uploads/'
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
+function usersSummarys(req, res) {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*) FROM users) AS total_users,
+      (SELECT COUNT(*) FROM users WHERE status = 'approved') AS approved_users,
+      (SELECT COUNT(*) FROM users WHERE status = 'pending') AS pending_users,
+      (SELECT COUNT(*) FROM users 
+         WHERE status = 'approved'
+         AND DATE(create_at) = CURDATE()
+      ) AS today_approved_users
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Database query failed" });
+    }
+
+    return res.json(results[0]);
+  });
+}
+
 // Get all users
 function getUsers(req, res) {
   db.query("SELECT * FROM users ORDER BY id DESC", (err, rows) => {
@@ -834,5 +856,6 @@ module.exports = {
   getUserById,
   patchUserPassword,
   patchUserPasscode,
-  patchUserPasswordWithOTP
+  patchUserPasswordWithOTP,
+  usersSummarys
 };
