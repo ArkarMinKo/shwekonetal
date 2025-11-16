@@ -132,6 +132,7 @@ const server = http.createServer(async (req, res) => {
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
   else if (pathName === "/users" && method === "GET") users.getUsers(req, res);
+  else if (pathName === "/users-summarys" && method === "GET") users.usersSummarys(req, res);
 
   else if (pathName.startsWith("/users/") && method === "GET") {
     const id = pathName.split("/")[2];
@@ -160,9 +161,6 @@ const server = http.createServer(async (req, res) => {
   }
   else if (pathName === "/users/password-with-OTP" && method === "PATCH") {
     users.patchUserPasswordWithOTP(req, res);
-  }
-  else if (pathName === "/users/summarys" && method === "GET") {
-    users.usersSummarys(req, res);
   }
 
   // --- Users PATCH update passcode routes ---
