@@ -24,17 +24,22 @@ function usersSummarys(req, res) {
       (SELECT COUNT(*) FROM users WHERE status = 'pending') AS pending_users,
       (SELECT COUNT(*) FROM users 
          WHERE status = 'approved'
-         AND DATE(create_at) = CURDATE()
+         AND DATE(created_at) = CURDATE()
       ) AS today_approved_users
   `;
 
   db.query(sql, (err, results) => {
     if (err) {
       console.error(err);
-      return res.status(500).json({ error: "Database query failed" });
+
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ error: "Database query failed" }));
     }
 
-    return res.json(results[0]);
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(results[0]));
   });
 }
 
