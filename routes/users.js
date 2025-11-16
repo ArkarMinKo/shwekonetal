@@ -24,7 +24,7 @@ function usersSummarys(req, res) {
       (SELECT COUNT(*) FROM users WHERE status = 'pending') AS pending_users,
       (SELECT COUNT(*) FROM users 
          WHERE status = 'approved'
-         AND DATE(created_at) = CURDATE()
+         AND DATE(create_at) = CURDATE()
       ) AS today_approved_users
   `;
 
