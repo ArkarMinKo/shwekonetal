@@ -43,8 +43,12 @@ function createSale(req, res) {
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
             }
+            
+            let stockGold = 0;
+            if (stockResult && stockResult.length > 0) {
+                stockGold = parseFloat(stockResult[0].gold || 0);
+            }
 
-            const stockGold = parseFloat(stockResult[0].gold);
             const saleType = Array.isArray(type) ? type[0] : type;
             const updateStockSql = `UPDATE stock SET gold = ? WHERE id = 1`
 
@@ -54,23 +58,23 @@ function createSale(req, res) {
                     error: `ရောင်းချပေးနိုင်သော ရွှေအရေအတွက်ထက် ကျော်လွန်နေသောကြောင့် ဝယ်ယူ၍ မရနိုင်ပါ`
                 }));
             }
-            else if(saleType === "buy" && parseFloat(gold) < stockGold){
+            else if (saleType === "buy" && parseFloat(gold) < stockGold) {
                 const updateGold = stockGold - parseFloat(gold);
-                db.query(updateStockSql, updateGold, err => {
+                db.query(updateStockSql, [updateGold], err => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
                     }
-                })
+                });
             }
-            else if(saleType === "sell"){
+            else if (saleType === "sell") {
                 const updateGold = stockGold + parseFloat(gold);
-                db.query(updateStockSql, updateGold, err => {
+                db.query(updateStockSql, [updateGold], err => {
                     if (err) {
                         res.statusCode = 500;
                         return res.end(JSON.stringify({ error: err.message }));
                     }
-                })
+                });
             }
 
             // First, get user level and gold
