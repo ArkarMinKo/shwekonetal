@@ -191,6 +191,14 @@ function getOpenStock(req, res){
       return res.end(JSON.stringify({ error: err.message }));
     }
 
+    if (rows.length === 0) {
+      return res.end(JSON.stringify({
+        success: true,
+        total: "ပိုင်ဆိုင်မှုတန်ဖိုး = 0 ကျပ်",
+        data: []
+      }));
+    }
+
     const getLatestFormulaSql = `
       SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
     `;
