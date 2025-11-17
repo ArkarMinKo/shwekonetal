@@ -779,9 +779,19 @@ function verifyPasscode(req, res, id) {
 
       const userPasscode = rows[0].passcode;
 
+      // ❗ IMPORTANT: Prevent bcrypt error
+      if (!userPasscode || userPasscode.trim() === "") {
+        return res.end(JSON.stringify({ error: "Stored passcode is invalid (NULL or empty)" }));
+      }
+
       // 🔐 Compare entered passcode with hashed passcode
-      const isMatch = await bcrypt.compare(passcode, userPasscode);
-      
+      let isMatch = false;
+      try {
+        isMatch = await bcrypt.compare(passcode, userPasscode);
+      } catch (e) {
+        return res.end(JSON.stringify({ error: "Hash compare failed", details: e.message }));
+      }
+
       if (isMatch) {
         res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "Passcode မှန်ပါသည်" }));
