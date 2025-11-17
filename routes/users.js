@@ -944,5 +944,6 @@ module.exports = {
   patchUserPassword,
   patchUserPasscode,
   patchUserPasswordWithOTP,
-  usersSummarys
+  usersSummarys,
+  changeEmail
 };
