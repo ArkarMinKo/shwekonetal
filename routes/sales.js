@@ -411,6 +411,7 @@ function approveSale(req, res, saleId) {
                             res.end(
                                 JSON.stringify({
                                     success: true,
+                                    message: "Transition ကို အောင်မြင်စွာ ပြုလုပ်ပီးပါပြီ",
                                     saleId,
                                     saleType: sale.type,
                                     status: "approved",
@@ -525,16 +526,16 @@ function rejectSale(req, res, saleId) {
                                             res.statusCode = 500;
                                             return res.end(JSON.stringify({ error: "Stock update failed", detail: err.message }));
                                         }
-                                        return res.end(JSON.stringify({ success: true, restored: "SELL user + stock" }));
+                                        return res.end(JSON.stringify({ success: true, message: "ဝယ်ယူခြင်းအား ငြင်းပယ်လိုက်ပါပြီ" }));
                                     });
                                 } else {
-                                    return res.end(JSON.stringify({ success: true, restored: "DELIVERY user only" }));
+                                    return res.end(JSON.stringify({ success: true, message: "ထုတ်ယူခြင်းအား ငြင်းပယ်လိုက်ပါပြီ" }));
                                 }
                             });
                         });
                     } 
                     else {
-                        return res.end(JSON.stringify({ success: true, note: "BUY ignored (no user change)" }));
+                        return res.end(JSON.stringify({ success: true, message: "ဝယ်ယူခြင်းအား ငြင်းပယ်လိုက်ပါပြီ" }));
                     }
                 });
             });
