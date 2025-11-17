@@ -424,7 +424,8 @@ function patchUserPasswordWithOTP(req, res) {
 
       if (rows.length === 0) {
         res.statusCode = 404;
-        return res.end(JSON.stringify({ error: "အကောင့်မတွေ့ပါ" }));
+        res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+        return res.end(JSON.stringify({ error: "သင့် email နှင့် အကောင့် မရှိပါ" }));
       }
 
       try {
