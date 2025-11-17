@@ -307,6 +307,77 @@ function createUser(req, res) {
   });
 }
 
+// --- Change Email ---
+function changeEmail(req, res, id) {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, async (err, fields) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const { email, password } = fields;
+
+    if (!email || !password) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ message: "Email နှင့် Password ဖြည့်ပါ" }));
+    }
+
+    // --- Step 1: Get current user password hash ---
+    const sql = "SELECT password FROM users WHERE id = ?";
+    db.query(sql, [id], async (err, rows) => {
+      if (err) {
+        res.statusCode = 500;
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+      if (rows.length === 0) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ message: "User ကို မတွေ့ပါ" }));
+      }
+
+      const storedHash = rows[0].password;
+
+      // --- Step 2: Verify password ---
+      const isMatch = await bcrypt.compare(password, storedHash);
+
+      if (!isMatch) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ message: "Password မှားနေပါသည်" }));
+      }
+
+      // --- Step 3: Check if email already exists ---
+      db.query(
+        "SELECT id FROM users WHERE email = ?",
+        [email],
+        (err, emailRows) => {
+          if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+          }
+          if (emailRows.length > 0) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: "ဤ email သည် အသုံးပြုပြီးသား ဖြစ်ပါသည်" }));
+          }
+
+          // --- Step 4: Update email ---
+          const updateSql = "UPDATE users SET email = ? WHERE id = ?";
+          db.query(updateSql, [email, id], (err) => {
+            if (err) {
+              res.statusCode = 500;
+              return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ message: "Email ကို အောင်မြင်စွာ ပြောင်းလဲပြီးပါပြီ" }));
+          });
+        }
+      );
+    });
+  });
+}
+
+
 // --- Update USER ---
 function updateUser(req, res, userid) {
   const id = userid;
