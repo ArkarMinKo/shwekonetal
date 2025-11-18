@@ -49,13 +49,13 @@ function loginAdmin(req, res) {
 
         if (!isMatch) {
           res.writeHead(401, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "Password မှားနေပါတယ်။ ထပ်စမ်းကြည့်ပါ" }));
+          return res.end(JSON.stringify({ message: "Password မှားနေပါသည်။ ထပ်စမ်းကြည့်ပါ" }));
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({
-            message: "ဝင်ရောက်မှုအောင်မြင်ပါတယ်။ ကြိုဆိုပါတယ်။",
+            message: "ဝင်ရောက်မှုအောင်မြင်ပါသည်။ ကြိုဆိုပါသည်",
             id: user.id,
             role: user.role
           })
