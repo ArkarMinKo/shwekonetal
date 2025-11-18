@@ -89,6 +89,7 @@ function postOpenStock(req, res) {
 
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.end(JSON.stringify({
+              success: true,
               message: "Update gold to stock successfully",
               data: updateGold.toFixed(2)
             }));
