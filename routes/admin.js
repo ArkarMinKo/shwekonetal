@@ -443,7 +443,7 @@ function updateAdminPasscode(req, res) {
                     const isMatch = await bcrypt.compare(passcode.toString(), owner.passcode);
                     if (!isMatch) {
                         res.statusCode = 403;
-                        return res.end(JSON.stringify({ error: "Passcode မှားနေပါသည်" }));
+                        return res.end(JSON.stringify({ error: "Owner Passcode မှားနေပါသည်" }));
                     }
 
                     const hashedPasscode = await bcrypt.hash(newpasscode, 10);
@@ -518,7 +518,7 @@ function verifyAdminPasscode(req, res) {
                     res.statusCode = 403;
                     res.end(JSON.stringify({
                         success: false,
-                        message: "Passcode မမှန်ပါ"
+                        message: "Owner Passcode မမှန်ပါ"
                     }));
                 }
             });
