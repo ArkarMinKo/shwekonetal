@@ -355,6 +355,11 @@ const server = http.createServer(async (req, res) => {
     dashboard.summarys(req, res);
   }
 
+  // --- Get summarys Sales ---
+  else if (pathName === "/sales-summarys" && method === "GET") {
+    sales.salesSummarys(req, res);
+  }
+
   // --- Get buying price chart ---
   else if (pathName === "/buying-prices-chart" && method === "GET") {
     dashboard.buyingPricesChart(req,res)

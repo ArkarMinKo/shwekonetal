@@ -1265,6 +1265,89 @@ function deliTable(req, res){
     });
 }
 
+function salesSummarys(req, res) {
+    const getSalesSql = `SELECT id, type, gold, price, status FROM sales ORDER BY created_at DESC`;
+
+    db.query(getSalesSql, (err, rows) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        // ===== Get Latest Formula =====
+        const getLatestFormulaSql = `
+            SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+        `;
+
+        db.query(getLatestFormulaSql, (err, formulaResult) => {
+            if (err) {
+                console.error("Price fetch error:", err);
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+            const ywaybypal = latestyway / 16;
+
+            // ===== Calculate Totals =====
+            let buyGold = 0;
+            let sellGold = 0;
+            let basePrice = 0; // will be overwritten by last row’s price (same as your structure)
+
+            rows.forEach(r => {
+                const g = parseFloat(r.gold) || 0;
+
+                if (r.type === "buy") buyGold += g;
+                if (r.type === "sell") sellGold += g;
+
+                basePrice = parseFloat(r.price) || 0; 
+            });
+
+            const totalGoldWeight = buyGold - sellGold;
+
+            // ===== Total Sales Amount =====
+            const totalSalesAmount = totalGoldWeight * basePrice / latestyway;
+
+            // ===== Total Transactions =====
+            const totalTransactions = rows.length;
+
+            // ===== Total Approved =====
+            const totalSalesApproved = rows.filter(r => r.status === "approved").length;
+
+            // ===== Gold Format Function =====
+            function formatGold(goldFloat) {
+                const kyat = Math.floor(goldFloat / latestyway);
+                const palbyyway = goldFloat / ywaybypal;
+                const pal = Math.floor(palbyyway % 16);
+                const yway = (goldFloat % ywaybypal).toFixed(2);
+
+                let str = "";
+                if (kyat > 0) str += `${kyat} ကျပ် `;
+                if (pal > 0) str += `${pal} ပဲ `;
+                if (yway > 0) str += `${yway} ရွေး`;
+
+                if (!str.trim()) str = "0";
+                return str;
+            }
+
+            // Convert totalGoldWeight to text
+            const totalGoldWeightString = formatGold(totalGoldWeight);
+
+            // ===== Final Output =====
+            const result = {
+                totalGoldWeight,
+                totalGoldWeightString,
+                totalTransactions,
+                totalSalesAmount,
+                totalSalesApproved
+            };
+
+            res.setHeader("Content-Type", "application/json");
+            return res.end(JSON.stringify(result));
+        });
+    });
+}
+
 module.exports = {
         createSale,
         approveSale,
@@ -1280,5 +1363,6 @@ module.exports = {
         compareBuyAndSellChart,
         buyTable,
         sellTable,
-        deliTable
+        deliTable,
+        salesSummarys
     };
