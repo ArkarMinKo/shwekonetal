@@ -286,8 +286,8 @@ const server = http.createServer(async (req, res) => {
     sales.getAllSales(req,res)
   }
 
-  else if (pathName.startsWith("/sales/") && method === "GET") {
-    const saleid = pathName.split("/")[2];
+  else if (pathName.startsWith("/sales/data/") && method === "GET") {
+    const saleid = pathName.split("/")[3];
     sales.getSalesById(req, res, saleid);
   }
 
