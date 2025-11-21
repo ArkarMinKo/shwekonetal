@@ -1306,7 +1306,7 @@ function salesSummarys(req, res) {
             const totalGoldWeight = buyGold - sellGold;
 
             // ===== Total Sales Amount =====
-            const totalSalesAmount = totalGoldWeight * basePrice / latestyway;
+            const totalSalesAmount = parseInt(totalGoldWeight * basePrice / latestyway);
 
             // ===== Total Transactions =====
             const totalTransactions = rows.length;
@@ -1335,7 +1335,6 @@ function salesSummarys(req, res) {
 
             // ===== Final Output =====
             const result = {
-                totalGoldWeight,
                 totalGoldWeightString,
                 totalTransactions,
                 totalSalesAmount,
