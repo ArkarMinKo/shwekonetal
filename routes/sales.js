@@ -647,6 +647,30 @@ function getApprovedSales(req, res, userid) {
   });
 }
 
+function getSalesById(req, res, saleid) {
+  if (!saleid) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: "saleid is required" }));
+  }
+
+  const sql = "SELECT * FROM sales WHERE id = ? LIMIT 1";
+
+  db.query(sql, [saleid], (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    if (rows.length === 0) {
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ error: "Sale not found" }));
+    }
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ success: true, data: rows[0] }));
+  });
+}
+
 function getAllSales(req, res) {
   const sql = `
     SELECT s.*, u.fullname, u.agent 
@@ -1382,5 +1406,6 @@ module.exports = {
         buyTable,
         sellTable,
         deliTable,
-        salesSummarys
+        salesSummarys,
+        getSalesById
     };

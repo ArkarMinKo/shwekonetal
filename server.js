@@ -286,6 +286,11 @@ const server = http.createServer(async (req, res) => {
     sales.getAllSales(req,res)
   }
 
+  else if (pathName.startsWith("/sales/") && method === "GET") {
+    const saleid = pathName.split("/")[2];
+    sales.getSalesById(req, res, saleid);
+  }
+
   // --- Create Sales ---
   else if (pathName === "/sales" && method === "POST") {
     sales.createSale(req,res)
