@@ -580,7 +580,7 @@ function verifyOwnerPasscode(req, res) {
                     res.statusCode = 403;
                     res.end(JSON.stringify({
                         success: false,
-                        message: "Owner Passcode မမှန်ပါ"
+                        message: "Passcode မမှန်ပါ"
                     }));
                 }
             });
