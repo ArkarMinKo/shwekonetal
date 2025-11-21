@@ -231,7 +231,7 @@ function approveSale(req, res, saleId) {
 
             const sale = salesResult[0];
 
-            if (sale.status === 'approved') {
+            if (sale.status !== 'pending') {
                 res.statusCode = 409;
                 return res.end(JSON.stringify({
                     success: false,
@@ -475,6 +475,14 @@ function rejectSale(req, res, saleId) {
                 }
 
                 const sale = salesResult[0];
+
+                if (sale.status !== 'pending') {
+                    res.statusCode = 409;
+                    return res.end(JSON.stringify({
+                        success: false,
+                        message: "အရောင်းအဝယ်ကို အရင်ကတည်းက အတည်ပြုပြီးသားဖြစ်ပါသည်"
+                    }));
+                }
 
                 // --- Update sale status to rejected and save seller + manager ---
                 const updateSaleSql = `
