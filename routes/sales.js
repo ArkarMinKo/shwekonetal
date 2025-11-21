@@ -462,7 +462,7 @@ function rejectSale(req, res, saleId) {
                 }
             }
 
-            const getSaleSql = "SELECT id, userid, gold, type FROM sales WHERE id = ?";
+            const getSaleSql = "SELECT id, userid, gold, type, status FROM sales WHERE id = ?";
             db.query(getSaleSql, [saleId], (err, salesResult) => {
                 if (err) {
                     res.statusCode = 500;
