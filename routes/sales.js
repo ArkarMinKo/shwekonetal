@@ -455,11 +455,22 @@ function rejectSale(req, res, saleId) {
             }
 
             let managerName = null;
+
             for (const admin of admins) {
+
+                if (!admin.passcode) continue;
+
                 if (await bcrypt.compare(manager.toString(), admin.passcode)) {
                     managerName = admin.name;
                     break;
                 }
+            }
+
+            if (!managerName) {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({
+                    error: "Manager passcode မှားနေပါသည်"
+                }));
             }
 
             const getSaleSql = "SELECT id, userid, gold, type, status FROM sales WHERE id = ?";
