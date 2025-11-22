@@ -53,7 +53,7 @@ function getUsers(req, res) {
 
     const file = filepath;
 
-    const result = rows.map((r) => ({
+    const result = rows.map(({ password, passcode, ...r }) => ({
       ...r,
       profile: r.photo ? `${file}${r.photo}` : null,
       id_front: r.id_front_photo ? `${file}${r.id_front_photo}` : null,
@@ -147,7 +147,7 @@ function getUserById(req, res, userid) {
           return res.end(JSON.stringify({ error: "User not found" }));
         }
 
-        const r = rows[0];
+        const { password, passcode, ...r } = rows[0];
 
         // -------------------------------
         // ADD THIS: goldString generator
