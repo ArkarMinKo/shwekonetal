@@ -124,11 +124,14 @@ function createSale(req, res) {
                 }
 
                 if (saleType === "sell" || saleType === "delivery") {
+                    // subtract gold for the sale/delivery
                     let newGold = userGold - requestedGold;
-                    let newPoint = userPoint - Math.round(requestedGold);
                     if (newGold < 0) newGold = 0;
-                    if (newPoint < 0) newPoint = 0;
 
+                    // member_point = integer part of newGold
+                    let newPoint = Math.floor(newGold);
+
+                    // determine level based on newPoint
                     let newLevel = "level1";
                     if (newPoint >= 200) newLevel = "level4";
                     else if (newPoint >= 150) newLevel = "level3";
@@ -280,12 +283,12 @@ function approveSale(req, res, saleId) {
 
                         let user = userResult[0];
                         let newGold = parseFloat(user.gold || 0);
-                        let newPoint = parseInt(user.member_point || 0);
 
                         if (sale.type === "buy") {
                             newGold += parseFloat(sale.gold);
-                            newPoint += Math.round(parseFloat(sale.gold));
                         }
+
+                        let newPoint = Math.floor(newGold);
 
                         let newLevel = "level1";
                         if (newPoint >= 200) newLevel = "level4";
