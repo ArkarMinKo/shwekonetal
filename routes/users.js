@@ -149,16 +149,40 @@ function getUserById(req, res, userid) {
 
         const r = rows[0];
 
+        // -------------------------------
+        // ADD THIS: goldString generator
+        // -------------------------------
+        let str = "";
+        if (r.gold) {
+          const goldFloat = parseFloat(r.gold) || 0;
+
+          const latestyway = 128;       // default if not using formula
+          const ywaybypal = latestyway / 16;
+
+          const kyat = Math.floor(goldFloat / latestyway);
+          const palByYway = goldFloat / ywaybypal;
+          const pal = Math.floor(palByYway % 16);
+          const yway = (goldFloat % ywaybypal).toFixed(2);
+
+          if (kyat > 0) str += `${kyat} ကျပ် `;
+          if (pal > 0) str += `${pal} ပဲ `;
+          if (yway > 0) str += `${yway} ရွေး`;
+          if (!str.trim()) str = "0";
+        }
+
         // remove "level" word from level value
         const cleanLevel = r.level ? r.level.replace("level", "") : null;
 
         const result = {
           ...r,
-          level: cleanLevel, // updated field
+          level: cleanLevel,
           profile: r.photo ? `${filepath}${r.photo}` : null,
           id_front: r.id_front_photo ? `${filepath}${r.id_front_photo}` : null,
           id_back: r.id_back_photo ? `${filepath}${r.id_back_photo}` : null,
-          ppnTotal: ppnTotal, server: server
+          ppnTotal: ppnTotal,
+          server: server,
+
+          goldString: goldString   // <-- ONLY ADDED
         };
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
