@@ -88,7 +88,7 @@ function summarys(req, res) {
                             
                             const transactionsCount = todayTransactionsResult.length;
                             const allUserCount = usersResult.length;
-                            const todayUserCount = usersResult.filter(user => user.created_at === date).length;
+                            const todayUserCount = usersResult.filter(user => user.created_at === date && user.status === 'approved').length;
 
                             let totalBuyGold = 0;
                             let totalSellGold = 0;
