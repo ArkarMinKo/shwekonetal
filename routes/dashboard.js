@@ -89,9 +89,9 @@ function summarys(req, res) {
                             const transactionsCount = todayTransactionsResult.length;
                             const allUserCount = usersResult.length;
                             const todayUserCount = usersResult.filter(user => {
-                              if (!user.create_at) return false;   // ❗ value မရှိရင် skip
+                              if (!user.create_at) return false;
 
-                              const createdDate = new Date(user.create_at).toISOString().slice(0, 10);
+                              const createdDate = user.create_at.toISOString().slice(0, 10);
                               return createdDate === date && user.status === "approved";
                             }).length;
 
