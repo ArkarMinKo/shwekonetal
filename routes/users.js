@@ -182,7 +182,7 @@ function getUserById(req, res, userid) {
           ppnTotal: ppnTotal,
           server: server,
 
-          goldString: goldString   // <-- ONLY ADDED
+          goldString: str   // <-- ONLY ADDED
         };
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
