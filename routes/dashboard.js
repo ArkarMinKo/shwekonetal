@@ -17,7 +17,7 @@ function summarys(req, res) {
         WHERE status = 'approved'
         AND DATE(created_at) = ?
     `;
-    const usersSql = `SELECT id, DATE(create_at) AS created_at FROM users`;
+    const usersSql = `SELECT id, status, DATE(create_at) AS created_at FROM users`;
     const getLatestFormulaSql = `
         SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
     `;
@@ -88,12 +88,7 @@ function summarys(req, res) {
                             
                             const transactionsCount = todayTransactionsResult.length;
                             const allUserCount = usersResult.length;
-                            const todayUserCount = usersResult.filter(user => {
-                              if (!user.create_at) return false;
-
-                              const createdDate = user.create_at.toISOString().slice(0, 10);
-                              return createdDate === date && user.status === "approved";
-                            }).length;
+                            const todayUserCount = usersResult.filter(user => user.created_at === date && user.status === 'approved').length;
 
                             let totalBuyGold = 0;
                             let totalSellGold = 0;
