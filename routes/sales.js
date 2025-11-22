@@ -1340,8 +1340,8 @@ function salesSummarys(req, res) {
             rows.forEach(r => {
                 const g = parseFloat(r.gold) || 0;
 
-                if (r.type === "buy") buyGold += g;
-                if (r.type === "sell") sellGold += g;
+                if (r.type === "buy" && r.status === "approved") buyGold += g;
+                if (r.type === "sell" && r.status === "approved") sellGold += g;
 
                 basePrice = parseFloat(r.price) || 0; 
             });
