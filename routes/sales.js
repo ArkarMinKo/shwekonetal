@@ -636,7 +636,7 @@ function getAllReject(req, res) {
         SELECT s.*, u.fullname 
         FROM sales s 
         LEFT JOIN users u ON s.userid = u.id
-        WHERE s.status = 'rejected' AND DATE(s.created_at) = DATE(NOW())
+        WHERE s.status = 'rejected'
         ORDER BY s.created_at DESC
     `;
 
