@@ -631,6 +631,72 @@ function getAllApprove(req, res) {
     });
 }
 
+function getAllReject(req, res) {
+    const sql = `
+        SELECT s.*, u.fullname 
+        FROM sales s 
+        LEFT JOIN users u ON s.userid = u.id
+        WHERE s.status = 'rejected' AND DATE(s.created_at) = DATE(NOW())
+        ORDER BY s.created_at DESC
+    `;
+
+    db.query(sql, (err, rows) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        const getLatestFormulaSql = `
+            SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
+        `;
+
+        db.query(getLatestFormulaSql, (err, formulaResult) => {
+            if (err) {
+                console.error("Price fetch error:", err);
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+
+            const latestyway = parseInt(formulaResult[0]?.yway) || 128;
+            const ywaybypal = latestyway / 16;
+
+            let total = 0;
+
+            const formattedRows = rows.map((r) => {
+                const goldFloat = parseFloat(r.gold);
+                const basePrice = parseFloat(r.price);
+
+                // calculate new price
+                const calculatedPrice = goldFloat * basePrice / latestyway;
+
+                total += calculatedPrice;
+
+                // convert gold to kyat-pal-yway string
+                const kyat = Math.floor(goldFloat / latestyway);
+                const palbyyway = goldFloat / ywaybypal;
+                const pal = Math.floor(palbyyway % 16);
+                const yway = (goldFloat % ywaybypal).toFixed(2);
+
+                let goldString = "";
+                if (kyat > 0) goldString += `${kyat} ကျပ် `;
+                if (pal > 0) goldString += `${pal} ပဲ `;
+                if (yway > 0) goldString += `${yway} ရွေး`;
+
+                if (!goldString.trim()) goldString = "0";
+
+                return {
+                    ...r,
+                    gold: goldString.trim(),
+                    price: calculatedPrice,
+                };
+            });
+
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: true, data: formattedRows }));
+        });
+    });
+}
+
 function getApprovedSales(req, res, userid) {
   if (!userid) {
     res.statusCode = 400;
@@ -1410,5 +1476,6 @@ module.exports = {
         sellTable,
         deliTable,
         salesSummarys,
-        getSalesById
+        getSalesById,
+        getAllReject
     };

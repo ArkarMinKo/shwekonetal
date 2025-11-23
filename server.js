@@ -252,6 +252,10 @@ const server = http.createServer(async (req, res) => {
     sales.getAllApprove(req,res)
   }
 
+  else if (pathName === "/reject" && method === "GET") {
+    sales.getAllReject(req,res)
+  }
+
   // --- Get Date Filter Sales By User ---
   else if (pathName.startsWith("/sales/") && method === "POST") {
     const userid = pathName.split("/")[2];
