@@ -639,6 +639,7 @@ function patchUserPasscode(req, res, userid) {
 
     if (!passcode || passcode.trim() === "") {
       res.statusCode = 400;
+      res.writeHead(400, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ error: "passcode အသစ် ထည့်ပါ" }));
     }
 
@@ -672,6 +673,7 @@ function patchUserPasscode(req, res, userid) {
       } catch (hashErr) {
         console.error("Hash error:", hashErr);
         res.statusCode = 500;
+        res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Passcode hashing failed" }));
       }
     });
