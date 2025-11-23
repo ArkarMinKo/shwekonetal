@@ -58,6 +58,23 @@ exports.createMessage = (req, res) => {
   });
 };
 
+// === GET Messages For Admin ===
+exports.getMessagesForAdmin = (req, res) => {
+  db.query(
+    "SELECT sender, receiver_id FROM messages WHERE receiver_id='admin' ORDER BY id DESC",
+    (err, rows) => {
+      if (err) {
+        console.error("DB Fetch Error:", err);
+        res.writeHead(500);
+        return res.end("DB error");
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(rows));
+    }
+  );
+};
+
 // ===== GET MESSAGES =====
 exports.getMessages = (req, res) => {
   const userId = req.url.split("?userId=")[1];

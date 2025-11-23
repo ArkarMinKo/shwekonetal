@@ -408,6 +408,8 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/messages" && method === "POST") return messages.createMessage(req, res);
   // --- GET Message ---
   else if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
+  // --- GET Message For Admin ---
+  else if (pathName === "/admin-messages" && method === "GET") return messages.getMessagesForAdmin(req, res);
   // --- Mark messages as seen ---
   else if (pathName === "/messages/mark-seen" && method === "POST") return messages.markMessagesSeen(req, res);
 
