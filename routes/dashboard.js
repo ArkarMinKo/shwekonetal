@@ -300,18 +300,39 @@ function buyingPricesChart(req, res) {
     const currentWeekNum = weekOfMonth(todayStr);
     const price1M = weeksSet.map(w => w > currentWeekNum ? { time: `Week ${w}`, price: null } : { time: `Week ${w}`, price: weekPriceMap[w] });
 
-    // --- 1Y ---
+    // --- FIXED 1Y (Future months MUST be null) ---
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const thisYear = now.getFullYear();
     let lastYearPrice = null;
+
     const price1Y = monthNames.map((mName, idx) => {
+
+      // If month is in the future → ALWAYS NULL
+      if (idx > now.getMonth()) {
+        return { time: mName, price: null };
+      }
+
+      // Only search data up to today's date
       const s = new Date(thisYear, idx, 1).toISOString().slice(0, 10);
-      const e = new Date(thisYear, idx + 1, 0).toISOString().slice(0, 10);
+      const e = new Date(thisYear, idx, idx === now.getMonth() ? now.getDate() : new Date(thisYear, idx + 1, 0).getDate())
+                  .toISOString().slice(0, 10);
+
       const datesInMonth = getDateRange(s, e);
       let monthLast = null;
-      for (const d of datesInMonth) if (byDate[d] && byDate[d].length) monthLast = lastRow(byDate[d]).price;
-      if (monthLast !== null) { lastYearPrice = monthLast; return { time: mName, price: monthLast }; }
-      if (idx > now.getMonth()) return { time: mName, price: null };
+
+      for (const d of datesInMonth) {
+        if (byDate[d] && byDate[d].length) {
+          monthLast = lastRow(byDate[d]).price;
+        }
+      }
+
+      // If this month has data, update last price
+      if (monthLast !== null) {
+        lastYearPrice = monthLast;
+        return { time: mName, price: monthLast };
+      }
+
+      // No data for this month → use previous month's lastPrice
       return { time: mName, price: lastYearPrice };
     });
 
