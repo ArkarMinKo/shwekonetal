@@ -372,13 +372,7 @@ function changeEmail(req, res, id) {
       const isMatch = await bcrypt.compare(password, storedHash);
       const isPasscodeMatch = await bcrypt.compare(password, storedPasscode);
 
-      console.log("storeHash =>",storedHash);
-      console.log("storePasscode =>", storedPasscode);
-      console.log("password =>", password);
-      console.log("isMatch=>", isMatch);
-      console.log("isPasscodeMatch",isPasscodeMatch);
-
-      if (!isMatch || !isPasscodeMatch) {
+      if (!isMatch && !isPasscodeMatch) {
         res.statusCode = 400;
         return res.end(JSON.stringify({ message: "Password OR Passcode မှားနေပါသည်" }));
       }
