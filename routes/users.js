@@ -349,7 +349,7 @@ function changeEmail(req, res, id) {
     }
 
     // --- Step 1: Get current user password hash ---
-    const sql = "SELECT password FROM users WHERE id = ?";
+    const sql = "SELECT password, passcode FROM users WHERE id = ?";
     db.query(sql, [id], async (err, rows) => {
       if (err) {
         res.statusCode = 500;
@@ -361,13 +361,15 @@ function changeEmail(req, res, id) {
       }
 
       const storedHash = rows[0].password;
+      const storedPasscode = rows[0].passcode;
 
       // --- Step 2: Verify password ---
       const isMatch = await bcrypt.compare(password, storedHash);
+      const isPasscodeMatch = await bcrypt.compare(password, storedPasscode);
 
-      if (!isMatch) {
+      if (!isMatch || !isPasscodeMatch) {
         res.statusCode = 400;
-        return res.end(JSON.stringify({ message: "Password မှားနေပါသည်" }));
+        return res.end(JSON.stringify({ message: "Password OR Passcode မှားနေပါသည်" }));
       }
 
       // --- Step 3: Check if email already exists ---
@@ -400,7 +402,6 @@ function changeEmail(req, res, id) {
     });
   });
 }
-
 
 // --- Update USER ---
 function updateUser(req, res, userid) {
