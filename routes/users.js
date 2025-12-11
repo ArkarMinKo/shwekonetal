@@ -363,6 +363,11 @@ function changeEmail(req, res, id) {
       const storedHash = rows[0].password;
       const storedPasscode = rows[0].passcode;
 
+      if(!storedPasscode){
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ message: "Passcode မရှိပါ" }));
+      }
+
       // --- Step 2: Verify password ---
       const isMatch = await bcrypt.compare(password, storedHash);
       const isPasscodeMatch = await bcrypt.compare(password, storedPasscode);
