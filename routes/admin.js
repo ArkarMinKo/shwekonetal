@@ -139,35 +139,56 @@ function createAdmin(req, res) {
                     return res.end(JSON.stringify({ message: "ဒီ Email နဲ့ အကောင့်ရှိပြီးသား ဖြစ်နေပါသည်" }));
                 }
 
-                try {
-                    const hashedPassword = await bcrypt.hash(passwordStr, 10);
-                    const hashedPasscode = passcodeStr ? await bcrypt.hash(passcodeStr, 10) : null;
+                // ✅ Passcode unique check (only if passcode exists)
+                if (passcodeStr) {
+                    const checkPasscodeSql = "SELECT passcode FROM admin WHERE passcode IS NOT NULL";
+                    db.query(checkPasscodeSql, async (err, rows) => {
+                        if (err) return res.end(JSON.stringify({ error: "Database error ဖြစ်နေပါသည်" }));
 
-                    let photoName = null;
-                    if (photoFile?.originalFilename) {
-                        photoName = generatePhotoName(newId, photoFile.originalFilename);
-                        fs.renameSync(photoFile.filepath, path.join(UPLOAD_DIR, photoName));
-                    }
-
-                    const insertSql = `
-                        INSERT INTO admin (id, name, photo, password, passcode, email, phone, gender, role)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `;
-
-                    db.query(
-                        insertSql,
-                        [newId, nameStr, photoName, hashedPassword, hashedPasscode, emailStr, phoneStr || null, genderStr, roleStr],
-                        (err) => {
-                            if (err) return res.end(JSON.stringify({ message: "အကောင့်ဖန်တီးရာတွင် ပြဿနာရှိနေပါသည်" }));
-                            res.end(JSON.stringify({
-                                success: true,
-                                message: "Admin အကောင့်အသစ် ဖန်တီးပြီးပါပြီ",
-                                id: newId
-                            }));
+                        for (const row of rows) {
+                            const isPasscodeMatch = await bcrypt.compare(passcodeStr, row.passcode);
+                            if (isPasscodeMatch) {
+                                return res.end(JSON.stringify({ message: "ဒီ Passcode နဲ့ အကောင့်ရှိပြီးသား ဖြစ်နေပါသည်" }));
+                            }
                         }
-                    );
-                } catch (error) {
-                    res.end(JSON.stringify({ message: "အကောင့်ဖန်တီးမှု မအောင်မြင်ပါ" }));
+
+                        insertAdmin();
+                    });
+                } else {
+                    insertAdmin();
+                }
+
+                async function insertAdmin() {
+                    try {
+                        const hashedPassword = await bcrypt.hash(passwordStr, 10);
+                        const hashedPasscode = passcodeStr ? await bcrypt.hash(passcodeStr, 10) : null;
+
+                        let photoName = null;
+                        if (photoFile?.originalFilename) {
+                            photoName = generatePhotoName(newId, photoFile.originalFilename);
+                            fs.renameSync(photoFile.filepath, path.join(UPLOAD_DIR, photoName));
+                        }
+
+                        const insertSql = `
+                            INSERT INTO admin (id, name, photo, password, passcode, email, phone, gender, role)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `;
+
+                        db.query(
+                            insertSql,
+                            [newId, nameStr, photoName, hashedPassword, hashedPasscode, emailStr, phoneStr || null, genderStr, roleStr],
+                            (err) => {
+                                if (err) return res.end(JSON.stringify({ message: "အကောင့်ဖန်တီးရာတွင် ပြဿနာရှိနေပါသည်" }));
+                                res.end(JSON.stringify({
+                                    success: true,
+                                    message: "Admin အကောင့်အသစ် ဖန်တီးပြီးပါပြီ",
+                                    id: newId
+                                }));
+                            }
+                        );
+                    } catch (error) {
+                        res.end(JSON.stringify({ message: "အကောင့်ဖန်တီးမှု မအောင်မြင်ပါ" }));
+                    }
                 }
             });
         });
@@ -434,7 +455,6 @@ function updateAdminPasscode(req, res) {
 
                     const owner = results[0];
 
-                    // Check if passcode matches
                     if (!owner.passcode) {
                         res.statusCode = 403;
                         return res.end(JSON.stringify({ message: "Owner ၏ Passcode မသတ်မှတ်ရသေးပါ" }));
@@ -446,17 +466,33 @@ function updateAdminPasscode(req, res) {
                         return res.end(JSON.stringify({ error: "Owner Passcode မှားနေပါသည်" }));
                     }
 
-                    const hashedPasscode = await bcrypt.hash(newpasscode, 10);
-
-                    const updateSql = "UPDATE admin SET passcode = ? WHERE email = ?";
-                    db.query(updateSql, [hashedPasscode, email], (err) => {
+                    // ✅ Passcode unique check
+                    const checkPasscodeSql = "SELECT passcode FROM admin WHERE passcode IS NOT NULL";
+                    db.query(checkPasscodeSql, async (err, rows) => {
                         if (err) {
                             res.statusCode = 500;
                             return res.end(JSON.stringify({ error: err.message }));
                         }
 
-                        res.statusCode = 200;
-                        res.end(JSON.stringify({ success: true, message: "Passcode ပြင်ပြီးပါပြီ" }));
+                        for (const row of rows) {
+                            const isPasscodeMatch = await bcrypt.compare(newpasscode.toString(), row.passcode);
+                            if (isPasscodeMatch) {
+                                return res.end(JSON.stringify({ message: "ဒီ Passcode နဲ့ အကောင့်ရှိပြီးသား ဖြစ်နေပါသည် (သို့) မူရင်း passcode ဖြစ်နေပါသည်" }));
+                            }
+                        }
+
+                        const hashedPasscode = await bcrypt.hash(newpasscode, 10);
+
+                        const updateSql = "UPDATE admin SET passcode = ? WHERE email = ?";
+                        db.query(updateSql, [hashedPasscode, email], (err) => {
+                            if (err) {
+                                res.statusCode = 500;
+                                return res.end(JSON.stringify({ error: err.message }));
+                            }
+
+                            res.statusCode = 200;
+                            res.end(JSON.stringify({ success: true, message: "Passcode ပြင်ပြီးပါပြီ" }));
+                        });
                     });
                 });
             });
