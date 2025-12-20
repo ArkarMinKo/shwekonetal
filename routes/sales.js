@@ -621,6 +621,7 @@ function getAllApprove(req, res) {
                 return {
                     ...r,
                     gold: goldString.trim(),
+                    yway: r.gold,
                     price: calculatedPrice,
                 };
             });
@@ -687,6 +688,7 @@ function getAllReject(req, res) {
                 return {
                     ...r,
                     gold: goldString.trim(),
+                    yway: r.gold,
                     price: calculatedPrice,
                 };
             });
@@ -800,6 +802,7 @@ function getAllSales(req, res) {
             return {
                 ...r,
                 gold: goldString.trim(),
+                yway: r.gold,
                 price: parseInt(calculatedPrice),
                 basePrice: basePrice
             };
@@ -1192,6 +1195,7 @@ function buyTable(req, res){
                 return {
                     ...r,
                     gold: goldString.trim(),
+                    yway: r.gold,
                     price: calculatedPrice,
                 };
             });
@@ -1274,6 +1278,7 @@ function sellTable(req, res){
                 return {
                     ...r,
                     gold: goldString.trim(),
+                    yway: r.gold,
                     price: calculatedPrice,
                 };
             });
@@ -1354,6 +1359,7 @@ function deliTable(req, res){
                 return {
                     ...r,
                     gold: goldString.trim(),
+                    yway: r.gold,
                     price: calculatedPrice,
                 };
             });
