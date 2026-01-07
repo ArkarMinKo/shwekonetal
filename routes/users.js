@@ -10,6 +10,7 @@ const { generateIdBackPhotoName } = require("../utils/idBackPhotoNameGenerator")
 const sendMail = require("../utils/mailer");
 const { generateEmailCode, getExpiryTime } = require("../utils/emailCodeGenerator");
 const { saveCode, verifyCode } = require("../utils/codeStore");
+const jwt = require("../utils/jwt");
 
 const filepath = 'http://38.60.244.74:3000/uploads/'
 // Ensure uploads folder exists
@@ -783,6 +784,11 @@ function loginUser(req, res, body) {
           );
         }
 
+        const token = jwt.generateToken({
+          id: user.id,
+          type: "user"
+        });
+
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({
@@ -790,6 +796,7 @@ function loginUser(req, res, body) {
             id: user.id,
             fullname: user.fullname,
             passcode: user.passcode,
+            token: token
           })
         );
       }

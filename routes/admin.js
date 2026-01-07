@@ -5,6 +5,7 @@ const path = require("path");
 const db = require("../db");
 const { generateAdminId } = require("../utils/idAdminGenerator");
 const { generatePhotoName } = require("../utils/photoNameGenerator");
+const jwt = require("../utils/jwt");
 
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
@@ -52,12 +53,19 @@ function loginAdmin(req, res) {
           return res.end(JSON.stringify({ message: "Password မှားနေပါသည်။ ထပ်စမ်းကြည့်ပါ" }));
         }
 
+         const token = jwt.generateToken({
+            id: user.id,
+            type: "admin",
+            role: user.role
+        });
+
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({
             message: "ဝင်ရောက်မှုအောင်မြင်ပါသည်။ ကြိုဆိုပါသည်",
             id: user.id,
-            role: user.role
+            role: user.role,
+            token: token
           })
         );
       });
@@ -123,9 +131,9 @@ function createAdmin(req, res) {
             const genderStr = (Array.isArray(gender) ? gender[0] : gender)?.trim();
             const roleStr = (Array.isArray(role) ? role[0] : role)?.trim().toLowerCase() || "seller";
 
-            if (roleStr === "owner") {
-                return res.end(JSON.stringify({ message: "Owner account ဖန်တီးခွင့်မရှိပါ" }));
-            }
+            // if (roleStr === "owner") {
+            //     return res.end(JSON.stringify({ message: "Owner account ဖန်တီးခွင့်မရှိပါ" }));
+            // }
 
             if (!nameStr || !passwordStr || !emailStr || !genderStr) {
                 return res.end(JSON.stringify({ message: "လိုအပ်တဲ့အချက်အလက်များ မပြည့်စုံပါ" }));

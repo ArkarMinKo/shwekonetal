@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const db = require("./db");
 const WebSocket = require("ws");
+const auth = require("./middlewares/auth");
 
 // Upload folders
 const USER_UPLOAD_DIR = path.join(__dirname, "uploads");
@@ -93,8 +94,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- Change Email ---
   else if (pathName.startsWith("/change-email/") && method === "PATCH") {
-    const id = pathName.split("/")[2];
-    users.changeEmail(req, res, id);
+    auth()(req, res, () => {
+      const id = pathName.split("/")[2];
+      users.changeEmail(req, res, id);
+    })
   }
 
   // -- email confrimation ---
@@ -108,62 +111,125 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- ‌Admin CRUD ---
-  else if (pathName === "/admin" && method === "POST") admin.createAdmin(req, res);
-  else if (pathName === "/admin" && method === "GET") admin.getAdmins(req, res);
-  else if (pathName === "/admin" && method === "PUT") admin.updateAdminInfo(req, res);
+  else if (pathName === "/admin" && method === "POST") {
+    // auth("owner")(req, res, () => {
+    //   admin.createAdmin(req, res);
+    // })
+    admin.createAdmin(req, res);
+  }
+  else if (pathName === "/admin" && method === "GET") {
+    auth("owner")(req, res, () => {
+      admin.getAdmins(req, res);
+    })
+  }
+  else if (pathName === "/admin" && method === "PUT") {
+    auth("owner")(req, req, () => {
+      admin.updateAdminInfo(req, res);
+    })
+  }
   else if (pathName.startsWith("/admin/") && method === "DELETE") {
-    const id = pathName.split("/")[2];
-    admin.deleteAdmin(req, res, id);
+    auth("owner")(req, req, () => {
+      const id = pathName.split("/")[2];
+      admin.deleteAdmin(req, res, id);
+    })
   }
 
   else if (pathName.startsWith("/admin/") && method === "GET") {
-    const id = pathName.split("/")[2];
-    admin.getAdminsById(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[2];
+      admin.getAdminsById(req, res, id);
+    })
   }
 
-  else if (pathName === "/admin/verify-admin-passcode" && method === "POST") admin.verifyAdminPasscode(req, res);
-  else if (pathName === "/admin/verify-owner-passcode" && method === "POST") admin.verifyOwnerPasscode(req, res);
+  else if (pathName === "/admin/verify-admin-passcode" && method === "POST") {
+    auth()(req, req, () => {
+      admin.verifyAdminPasscode(req, res)
+    })
+  }
+  else if (pathName === "/admin/verify-owner-passcode" && method === "POST") {
+    auth()(req, req, () => {
+      admin.verifyOwnerPasscode(req, res)
+    })
+  }
 
-  else if(pathName === "/admin/password" && method === "PATCH") admin.updateAdminPassword(req, res);
-  else if(pathName === "/admin/passcode" && method === "PATCH") admin.updateAdminPasscode(req, res);
+  else if(pathName === "/admin/password" && method === "PATCH") {
+    auth("owner")(req, req, () => {
+      admin.updateAdminPassword(req, res)
+    })
+  }
+  else if(pathName === "/admin/passcode" && method === "PATCH") {
+    auth("owner")(req, req, () => {
+      admin.updateAdminPasscode(req, res)
+    })
+  }
 
   // --- Agents CRUD ---
-  else if (pathName === "/agents" && method === "POST") admin.createAgent(req, res);
-  else if (pathName === "/agents" && method === "GET") admin.getAgents(req, res);
+  else if (pathName === "/agents" && method === "POST") {
+    auth()(req, req, () => {
+      admin.createAgent(req, res)
+    })
+  }
+  else if (pathName === "/agents" && method === "GET") {
+    auth()(req, req, () => {
+      admin.getAgents(req, res)
+    })
+  }
   else if (pathName.startsWith("/agents/") && method === "DELETE") {
-    const id = pathName.split("/")[2];
-    admin.deleteAgent(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[2];
+      admin.deleteAgent(req, res, id);
+    })
   }
 
   // --- Users CRUD ---
   else if (pathName === "/users" && method === "POST") users.createUser(req, res);
-  else if (pathName === "/users" && method === "GET") users.getUsers(req, res);
-  else if (pathName === "/users-summarys" && method === "GET") users.usersSummarys(req, res);
+  else if (pathName === "/users" && method === "GET") {
+    auth()(req, req, () => {
+      users.getUsers(req, res)
+    })
+  }
+  else if (pathName === "/users-summarys" && method === "GET") {
+    auth()(req, req, () => {
+      users.usersSummarys(req, res)
+    })
+  }
 
   else if (pathName.startsWith("/users/") && method === "GET") {
-    const id = pathName.split("/")[2];
-    users.getUserById(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[2];
+      users.getUserById(req, res, id);
+    })
   }
   
   else if (pathName.startsWith("/users/") && method === "PUT") {
-    const id = pathName.split("/")[2];
-    users.updateUser(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[2];
+      users.updateUser(req, res, id);
+    })
   }
   else if (pathName.startsWith("/users/approve/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    users.approveUser(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      users.approveUser(req, res, id);
+    })
   }
   else if (pathName.startsWith("/users/reject/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    users.rejectUser(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      users.rejectUser(req, res, id);
+    })
   }
   else if (pathName.startsWith("/users/passcode/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    users.patchUserPasscode(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      users.patchUserPasscode(req, res, id);
+    })
   }
   else if (pathName.startsWith("/users/password/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    users.patchUserPassword(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      users.patchUserPassword(req, res, id);
+    })
   }
   else if (pathName === "/users/password-with-OTP" && method === "PATCH") {
     users.patchUserPasswordWithOTP(req, res);
@@ -171,251 +237,363 @@ const server = http.createServer(async (req, res) => {
 
   // --- Users PATCH update passcode routes ---
   else if (pathName.startsWith("/users/update-passcode/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    users.updatePasscode(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      users.updatePasscode(req, res, id);
+    })
   }
 
   // --- Users POST check passcode routes ---
   else if (pathName.startsWith("/users/check-passcode/") && method === "POST") {
-    const id = pathName.split("/")[3];
-    users.verifyPasscode(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      users.verifyPasscode(req, res, id);
+    })
   }
 
   // --- Get Open Stock ---
   else if (pathName === "/open-stock" && method === "GET"){
-    goldPrices.getOpenStock(req, res);
+    auth("owner")(req, req, () => {
+      goldPrices.getOpenStock(req, res);
+    })
   }
 
   // --- Post Open Stock ---
   else if (pathName === "/open-stock" && method === "POST") {
-    goldPrices.postOpenStock(req, res);
+    auth("owner")(req, req, () => {
+      goldPrices.postOpenStock(req, res);
+    })
   }
 
   // --- Post Open Server ---
   else if (pathName === "/open-server" && method === "GET") {
-    goldPrices.getServer(req, res);
+    auth("owner")(req, req, () => {
+      goldPrices.getServer(req, res);
+    })
   }
 
   // --- Post Open Server ---
   else if (pathName === "/open-server" && method === "POST") {
-    goldPrices.openServer(req, res);
+    auth("owner")(req, req, () => {
+      goldPrices.openServer(req, res);
+    })
   }
 
   // --- Getting All Selling Price ---
   else if (pathName === "/selling-prices" && method === "GET") {
-    goldPrices.getAllSellingPrices(req, res);
+    auth()(req, req, () => {
+      goldPrices.getAllSellingPrices(req, res);
+    })
   }
 
   // --- Getting Latest Selling Price ---
   else if (pathName === "/selling-prices/latest" && method === "GET") {
-    goldPrices.getLatestSellingPrice(req, res);
+    auth()(req, req, () => {
+      goldPrices.getLatestSellingPrice(req, res);
+    })
   }
 
   // --- Selling Price Update ---
   else if (pathName === "/selling-prices" && method === "POST") {
-    goldPrices.insertSellingPrice(req, res);
+    auth()(req, req, () => {
+      goldPrices.getLatestSellingPrice(req, res);
+    })
   }
 
   // --- GET buying price Data
   else if (pathName === "/selling-prices-data" && method === "GET") {
-    goldPrices.getSellingPricesData(req, res);
+    auth()(req, req, () => {
+      goldPrices.getSellingPricesData(req, res);
+    })
   }
 
   // --- Getting All Buying Price ---
   else if (pathName === "/buying-prices" && method === "GET") {
-    goldPrices.getAllBuyingPrices(req, res);
+    auth()(req, req, () => {
+      goldPrices.getAllBuyingPrices(req, res);
+    })
   }
 
   // --- Getting Latest Buying Price ---
   else if (pathName === "/buying-prices/latest" && method === "GET") {
-    goldPrices.getLatestBuyingPrice(req, res);
+    auth()(req, req, () => {
+      goldPrices.getLatestBuyingPrice(req, res);
+    })
   }
 
   // --- Buying Price Update ---
   else if (pathName === "/buying-prices" && method === "POST") {
-    goldPrices.insertBuyingPrice(req, res);
+    auth()(req, req, () => {
+      goldPrices.insertBuyingPrice(req, res);
+    })
   }
 
   // --- GET buying price Data
   else if (pathName === "/buying-prices-data" && method === "GET") {
-    goldPrices.getBuyingPricesData(req, res);
+    auth()(req, req, () => {
+      goldPrices.getBuyingPricesData(req, res);
+    })
   }
 
   // --- Get Sales ---
   // --- Get all Sales By User ---
   else if (pathName.startsWith("/sales/") && method === "GET") {
-    const userid = pathName.split("/")[2];
-    sales.getAllSalesByUser(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      sales.getAllSalesByUser(req, res, userid);
+    })
   }
 
   else if (pathName === "/approve" && method === "GET") {
-    sales.getAllApprove(req,res)
+    auth()(req, req, () => {
+      sales.getAllApprove(req,res)
+    })
   }
 
   else if (pathName === "/reject" && method === "GET") {
-    sales.getAllReject(req,res)
+    auth()(req, req, () => {
+      sales.getAllReject(req,res)
+    })
   }
 
   // --- Get Date Filter Sales By User ---
   else if (pathName.startsWith("/sales/") && method === "POST") {
-    const userid = pathName.split("/")[2];
-    sales.getDateFilterByUser(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      sales.getDateFilterByUser(req, res, userid);
+    })
   }
 
   // --- Get approve Sales By User ---
   else if (pathName.startsWith("/approve/") && method === "GET") {
-    const userid = pathName.split("/")[2];
-    sales.getApprovedSales(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      sales.getApprovedSales(req, res, userid);
+    })
   }
 
   // --- Get reject Sales By User ---
   else if (pathName.startsWith("/reject/") && method === "GET") {
-    const userid = pathName.split("/")[2];
-    sales.getRejectedSales(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      sales.getRejectedSales(req, res, userid);
+    })
   }
 
   // --- Get pending Sales By User ---
   else if (pathName.startsWith("/pending/") && method === "GET") {
-    const userid = pathName.split("/")[2];
-    sales.getPendingSales(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      sales.getPendingSales(req, res, userid);
+    })
   }
 
   // --- Get buying gold buy by times today ---
   else if (pathName === "/gold-times-today" && method === "GET") {
-    sales.getTimesSalesByToday(req,res);
+    auth()(req, req, () => {
+      sales.getTimesSalesByToday(req,res);
+    })
   }
 
   // --- Get All Sales
   else if (pathName === "/sales" && method === "GET") {
-    sales.getAllSales(req,res)
+    auth()(req, req, () => {
+      sales.getAllSales(req,res)
+    })
   }
 
   else if (pathName.startsWith("/sales-by-id/") && method === "GET") {
-    const saleid = pathName.split("/")[2];
-    sales.getSalesById(req, res, saleid);
+    auth()(req, req, () => {
+      const saleid = pathName.split("/")[2];
+      sales.getSalesById(req, res, saleid);
+    })
   }
 
   // --- Create Sales ---
   else if (pathName === "/sales" && method === "POST") {
-    sales.createSale(req,res)
+    auth()(req, req, () => {
+      sales.createSale(req,res)
+    })
   }
 
   // --- Approve Sales ---
   else if (pathName.startsWith("/sales/approve/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    sales.approveSale(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      sales.approveSale(req, res, id);
+    })
   }
 
   // --- Reject Sales ---
   else if (pathName.startsWith("/sales/reject/") && method === "PATCH") {
-    const id = pathName.split("/")[3];
-    sales.rejectSale(req, res, id);
+    auth()(req, req, () => {
+      const id = pathName.split("/")[3];
+      sales.rejectSale(req, res, id);
+    })
   }
 
   // --- Get Own Gold ---
   else if (pathName.startsWith("/own_gold/") && method === "GET") {
-    const userid = pathName.split("/")[2];
-    ownGold.getOwnGold(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      ownGold.getOwnGold(req, res, userid);
+    })
   }
 
   // --- Get Filter Date ---
   else if (pathName.startsWith("/own_gold/") && method === "POST"){
-    const userid = pathName.split("/")[2];
-    ownGold.getFilterDate(req, res, userid)
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      ownGold.getFilterDate(req, res, userid)
+    })
   }
 
   // --- Insert Formula ---
   else if (pathName === "/formula" && method === "POST"){
-    goldPrices.insertFormula(req, res);
+    auth()(req, req, () => {
+      goldPrices.insertFormula(req, res);
+    })
   }
 
   // --- Get All Formula ---
   else if (pathName === "/formula" && method === "GET") {
-    goldPrices.getAllFormula(req, res);
+    auth()(req, req, () => {
+      goldPrices.getAllFormula(req, res);
+    })
   }
 
   // --- Get Latest Formula ---
   else if (pathName === "/formula/latest" && method === "GET") {
-    goldPrices.getLatestFormula(req, res);
+    auth()(req, req, () => {
+      goldPrices.getLatestFormula(req, res);
+    })
   }
 
   // --- Get report buy and sell chart
   else if (pathName === "/report-buy-sell-chart" && method === "GET") {
-    sales.compareBuyAndSellChart(req, res);
+    auth("owner")(req, req, () => {
+      sales.compareBuyAndSellChart(req, res);
+    })
   }
 
   // --- Get buy table ---
   else if (pathName === "/buyTable" && method === "GET") {
-    sales.buyTable(req, res);
+    auth("owner")(req, req, () => {
+      sales.buyTable(req, res);
+    })
   }
 
   // --- Get sell table ---
   else if (pathName === "/sellTable" && method === "GET") {
-    sales.sellTable(req, res);
+    auth("owner")(req, req, () => {
+      sales.sellTable(req, res);
+    })
   }
 
   // --- Get deli table ---
   else if (pathName === "/deliTable" && method === "GET") {
-    sales.deliTable(req, res);
+    auth("owner")(req, req, () => {
+      sales.deliTable(req, res);
+    })
   }
 
   // --- Get summarys dashboard ---
   else if (pathName === "/dashboard-summarys" && method === "GET") {
-    dashboard.summarys(req, res);
+    auth("owner")(req, req, () => {
+      dashboard.summarys(req, res);
+    })
   }
 
   // --- Get summarys Sales ---
   else if (pathName === "/sales-summarys" && method === "GET") {
-    sales.salesSummarys(req, res);
+    auth("owner")(req, req, () => {
+      sales.salesSummarys(req, res);
+    })
   }
 
   // --- Get buying price chart ---
   else if (pathName === "/buying-prices-chart" && method === "GET") {
-    dashboard.buyingPricesChart(req,res)
+    auth("owner")(req, req, () => {
+      dashboard.buyingPricesChart(req,res)
+    })
   }
 
   // --- Get revenue gold chart ----
   else if (pathName === "/revenue-gold-chart" && method === "GET") {
-    dashboard.revenueGoldChart(req,res)
+    auth("owner")(req, req, () => {
+      dashboard.revenueGoldChart(req,res)
+    })
   }
 
   // --- Get top3 wallet ---
   else if (pathName === "/topWallet" && method === "GET") {
-    dashboard.topWallet(req,res)
+    auth("owner")(req, req, () => {
+      dashboard.topWallet(req,res)
+    })
   }
 
   // --- Get buy vs sell ---
   else if (pathName === "/buy-vs-sell" && method === "GET") {
-    dashboard.buyVSsell(req,res)
+    auth("owner")(req, req, () => {
+      dashboard.buyVSsell(req,res)
+    })
   }
 
   // --- Get notification on mobile ---
   else if (pathName.startsWith("/mobile-noti/") && method === "GET") {
-    const userid = pathName.split("/")[2];
-    mobileNotification.getNoti(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      mobileNotification.getNoti(req, res, userid);
+    })
   }
 
   // --- Seen notification on mobile ---
   else if (pathName.startsWith("/mobile-noti/") && method === "PATCH") {
-    const userid = pathName.split("/")[2];
-    mobileNotification.seenNoti(req, res, userid);
+    auth()(req, req, () => {
+      const userid = pathName.split("/")[2];
+      mobileNotification.seenNoti(req, res, userid);
+    })
   }
 
   // --- Sticker routes ---
   // --- Post stickers ---
-  else if (pathName === "/stickers" && method === "POST") return stickers.uploadSticker(req, res);
+  else if (pathName === "/stickers" && method === "POST") {
+    auth()(req, req, () => {
+      return stickers.uploadSticker(req, res);
+    })
+  }
   // --- Get stickers ---
-  else if (pathName === "/stickers" && method === "GET") return stickers.getStickers(req, res);
+  else if (pathName === "/stickers" && method === "GET") {
+    auth()(req, req, () => {
+      return stickers.getStickers(req, res)
+    })
+  }
 
   // --- Messages routes ---
   // --- POST Message ---
-  else if (pathName === "/messages" && method === "POST") return messages.createMessage(req, res);
+  else if (pathName === "/messages" && method === "POST") {
+    auth()(req, req, () => {
+      return messages.createMessage(req, res)
+    })
+  }
   // --- GET Message ---
-  else if (pathName === "/messages" && method === "GET") return messages.getMessages(req, res);
+  else if (pathName === "/messages" && method === "GET") {
+    auth()(req, req, () => {
+      return messages.getMessages(req, res)
+    })
+  }
   // --- GET Message For Admin ---
-  else if (pathName === "/admin-messages" && method === "GET") return messages.getMessagesForAdmin(req, res);
+  else if (pathName === "/admin-messages" && method === "GET") {
+    auth()(req, req, () => {
+      return messages.getMessagesForAdmin(req, res)
+    })
+  }
   // --- Mark messages as seen ---
-  else if (pathName === "/messages/mark-seen" && method === "POST") return messages.markMessagesSeen(req, res);
+  else if (pathName === "/messages/mark-seen" && method === "POST") {
+    auth()(req, req, () => {
+      return messages.markMessagesSeen(req, res)
+    })
+  }
 
   // --- 404 fallback ---
   else {
@@ -435,6 +613,36 @@ wss.on("connection", (ws) => {
       data = JSON.parse(msg);
     } catch (err) {
       console.error("Invalid JSON message:", msg);
+      return;
+    }
+
+    // ===============================
+    // 🔐 AUTH HANDSHAKE (JWT)
+    // ===============================
+    if (data.type === "auth" && data.token) {
+      try {
+        const decoded = jwt.verifyToken(data.token);
+
+        ws.user = decoded;       // { id, type, role }
+        ws._userId = decoded.id;
+        ws.isAuthenticated = true;
+
+        if (!clients[decoded.id]) clients[decoded.id] = [];
+        clients[decoded.id].push(ws);
+
+        console.log("WS authenticated:", decoded.id, decoded.type);
+        return;
+
+      } catch (err) {
+        console.error("WS auth failed:", err.message);
+        ws.close();
+        return;
+      }
+    }
+
+    // ❌ Block unauthenticated messages
+    if (!ws.isAuthenticated) {
+      console.error("WS message before auth");
       return;
     }
 
