@@ -112,10 +112,9 @@ const server = http.createServer(async (req, res) => {
 
   // --- ‌Admin CRUD ---
   else if (pathName === "/admin" && method === "POST") {
-    // auth("owner")(req, res, () => {
-    //   admin.createAdmin(req, res);
-    // })
-    admin.createAdmin(req, res);
+    auth("owner")(req, res, () => {
+      admin.createAdmin(req, res);
+    })
   }
   else if (pathName === "/admin" && method === "GET") {
     auth("owner")(req, res, () => {
