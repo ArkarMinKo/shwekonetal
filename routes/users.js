@@ -10,7 +10,7 @@ const { generateIdBackPhotoName } = require("../utils/idBackPhotoNameGenerator")
 const sendMail = require("../utils/mailer");
 const { generateEmailCode, getExpiryTime } = require("../utils/emailCodeGenerator");
 const { saveCode, verifyCode } = require("../utils/codeStore");
-const jwt = require("../utils/jwt");
+const {generateToken} = require("../utils/jwtToken");
 
 const filepath = 'http://38.60.244.74:3000/uploads/'
 // Ensure uploads folder exists
@@ -784,7 +784,7 @@ function loginUser(req, res, body) {
           );
         }
 
-        const token = jwt.generateToken({
+        const token = generateToken({
           id: user.id,
           type: "user"
         });

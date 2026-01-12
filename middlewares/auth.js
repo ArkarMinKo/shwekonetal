@@ -1,25 +1,42 @@
-const jwt = require("../utils/jwt");
+const { verifyJWT } = require("../utils/jwtToken");
 
-module.exports = function auth(requiredRole = null) {
-  return (req, res, next) => {
-    const authHeader = req.headers["authorization"];
-    if (!authHeader)
-      return res.writeHead(401).end("No token provided");
+/**
+ * Normal user (login ဖြစ်ထားရုံ)
+ */
+async function authUser(req, res) {
+  try {
+    await verifyJWT(req);
+    return true;
+  } catch (err) {
+    res.writeHead(err.status || 401, {
+      "Content-Type": "application/json"
+    });
+    res.end(JSON.stringify({ message: err.message }));
+    return false;
+  }
+}
 
-    const token = authHeader.split(" ")[1];
+/**
+ *  Owner only
+ */
+async function authOwner(req, res) {
+  try {
+    const user = await verifyJWT(req);
 
-    try {
-      const decoded = jwt.verifyToken(token);
-      req.user = decoded;
-
-      if (requiredRole && decoded.role !== requiredRole) {
-        return res.writeHead(403).end("Access denied");
-      }
-
-      next();
-    } catch (err) {
-      res.writeHead(401);
-      res.end("Invalid or expired token");
+    if (user.role !== "owner") {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: "Owner only access" }));
+      return false;
     }
-  };
-};
+
+    return true;
+  } catch (err) {
+    res.writeHead(err.status || 401, {
+      "Content-Type": "application/json"
+    });
+    res.end(JSON.stringify({ message: err.message }));
+    return false;
+  }
+}
+
+module.exports = { authUser, authOwner };
