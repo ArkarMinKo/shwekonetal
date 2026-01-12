@@ -94,10 +94,9 @@ const server = http.createServer(async (req, res) => {
 
   // --- Change Email ---
   else if (pathName.startsWith("/change-email/") && method === "PATCH") {
-    auth()(req, res, () => {
-      const id = pathName.split("/")[2];
-      users.changeEmail(req, res, id);
-    })
+    if (!(await authUser(req, res))) return;
+    const id = pathName.split("/")[2];
+    users.changeEmail(req, res, id);
   }
 
   // -- email confrimation ---
