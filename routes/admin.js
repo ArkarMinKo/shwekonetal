@@ -655,10 +655,13 @@ function createAgent(req, res) {
       return res.end(JSON.stringify({ error: "id နှင့် name သည် လိုအပ်ပါသည်" }));
     }
 
+    const safeId = Array.isArray(id) ? id[0].trim() : id.trim();
+    const safeName = Array.isArray(name) ? name[0].trim() : name.trim();
+
     // --- Insert into 'agent' table ---
     const sql = `INSERT INTO agent (id, name) VALUES (?, ?)`;
 
-    db.query(sql, [id.trim(), name.trim()], (err, result) => {
+    db.query(sql, [safeId, safeName], (err, result) => {
       if (err) {
         console.error("Agent insert error:", err);
 
