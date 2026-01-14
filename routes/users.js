@@ -12,7 +12,7 @@ const { generateEmailCode, getExpiryTime } = require("../utils/emailCodeGenerato
 const { saveCode, verifyCode } = require("../utils/codeStore");
 const {generateToken} = require("../utils/jwtToken");
 
-const filepath = 'http://38.60.244.74:3000/uploads/'
+const filepath = 'http://38.60.244.240:3000/uploads/'
 // Ensure uploads folder exists
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
