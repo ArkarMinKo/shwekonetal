@@ -266,7 +266,7 @@ const server = http.createServer(async (req, res) => {
   // --- Selling Price Update ---
   else if (pathName === "/selling-prices" && method === "POST") {
     if (!(await authUser(req, res))) return;
-    goldPrices.getLatestSellingPrice(req, res);
+    goldPrices.insertSellingPrice(req, res);
   }
 
   // --- GET buying price Data
