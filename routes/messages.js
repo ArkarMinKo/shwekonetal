@@ -36,9 +36,8 @@ exports.createMessage = (req, res) => {
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
       const file = files.file[0] || files.file;
-      const newPath = path.join(uploadDir, file.originalFilename);
-      fs.renameSync(file.filepath, newPath);
-      image = `/uploads/${file.originalFilename}`;
+      const fileBuffer = fs.readFileSync(file.filepath); // read as buffer
+      image = fileBuffer; // store in DB
     }
 
     // ✅ Insert message into DB
