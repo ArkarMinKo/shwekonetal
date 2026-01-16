@@ -590,20 +590,16 @@ wss.on("connection", (ws) => {
     }
 
     // --- Save message to DB ---
-    let imageValue = null;
-    let contentValue = type !== "image" ? content : null;
-
-    if (type === "image" && content.startsWith("data:")) {
-      // convert Base64 to Buffer
-      const base64Data = content.split(",")[1];
-      imageValue = Buffer.from(base64Data, "base64");
-    }
+    const imageValue = type === "image" ? content : null;
+    const contentValue = type !== "image" ? content : null;
 
     db.query(
       "INSERT INTO messages (sender, receiver_id, type, content, image, seen) VALUES (?, ?, ?, ?, ?, 0)",
       [sender, receiver, type, contentValue, imageValue],
       (err) => {
-        if (err) console.error("DB insert error:", err);
+        if (err) {
+          console.error("DB insert error:", err.sqlMessage || err.message);
+        }
       }
     );
   });
