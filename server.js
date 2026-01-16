@@ -492,34 +492,28 @@ const server = http.createServer(async (req, res) => {
   // --- Sticker routes ---
   // --- Post stickers ---
   else if (pathName === "/stickers" && method === "POST") {
-    if (!(await authUser(req, res))) return;
     return stickers.uploadSticker(req, res);
   }
   // --- Get stickers ---
   else if (pathName === "/stickers" && method === "GET") {
-    if (!(await authUser(req, res))) return;
     return stickers.getStickers(req, res)
   }
 
   // --- Messages routes ---
   // --- POST Message ---
   else if (pathName === "/messages" && method === "POST") {
-    if (!(await authUser(req, res))) return;
     return messages.createMessage(req, res)
   }
   // --- GET Message ---
   else if (pathName === "/messages" && method === "GET") {
-    if (!(await authUser(req, res))) return;
     return messages.getMessages(req, res)
   }
   // --- GET Message For Admin ---
   else if (pathName === "/admin-messages" && method === "GET") {
-    if (!(await authUser(req, res))) return;
     return messages.getMessagesForAdmin(req, res)
   }
   // --- Mark messages as seen ---
   else if (pathName === "/messages/mark-seen" && method === "POST") {
-    if (!(await authUser(req, res))) return;
     return messages.markMessagesSeen(req, res)
   }
 
@@ -534,11 +528,7 @@ const server = http.createServer(async (req, res) => {
 const wss = new WebSocket.Server({ server });
 const clients = {}; // store connected clients by userId
 
-const jwtLib = require("jsonwebtoken");
-
 wss.on("connection", (ws) => {
-  ws.isAuthenticated = false;
-
   ws.on("message", (msg) => {
     let data;
     try {
@@ -548,91 +538,49 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // ===============================
-    // 🔐 AUTH HANDSHAKE (JWT)
-    // ===============================
-    if (data.type === "auth" && data.token) {
-      try {
-        const decoded = jwtLib.verify(data.token, process.env.JWT_SECRET);
+    // --- Handle init handshake ---
+    if (data.type === "init" && data.userId) {
+      if (!clients[data.userId]) clients[data.userId] = [];
+      clients[data.userId].push(ws);
+      ws._userId = data.userId;
+      console.log("WS init from:", data.userId);
+      return;
+    }
 
-        /**
-         * decoded example:
-         * {
-         *   userId: 5,
-         *   role: "owner",
-         *   type: "admin",
-         *   iat: ...,
-         *   exp: ...
-         * }
-         */
+    // --- Extract message fields ---
+    let { sender, receiver, type, content } = data;
 
-        ws.user = decoded;
-        ws._userId = decoded.userId;
-        ws.isAuthenticated = true;
-
-        if (!clients[decoded.userId]) clients[decoded.userId] = [];
-        clients[decoded.userId].push(ws);
-
-        ws.send(JSON.stringify({
-          type: "auth_success",
-          userId: decoded.userId,
-          role: decoded.role
-        }));
-
-        console.log("✅ WS authenticated:", decoded.userId, decoded.role);
-        return;
-
-      } catch (err) {
-        console.error("❌ WS auth failed:", err.message);
-
-        ws.send(JSON.stringify({
-          type: "auth_error",
-          message: "Invalid or expired token"
-        }));
-
-        ws.close();
+    // --- Fallback sender if missing ---
+    if (!sender) {
+      if (ws._userId) {
+        sender = ws._userId;
+        console.log("Sender missing; using ws._userId:", ws._userId);
+      } else {
+        console.error("No sender and no ws._userId; message ignored");
         return;
       }
     }
 
-    // ===============================
-    // ❌ BLOCK UNAUTHENTICATED
-    // ===============================
-    if (!ws.isAuthenticated) {
-      console.error("WS message before auth");
-      return;
-    }
-
-    // ===============================
-    // 📨 MESSAGE HANDLING
-    // ===============================
-
-    let { receiver, type, content } = data;
-
-    const sender = ws._userId;
-
     if (!receiver || !type) {
-      console.error("Invalid message:", data);
+      console.error("Invalid message, missing receiver/type:", data);
       return;
     }
 
-    const payload = {
-      sender,
-      receiver,
-      type,
-      content
-    };
+    const payload = { sender, receiver, type, content };
 
-    // --- Send to receiver ---
+    // --- Send to receiver if online ---
     if (clients[receiver]) {
       clients[receiver].forEach((socket) => {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify(payload));
         }
       });
+      console.log(`Sent message to receiver [${receiver}]`);
+    } else {
+      console.log(`Receiver [${receiver}] not online`);
     }
 
-    // --- Echo to sender ---
+    // --- Echo to sender (so their UI also updates immediately) ---
     if (clients[sender]) {
       clients[sender].forEach((socket) => {
         if (socket.readyState === WebSocket.OPEN) {
@@ -641,7 +589,7 @@ wss.on("connection", (ws) => {
       });
     }
 
-    // --- Save to DB ---
+    // --- Save message to DB ---
     const imageValue = type === "image" ? content : null;
     const contentValue = type !== "image" ? content : null;
 
@@ -662,6 +610,8 @@ wss.on("connection", (ws) => {
       clients[id] = clients[id].filter((s) => s !== ws);
       if (clients[id].length === 0) delete clients[id];
       console.log("WS disconnected:", id);
+    } else {
+      console.log("WS disconnected (no id)");
     }
   });
 
