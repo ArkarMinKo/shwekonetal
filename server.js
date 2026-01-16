@@ -129,7 +129,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   else if (pathName.startsWith("/admin/") && method === "GET") {
-    if (!(await authOwner(req, res))) return;
+    if (!(await authUser(req, res))) return;
     const id = pathName.split("/")[2];
     admin.getAdminsById(req, res, id);
   }
@@ -423,19 +423,19 @@ const server = http.createServer(async (req, res) => {
 
   // --- Get buy table ---
   else if (pathName === "/buyTable" && method === "GET") {
-    if (!(await authOwner(req, res))) return;
+    if (!(await authUser(req, res))) return;
     sales.buyTable(req, res);
   }
 
   // --- Get sell table ---
   else if (pathName === "/sellTable" && method === "GET") {
-    if (!(await authOwner(req, res))) return;
+    if (!(await authUser(req, res))) return;
     sales.sellTable(req, res);
   }
 
   // --- Get deli table ---
   else if (pathName === "/deliTable" && method === "GET") {
-    if (!(await authOwner(req, res))) return;
+    if (!(await authUser(req, res))) return;
     sales.deliTable(req, res);
   }
 
@@ -447,7 +447,7 @@ const server = http.createServer(async (req, res) => {
 
   // --- Get summarys Sales ---
   else if (pathName === "/sales-summarys" && method === "GET") {
-    if (!(await authOwner(req, res))) return;
+    if (!(await authUser(req, res))) return;
     sales.salesSummarys(req, res);
   }
 
