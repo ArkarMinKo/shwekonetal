@@ -17,6 +17,18 @@ function getNoti(req, res, userid){
         ORDER BY created_at DESC
     `;
 
+    // Level notifications query
+    const levelNotiSql = `
+        SELECT level_status, level, upgrade_level, level_seen
+        FROM users
+        WHERE id = ?
+        AND (
+            (level_status = 'pending' AND upgrade_level = 1 AND level_seen = 0)
+            OR
+            ((level_status = 'approved' OR level_status = 'rejected') AND upgrade_level = 0 AND level_seen = 0)
+        )
+    `;
+
     db.query(buyingPricesSql, (err, buyingPricesResult) => {
         if (err) {
             res.statusCode = 500;
@@ -35,62 +47,69 @@ function getNoti(req, res, userid){
                     return res.end(JSON.stringify({ error: err.message }));
                 }
 
-                if (!buyingPricesResult.length || !sellingPricesResult.length) {
-                    res.statusCode = 404;
-                    return res.end(JSON.stringify({ error: "Not enough price data" }));
-                }
-
-                const newBuyingPrice = parseInt(buyingPricesResult[0].price);
-                const oldBuyingPrice = parseInt(buyingPricesResult[1]?.price || buyingPricesResult[0].price);
-                const buyDifferentpercentage = parseFloat(((newBuyingPrice - oldBuyingPrice) / oldBuyingPrice * 100).toFixed(2));
-
-                const formattedBuyDifferentPercentage = 
-                    buyDifferentpercentage > 0
-                        ?  `+ ${buyDifferentpercentage} %`
-                        : buyDifferentpercentage < 0
-                        ? `- ${Math.abs(buyDifferentpercentage)} %`
-                        : `0 %`
-                
-                const newSellingPrice = parseInt(sellingPricesResult[0].price);
-                const oldSellingPrice = parseInt(sellingPricesResult[1]?.price || sellingPricesResult[0].price);
-                const sellDifferentpercentage = parseFloat(((newSellingPrice - oldSellingPrice) / oldSellingPrice * 100).toFixed(2));
-
-                const formattedSellDifferentPercentage =
-                    sellDifferentpercentage > 0
-                        ? `+ ${sellDifferentpercentage} %`
-                        : sellDifferentpercentage < 0
-                        ? `- ${Math.abs(sellDifferentpercentage)} %`
-                        : `0 %`;
-                
-
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify(
-                    {
-                        success: true,
-                        buyingPrices: {
-                            new_price: newBuyingPrice,
-                            new_price_time: buyingPricesResult[0].time,
-                            new_price_date: buyingPricesResult[0].date,
-                            old_price: oldBuyingPrice,
-                            old_price_time: buyingPricesResult[1]?.time || buyingPricesResult[0].time,
-                            old_price_date: buyingPricesResult[1]?.date || buyingPricesResult[0].date,
-                            differentPercentage: formattedBuyDifferentPercentage
-                        },
-                        sellingPrices: {
-                            new_price: newSellingPrice,
-                            new_price_time: sellingPricesResult[0].time,
-                            new_price_date: sellingPricesResult[0].date,
-                            old_price: oldSellingPrice,
-                            old_price_time: sellingPricesResult[1]?.time || sellingPricesResult[0].time,
-                            old_price_date: sellingPricesResult[1]?.date || sellingPricesResult[0].date,
-                            differentPercentage: formattedSellDifferentPercentage
-                        },
-                        sales: transactionsResult
+                db.query(levelNotiSql, [userid], (err, levelNotiResult) => {
+                    if (err) {
+                        res.statusCode = 500;
+                        return res.end(JSON.stringify({ error: err.message }));
                     }
-                ));  
-            })
-        })
-    })
+
+                    if (!buyingPricesResult.length || !sellingPricesResult.length) {
+                        res.statusCode = 404;
+                        return res.end(JSON.stringify({ error: "Not enough price data" }));
+                    }
+
+                    const newBuyingPrice = parseInt(buyingPricesResult[0].price);
+                    const oldBuyingPrice = parseInt(buyingPricesResult[1]?.price || buyingPricesResult[0].price);
+                    const buyDifferentpercentage = parseFloat(((newBuyingPrice - oldBuyingPrice) / oldBuyingPrice * 100).toFixed(2));
+
+                    const formattedBuyDifferentPercentage = 
+                        buyDifferentpercentage > 0
+                            ?  `+ ${buyDifferentpercentage} %`
+                            : buyDifferentpercentage < 0
+                            ? `- ${Math.abs(buyDifferentpercentage)} %`
+                            : `0 %`;
+                    
+                    const newSellingPrice = parseInt(sellingPricesResult[0].price);
+                    const oldSellingPrice = parseInt(sellingPricesResult[1]?.price || sellingPricesResult[0].price);
+                    const sellDifferentpercentage = parseFloat(((newSellingPrice - oldSellingPrice) / oldSellingPrice * 100).toFixed(2));
+
+                    const formattedSellDifferentPercentage =
+                        sellDifferentpercentage > 0
+                            ? `+ ${sellDifferentpercentage} %`
+                            : sellDifferentpercentage < 0
+                            ? `- ${Math.abs(sellDifferentpercentage)} %`
+                            : `0 %`;
+
+                    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                    res.end(JSON.stringify(
+                        {
+                            success: true,
+                            buyingPrices: {
+                                new_price: newBuyingPrice,
+                                new_price_time: buyingPricesResult[0].time,
+                                new_price_date: buyingPricesResult[0].date,
+                                old_price: oldBuyingPrice,
+                                old_price_time: buyingPricesResult[1]?.time || buyingPricesResult[0].time,
+                                old_price_date: buyingPricesResult[1]?.date || buyingPricesResult[0].date,
+                                differentPercentage: formattedBuyDifferentPercentage
+                            },
+                            sellingPrices: {
+                                new_price: newSellingPrice,
+                                new_price_time: sellingPricesResult[0].time,
+                                new_price_date: sellingPricesResult[0].date,
+                                old_price: oldSellingPrice,
+                                old_price_time: sellingPricesResult[1]?.time || sellingPricesResult[0].time,
+                                old_price_date: sellingPricesResult[1]?.date || sellingPricesResult[0].date,
+                                differentPercentage: formattedSellDifferentPercentage
+                            },
+                            sales: transactionsResult,
+                            levelNotifications: levelNotiResult
+                        }
+                    ));  
+                });
+            });
+        });
+    });
 }
 
 function seenNoti(req, res, userid) {
@@ -99,7 +118,8 @@ function seenNoti(req, res, userid) {
         return res.end(JSON.stringify({ error: "userid is required" }));
     }
 
-    const markSeenSql = `
+    // Mark sales as seen
+    const markSalesSeenSql = `
         UPDATE sales
         SET seen = 1
         WHERE status != 'pending'
@@ -107,16 +127,35 @@ function seenNoti(req, res, userid) {
         AND userid = ?
     `;
 
-    db.query(markSeenSql, [userid], (err, result) => {
+    db.query(markSalesSeenSql, [userid], (err, salesResult) => {
         if (err) {
             res.statusCode = 500;
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({
-            success: true,
-        }));
+        // Mark level notifications as seen
+        const markLevelSeenSql = `
+            UPDATE users
+            SET level_seen = 1
+            WHERE id = ?
+            AND (
+                (level_status = 'pending' AND upgrade_level = 1 AND level_seen = 0)
+                OR
+                ((level_status = 'approved' OR level_status = 'rejected') AND upgrade_level = 0 AND level_seen = 0)
+            )
+        `;
+
+        db.query(markLevelSeenSql, [userid], (err2, levelResult) => {
+            if (err2) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: err2.message }));
+            }
+
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({
+                success: true,
+            }));
+        });
     });
 }
 

@@ -132,17 +132,17 @@ function createSale(req, res) {
                     let newPoint = Math.floor(newGold);
 
                     // determine level based on newPoint
-                    let newLevel = "level1";
-                    if (newPoint >= 200) newLevel = "level4";
-                    else if (newPoint >= 150) newLevel = "level3";
-                    else if (newPoint >= 100) newLevel = "level2";
+                    // let newLevel = "level1";
+                    // if (newPoint >= 200) newLevel = "level4";
+                    // else if (newPoint >= 150) newLevel = "level3";
+                    // else if (newPoint >= 100) newLevel = "level2";
 
                     const updateUserSql = `
                         UPDATE users 
-                        SET gold = ?, member_point = ?, level = ?
+                        SET gold = ?, member_point = ?
                         WHERE id = ?
                     `;
-                    db.query(updateUserSql, [newGold, newPoint, newLevel, userid], (err) => {
+                    db.query(updateUserSql, [newGold, newPoint, userid], (err) => {
                         if (err) {
                             res.statusCode = 500;
                             return res.end(JSON.stringify({ error: err.message }));
@@ -290,17 +290,17 @@ function approveSale(req, res, saleId) {
 
                         let newPoint = Math.floor(newGold);
 
-                        let newLevel = "level1";
-                        if (newPoint >= 200) newLevel = "level4";
-                        else if (newPoint >= 150) newLevel = "level3";
-                        else if (newPoint >= 100) newLevel = "level2";
+                        // let newLevel = "level1";
+                        // if (newPoint >= 200) newLevel = "level4";
+                        // else if (newPoint >= 150) newLevel = "level3";
+                        // else if (newPoint >= 100) newLevel = "level2";
 
                         const updateUserSql = `
                             UPDATE users 
-                            SET gold = ?, member_point = ?, level = ?
+                            SET gold = ?, member_point = ?
                             WHERE id = ?
                         `;
-                        db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], (err) => {
+                        db.query(updateUserSql, [newGold, newPoint, sale.userid], (err) => {
                             if (err) {
                                 res.statusCode = 500;
                                 return res.end(JSON.stringify({ error: err.message }));
@@ -524,18 +524,18 @@ function rejectSale(req, res, saleId) {
                             let newPoint = parseInt(user.member_point || 0) + Math.round(parseFloat(sale.gold));
 
                             // Recalculate level
-                            let newLevel = "level1";
-                            if (newPoint >= 200) newLevel = "level4";
-                            else if (newPoint >= 150) newLevel = "level3";
-                            else if (newPoint >= 100) newLevel = "level2";
+                            // let newLevel = "level1";
+                            // if (newPoint >= 200) newLevel = "level4";
+                            // else if (newPoint >= 150) newLevel = "level3";
+                            // else if (newPoint >= 100) newLevel = "level2";
 
                             const updateUserSql = `
                                 UPDATE users 
-                                SET gold = ?, member_point = ?, level = ? 
+                                SET gold = ?, member_point = ?
                                 WHERE id = ?
                             `;
 
-                            db.query(updateUserSql, [newGold, newPoint, newLevel, sale.userid], err => {
+                            db.query(updateUserSql, [newGold, newPoint, sale.userid], err => {
                                 if (err) {
                                     res.statusCode = 500;
                                     return res.end(JSON.stringify({ error: "Failed to update user", detail: err.message }));
@@ -563,6 +563,152 @@ function rejectSale(req, res, saleId) {
             });
         });
     });
+}
+
+function createUpgradLevel(req, res, userId) {
+    if (!userId) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "User ID is required" }));
+    }
+
+    const sql = `
+        UPDATE users
+        SET level_status = 'pending',
+            upgrade_level = 1,
+            level_seen = 0
+        WHERE id = ?
+    `;
+
+    db.query(sql, [userId], (err, result) => {
+        if (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        return res.end(
+            JSON.stringify({ error: "Database error", details: err.message })
+        );
+        }
+
+        if (result.affectedRows === 0) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "User not found" }));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+        JSON.stringify({
+            success: true,
+            message: "Level တင်ရန် ခွင့်ပြုချက်တောင်းခံပြီးပါပြီ ခဏ စောင့်ဆိုင်းပေးပါ",
+        })
+        );
+    });
+}
+
+// Get all users for upgrade level
+function getUsersForUpgradeLevel(req, res) {
+  db.query("SELECT * FROM users WHERE upgrade_level = 1 AND level_status != 'pending' ORDER BY upgrade_level DESC", (err, rows) => {
+    if (err) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: err.message }));
+    }
+
+    const file = filepath;
+
+    const result = rows.map(({ password, passcode, ...r }) => ({
+      ...r,
+      profile: r.photo ? `${file}${r.photo}` : null,
+      id_front: r.id_front_photo ? `${file}${r.id_front_photo}` : null,
+      id_back: r.id_back_photo ? `${file}${r.id_back_photo}` : null,
+    }));
+
+    // Send both
+    res.end(
+      JSON.stringify({
+        users: result
+      })
+    );
+  });
+}
+
+function approveUserLevel(req, res, userId) {
+
+  if (!userId) {
+    return res.send({ success: false, message: 'userId is required' });
+  }
+
+  // Step 1: Get current level
+  const getUserQuery = 'SELECT level FROM users WHERE id = ?';
+  connection.query(getUserQuery, [userId], (err, results) => {
+    if (err) {
+      return res.send({ success: false, message: 'Database error', error: err });
+    }
+
+    if (results.length === 0) {
+      return res.send({ success: false, message: 'User not found' });
+    }
+
+    let currentLevel = results[0].level;
+
+    // Step 2: Determine next level
+    let nextLevel;
+    if (currentLevel === 'level1') {
+      nextLevel = 'level2';
+    } else if (currentLevel === 'level2') {
+      nextLevel = 'level3'; // optional: extend if needed
+    } else {
+      return res.send({ success: false, message: 'No further level upgrade available' });
+    }
+
+    // Step 3: Update user record
+    const updateQuery = `
+      UPDATE users 
+      SET level = ?, 
+          level_status = 'approved', 
+          level_seen = 0,
+          upgrade_level = 0
+      WHERE id = ?
+    `;
+    connection.query(updateQuery, [nextLevel, userId], (err2, updateResult) => {
+      if (err2) {
+        return res.send({ success: false, message: 'Failed to update user', error: err2 });
+      }
+
+      res.send({
+        success: true,
+        message: `User level upgraded from ${currentLevel} to ${nextLevel}`,
+        data: { userId, newLevel: nextLevel }
+      });
+    });
+  });
+}
+
+function rejectUserLevel(req, res, userId) {
+
+  if (!userId) {
+    return res.send({ success: false, message: 'userId is required' });
+  }
+
+  const updateQuery = `
+    UPDATE users 
+    SET level_status = 'rejected',
+        level_seen = 0,
+        upgrade_level = 0
+    WHERE id = ?
+  `;
+
+  connection.query(updateQuery, [userId], (err, result) => {
+    if (err) {
+      return res.send({ success: false, message: 'Failed to update user', error: err });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.send({ success: false, message: 'User not found' });
+    }
+
+    res.send({
+      success: true,
+      message: `User level upgrade rejected`,
+      data: { userId }
+    });
+  });
 }
 
 function getAllApprove(req, res) {
@@ -1483,5 +1629,9 @@ module.exports = {
         deliTable,
         salesSummarys,
         getSalesById,
-        getAllReject
+        getAllReject,
+        createUpgradLevel,
+        getUsersForUpgradeLevel,
+        approveUserLevel,
+        rejectUserLevel
     };

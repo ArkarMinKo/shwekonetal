@@ -383,6 +383,33 @@ const server = http.createServer(async (req, res) => {
     sales.rejectSale(req, res, id);
   }
 
+  // --- Create Upgrade Level ---
+  else if (pathName.startsWith("/upgradelevel/") && method === "PATCH") {
+    if (!(await authUser(req, res))) return;
+    const id = pathName.split("/")[2];
+    sales.createUpgradLevel(req, res, id);
+  }
+
+  // --- Get Upgrade Level ---
+  else if (pathName === "/getUpgradeUsers" && method === "GET"){
+    if (!(await authUser(req, res))) return;
+    sales.getUsersForUpgradeLevel(req, res);
+  }
+
+  // --- approve Upgrade level ---
+  else if (pathName.startsWith("/approvelevel/") && method === "PATCH") {
+    if (!(await authUser(req, res))) return;
+    const id = pathName.split("/")[2];
+    sales.approveUserLevel(req, res, id)
+  }
+
+  // --- approve Upgrade level ---
+  else if (pathName.startsWith("/rejectlevel/") && method === "PATCH") {
+    if (!(await authUser(req, res))) return;
+    const id = pathName.split("/")[2];
+    sales.rejectUserLevel(req, res, id)
+  }
+
   // --- Get Own Gold ---
   else if (pathName.startsWith("/own_gold/") && method === "GET") {
     if (!(await authUser(req, res))) return;
