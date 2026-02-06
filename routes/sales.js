@@ -10,6 +10,8 @@ const { generateOwnGoldId } = require("../utils/idOwnGoldGenerator");
 const UPLOAD_DIR = path.join(__dirname, "../uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+const filepath = 'http://38.60.244.240:3000/uploads/'
+
 // Helper: Get latest price
 function getLatestPrice(type, callback) {
     const table = type === "buy" ? "buying_prices" : "selling_prices";
