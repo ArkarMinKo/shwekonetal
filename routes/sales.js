@@ -638,7 +638,7 @@ function approveUserLevel(req, res, userId) {
 
   // Step 1: Get current level
   const getUserQuery = 'SELECT level FROM users WHERE id = ?';
-  connection.query(getUserQuery, [userId], (err, results) => {
+  db.query(getUserQuery, [userId], (err, results) => {
     if (err) {
       return res.send({ success: false, message: 'Database error', error: err });
     }
@@ -668,7 +668,7 @@ function approveUserLevel(req, res, userId) {
           upgrade_level = 0
       WHERE id = ?
     `;
-    connection.query(updateQuery, [nextLevel, userId], (err2, updateResult) => {
+    db.query(updateQuery, [nextLevel, userId], (err2, updateResult) => {
       if (err2) {
         return res.send({ success: false, message: 'Failed to update user', error: err2 });
       }
@@ -696,7 +696,7 @@ function rejectUserLevel(req, res, userId) {
     WHERE id = ?
   `;
 
-  connection.query(updateQuery, [userId], (err, result) => {
+  db.query(updateQuery, [userId], (err, result) => {
     if (err) {
       return res.send({ success: false, message: 'Failed to update user', error: err });
     }
