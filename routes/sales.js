@@ -606,7 +606,7 @@ function createUpgradLevel(req, res, userId) {
 
 // Get all users for upgrade level
 function getUsersForUpgradeLevel(req, res) {
-  db.query("SELECT * FROM users WHERE upgrade_level = 1 AND level_status != 'pending' ORDER BY upgrade_level DESC", (err, rows) => {
+  db.query("SELECT * FROM users WHERE upgrade_level = 1 AND level_status = 'pending' ORDER BY upgrade_level DESC", (err, rows) => {
     if (err) {
       res.statusCode = 500;
       return res.end(JSON.stringify({ error: err.message }));
