@@ -633,18 +633,18 @@ function getUsersForUpgradeLevel(req, res) {
 function approveUserLevel(req, res, userId) {
 
   if (!userId) {
-    return res.send({ success: false, message: 'userId is required' });
+    return res.end(JSON.stringify({ success: false, message: 'userId is required' }));
   }
 
   // Step 1: Get current level
   const getUserQuery = 'SELECT level FROM users WHERE id = ?';
   db.query(getUserQuery, [userId], (err, results) => {
     if (err) {
-      return res.end({ success: false, message: 'Database error', error: err });
+      return res.end(JSON.stringify({ success: false, message: 'Database error', error: err }));
     }
 
     if (results.length === 0) {
-      return res.end({ success: false, message: 'User not found' });
+      return res.end(JSON.stringify({ success: false, message: 'User not found' }));
     }
 
     let currentLevel = results[0].level;
@@ -656,7 +656,7 @@ function approveUserLevel(req, res, userId) {
     } else if (currentLevel === 'level2') {
       nextLevel = 'level3'; // optional: extend if needed
     } else {
-      return res.end({ success: false, message: 'No further level upgrade available' });
+      return res.end(JSON.stringify({ success: false, message: 'No further level upgrade available' }));
     }
 
     // Step 3: Update user record
@@ -670,14 +670,16 @@ function approveUserLevel(req, res, userId) {
     `;
     db.query(updateQuery, [nextLevel, userId], (err2, updateResult) => {
       if (err2) {
-        return res.end({ success: false, message: 'Failed to update user', error: err2 });
+        return res.end(JSON.stringify({ success: false, message: 'Failed to update user', error: err2 }));
       }
 
-      res.end({
-        success: true,
-        message: `User level upgraded from ${currentLevel} to ${nextLevel}`,
-        data: { userId, newLevel: nextLevel }
-      });
+      res.end(JSON.stringify(
+        {
+            success: true,
+            message: `User level ကို ${currentLevel} မှ ${nextLevel} သို့ ပြောင်းလဲခွင့် ပြုလိုက်ပါပြီ`,
+            data: { userId, newLevel: nextLevel }
+        }
+      ));
     });
   });
 }
@@ -685,7 +687,7 @@ function approveUserLevel(req, res, userId) {
 function rejectUserLevel(req, res, userId) {
 
   if (!userId) {
-    return res.end({ success: false, message: 'userId is required' });
+    return res.end(JSON.stringify({ success: false, message: 'userId is required' }));
   }
 
   const updateQuery = `
@@ -698,18 +700,21 @@ function rejectUserLevel(req, res, userId) {
 
   db.query(updateQuery, [userId], (err, result) => {
     if (err) {
-      return res.end({ success: false, message: 'Failed to update user', error: err });
+      return res.end(JSON.stringify({ success: false, message: 'Failed to update user', error: err }));
     }
 
     if (result.affectedRows === 0) {
-      return res.end({ success: false, message: 'User not found' });
+      return res.end(JSON.stringify({ success: false, message: 'User not found' }));
     }
 
-    res.end({
-      success: true,
-      message: `User level upgrade rejected`,
-      data: { userId }
-    });
+    res.end(
+        JSON.stringify(
+            {
+                success: true,
+                message: `User level တင်ခွင့်ကို ငြင်းပယ်လိုက်ပါပြီ`,
+            }
+        )
+    );
   });
 }
 
