@@ -654,9 +654,12 @@ function approveUserLevel(req, res, userId) {
     if (currentLevel === 'level1') {
       nextLevel = 'level2';
     } else if (currentLevel === 'level2') {
-      nextLevel = 'level3'; // optional: extend if needed
-    } else {
-      return res.end(JSON.stringify({ success: false, message: 'No further level upgrade available' }));
+      nextLevel = 'level3';
+    } 
+    else if (currentLevel === 'level3'){
+        nextLevel = 'level4';
+    }else {
+      return res.end(JSON.stringify({ success: false, message: 'Level သည် အမြင့်ဆုံး အခြေအနေသို့ ရောက်ရှိသွားပါပြီ' }));
     }
 
     // Step 3: Update user record
