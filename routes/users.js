@@ -332,6 +332,64 @@ function createUser(req, res) {
   });
 }
 
+// --- DELETE USER ---
+function deleteUser(req, res, id) {
+  if (!id) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "User id required" }));
+  }
+
+  // Get user photos first
+  db.query(
+    "SELECT photo, id_front_photo, id_back_photo FROM users WHERE id = ?",
+    [id],
+    (err, rows) => {
+      if (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+
+      if (rows.length === 0) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "User not found" }));
+      }
+
+      const user = rows[0];
+
+      // Delete user record
+      db.query("DELETE FROM users WHERE id = ?", [id], (err) => {
+        if (err) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+
+        // Delete uploaded files
+        try {
+          if (user.photo) {
+            const p = path.join(UPLOAD_DIR, user.photo);
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+          }
+
+          if (user.id_front_photo) {
+            const p = path.join(UPLOAD_DIR, user.id_front_photo);
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+          }
+
+          if (user.id_back_photo) {
+            const p = path.join(UPLOAD_DIR, user.id_back_photo);
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+          }
+        } catch (e) {
+          console.error("File delete error:", e);
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ message: "User deleted successfully" }));
+      });
+    }
+  );
+}
+
 // --- Change Email ---
 function changeEmail(req, res, id) {
   const form = new formidable.IncomingForm();
@@ -984,5 +1042,6 @@ module.exports = {
   patchUserPasscode,
   patchUserPasswordWithOTP,
   usersSummarys,
-  changeEmail
+  changeEmail,
+  deleteUser
 };
