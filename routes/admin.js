@@ -14,12 +14,16 @@ function loginAdmin(req, res) {
   const form = new formidable.IncomingForm();
 
   form.parse(req, (err, fields) => {
+
+    if (res.writableEnded) return;
+
     if (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: err.message }));
     }
 
     const { email, password } = fields;
+
     const emailStr = Array.isArray(email) ? email[0] : email;
     const passwordStr = Array.isArray(password) ? password[0] : password;
 
@@ -29,7 +33,11 @@ function loginAdmin(req, res) {
     }
 
     const sql = "SELECT id, role, password FROM admin WHERE email = ?";
+
     db.query(sql, [emailStr], (err, rows) => {
+
+      if (res.writableEnded) return;
+
       if (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: err.message }));
@@ -43,6 +51,9 @@ function loginAdmin(req, res) {
       const user = rows[0];
 
       bcrypt.compare(passwordStr, user.password, (err, isMatch) => {
+
+        if (res.writableEnded) return;
+
         if (err) {
           res.writeHead(500, { "Content-Type": "application/json" });
           return res.end(JSON.stringify({ message: err.message }));
@@ -53,21 +64,21 @@ function loginAdmin(req, res) {
           return res.end(JSON.stringify({ message: "Password မှားနေပါသည်။ ထပ်စမ်းကြည့်ပါ" }));
         }
 
-         const token = generateToken({
-            id: user.id,
-            type: "admin",
-            role: user.role
+        const token = generateToken({
+          id: user.id,
+          type: "admin",
+          role: user.role
         });
 
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(
-          JSON.stringify({
-            message: "ဝင်ရောက်မှုအောင်မြင်ပါသည်။ ကြိုဆိုပါသည်",
-            id: user.id,
-            role: user.role,
-            token: token
-          })
-        );
+
+        return res.end(JSON.stringify({
+          message: "ဝင်ရောက်မှုအောင်မြင်ပါသည်။ ကြိုဆိုပါသည်",
+          id: user.id,
+          role: user.role,
+          token: token
+        }));
+
       });
     });
   });
