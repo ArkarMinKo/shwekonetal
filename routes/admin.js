@@ -12,33 +12,36 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
 // --- LOGIN ADMIN ---
 function loginAdmin(req, res) {
-  const form = new formidable.IncomingForm();
 
-  form.parse(req, (err, fields) => {
+  let body = "";
+
+  req.on("data", chunk => {
+    body += chunk.toString();
+  });
+
+  req.on("end", () => {
 
     if (res.writableEnded) return;
 
-    if (err) {
-      if (!res.writableEnded) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: err.message }));
-      }
-      return;
+    let data;
+
+    try {
+      data = JSON.parse(body);
+    } catch (err) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Invalid JSON format" }));
     }
 
-    const { email, password } = fields;
+    const { email, password } = data;
 
-    const emailStr = Array.isArray(email) ? email[0] : email;
-    const passwordStr = Array.isArray(password) ? password[0] : password;
-
-    if (!emailStr || !passwordStr) {
+    if (!email || !password) {
       res.writeHead(400, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Email နဲ့ Password တို့ထည့်ပါ" }));
     }
 
     const sql = "SELECT id, role, password FROM admin WHERE email = ?";
 
-    db.query(sql, [emailStr], (err, rows) => {
+    db.query(sql, [email], (err, rows) => {
 
       if (res.writableEnded) return;
 
@@ -54,7 +57,7 @@ function loginAdmin(req, res) {
 
       const user = rows[0];
 
-      bcrypt.compare(passwordStr, user.password, (err, isMatch) => {
+      bcrypt.compare(password, user.password, (err, isMatch) => {
 
         if (res.writableEnded) return;
 
@@ -75,17 +78,20 @@ function loginAdmin(req, res) {
         });
 
         res.writeHead(200, { "Content-Type": "application/json" });
+
         return res.end(JSON.stringify({
           message: "ဝင်ရောက်မှုအောင်မြင်ပါသည်။ ကြိုဆိုပါသည်",
           id: user.id,
           role: user.role,
           token: token
         }));
+
       });
 
     });
 
   });
+
 }
 
 // --- GET ADMIN ---
