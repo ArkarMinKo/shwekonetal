@@ -82,13 +82,13 @@ const server = http.createServer(async (req, res) => {
   }
   
   // --- Login ---
-  if (pathName === "/login" && method === "POST") {
+  if (pathName === "/login-admin" && method === "POST") {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => users.loginUser(req, res, body));
     return;
   }
-  else if (pathName === "/login-admin" && method === "POST"){
+  else if (pathName === "/login" && method === "POST"){
     admin.loginAdmin(req, res)
   }
 
