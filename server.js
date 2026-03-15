@@ -88,7 +88,7 @@ const server = http.createServer(async (req, res) => {
     req.on('end', () => users.loginUser(req, res, body));
     return;
   }
-  if (pathName === "/login-admin" && method === "POST"){
+  else if (pathName === "/login-admin" && method === "POST"){
     admin.loginAdmin(req, res);
     return;
   }
@@ -116,7 +116,7 @@ const server = http.createServer(async (req, res) => {
     admin.createAdmin(req, res);
   }
   else if (pathName === "/admin" && method === "GET") {
-    if (!(await authOwner(req, res))) return;
+    // if (!(await authOwner(req, res))) return;
     admin.getAdmins(req, res);
   }
   else if (pathName === "/admin" && method === "PUT") {
