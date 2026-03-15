@@ -88,11 +88,8 @@ const server = http.createServer(async (req, res) => {
     req.on('end', () => users.loginUser(req, res, body));
     return;
   }
-  else if (pathName === "/login-admin" && method === "POST") {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => admin.loginAdmin(req, res, body));
-    return;
+  else if (pathName === "/login-admin" && method === "POST"){
+    admin.loginAdmin(req, res)
   }
 
   // --- Change Email ---
