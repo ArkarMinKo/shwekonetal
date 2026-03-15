@@ -89,7 +89,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (pathName === "/login-admin" && method === "POST"){
-    admin.loginAdmin(req, res)
+    admin.loginAdmin(req, res);
+    return;
   }
 
   // --- Change Email ---
