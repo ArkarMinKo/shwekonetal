@@ -118,6 +118,7 @@ const server = http.createServer(async (req, res) => {
   else if (pathName === "/admin" && method === "GET") {
     // if (!(await authOwner(req, res))) return;
     admin.getAdmins(req, res);
+    return;
   }
   else if (pathName === "/admin" && method === "PUT") {
     if (!(await authOwner(req, res))) return;
