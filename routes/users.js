@@ -346,12 +346,12 @@ function deleteUser(req, res, id) {
     (err, rows) => {
       if (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: err.message }));
+        return res.end(JSON.stringify({ success: false, error: err.message }));
       }
 
       if (rows.length === 0) {
         res.writeHead(404, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: "User not found" }));
+        return res.end(JSON.stringify({ success:false, error: "User not found" }));
       }
 
       const user = rows[0];
@@ -360,7 +360,7 @@ function deleteUser(req, res, id) {
       db.query("DELETE FROM users WHERE id = ?", [id], (err) => {
         if (err) {
           res.writeHead(500, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ error: err.message }));
+          return res.end(JSON.stringify({ success: false, error: err.message }));
         }
 
         // Delete uploaded files
@@ -384,7 +384,7 @@ function deleteUser(req, res, id) {
         }
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ message: "User deleted successfully" }));
+        res.end(JSON.stringify({ success: true, message: "User deleted successfully" }));
       });
     }
   );
