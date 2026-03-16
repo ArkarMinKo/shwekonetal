@@ -190,9 +190,10 @@ const server = http.createServer(async (req, res) => {
     users.getUsers(req, res);
     return;
   }
-  if (req.method === "DELETE" && url.pathname.startsWith("/users/")) {
-    const id = url.pathname.split("/")[2];
-    deleteUser(req, res, id);
+  else if (pathName.startsWith("/users/") && method === "DELETE") {
+    if (!(await authUser(req, res))) return;
+    const id = pathName.split("/")[2];
+    users.deleteUser(req, res, id);
     return;
   }
   else if (pathName === "/users-summarys" && method === "GET") {
