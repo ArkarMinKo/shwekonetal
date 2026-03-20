@@ -1566,7 +1566,7 @@ function salesSummarys(req, res) {
             // ===== Calculate Totals =====
             let buyGold = 0;
             let sellGold = 0;
-            let basePrice = 0; // will be overwritten by last row’s price (same as your structure)
+            let basePrice = 0;
 
             rows.forEach(r => {
                 const g = parseFloat(r.gold) || 0;
@@ -1577,7 +1577,7 @@ function salesSummarys(req, res) {
                 basePrice = parseFloat(r.price) || 0; 
             });
 
-            const totalGoldWeight = buyGold - sellGold;
+            const totalGoldWeight = buyGold;
 
             // ===== Total Sales Amount =====
             const totalSalesAmount = parseInt(totalGoldWeight * basePrice / latestyway);
