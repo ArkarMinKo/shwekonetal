@@ -24,7 +24,7 @@ function getLatestPrice(type, callback) {
 
 // Create sale
 function createSale(req, res) {
-    const form = new formidable.IncomingForm({ multiples: true, uploadDir: UPLOAD_DIR });
+    const form = new formidable.IncomingForm({ multiples: true, uploadDir: UPLOAD_DIR, maxFileSize: 20 * 1024 * 1024 });
 
     form.parse(req, (err, fields, files) => {
         if (err) {
