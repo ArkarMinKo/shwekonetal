@@ -218,34 +218,62 @@ function createUser(req, res) {
       let frontFile = null;
       let backFile = null;
 
-      // --- Base64 decode logic ---
+      // helper function (reuse for all images)
+      function saveBase64Image(fieldData, fileNameGenerator, defaultName) {
+        if (!fieldData) return null;
+
+        const data = Array.isArray(fieldData) ? fieldData[0] : fieldData;
+
+        if (!data) return null;
+
+        let base64Data = data;
+        let ext = "jpg"; // default
+
+        // if has prefix (mobile app)
+        if (data.startsWith("data:image")) {
+          base64Data = data.replace(/^data:image\/\w+;base64,/, "");
+          ext = data.substring("data:image/".length, data.indexOf(";base64"));
+        }
+
+        try {
+          const fileName = fileNameGenerator(defaultName.replace("jpg", ext));
+          fs.writeFileSync(
+            path.join(UPLOAD_DIR, fileName),
+            Buffer.from(base64Data, "base64")
+          );
+          return fileName;
+        } catch (err) {
+          console.error("Image save error:", err);
+          return null;
+        }
+      }
+
       try {
-        console.log("PHOTO:", fields.photo?.substring(0, 50));
-        if (fields.photo && fields.photo.startsWith("data:image")) {
-          const base64Data = fields.photo.replace(/^data:image\/\w+;base64,/, "");
-          const ext = fields.photo.substring("data:image/".length, fields.photo.indexOf(";base64"));
-          const photoName = generatePhotoName(id, `photo.${ext}`);
-          fs.writeFileSync(path.join(UPLOAD_DIR, photoName), Buffer.from(base64Data, "base64"));
-          photoFile = photoName;
-        }
-        console.log("PHOTO:", fields.id_front_photo?.substring(0, 50));
-        if (fields.id_front_photo && fields.id_front_photo.startsWith("data:image")) {
-          const base64Data = fields.id_front_photo.replace(/^data:image\/\w+;base64,/, "");
-          const ext = fields.id_front_photo.substring("data:image/".length, fields.id_front_photo.indexOf(";base64"));
-          const frontName = generateIdFrontPhotoName(id, `front.${ext}`);
-          fs.writeFileSync(path.join(UPLOAD_DIR, frontName), Buffer.from(base64Data, "base64"));
-          frontFile = frontName;
-        }
-        console.log("PHOTO:", fields.id_back_photo?.substring(0, 50));
-        if (fields.id_back_photo && fields.id_back_photo.startsWith("data:image")) {
-          const base64Data = fields.id_back_photo.replace(/^data:image\/\w+;base64,/, "");
-          const ext = fields.id_back_photo.substring("data:image/".length, fields.id_back_photo.indexOf(";base64"));
-          const backName = generateIdBackPhotoName(id, `back.${ext}`);
-          fs.writeFileSync(path.join(UPLOAD_DIR, backName), Buffer.from(base64Data, "base64"));
-          backFile = backName;
-        }
+        console.log("PHOTO:", fields.photo?.toString().substring(0, 50));
+        console.log("FRONT:", fields.id_front_photo?.toString().substring(0, 50));
+        console.log("BACK:", fields.id_back_photo?.toString().substring(0, 50));
+
+        photoFile = saveBase64Image(
+          fields.photo,
+          (name) => generatePhotoName(id, name),
+          "photo.jpg"
+        );
+
+        frontFile = saveBase64Image(
+          fields.id_front_photo,
+          (name) => generateIdFrontPhotoName(id, name),
+          "front.jpg"
+        );
+
+        backFile = saveBase64Image(
+          fields.id_back_photo,
+          (name) => generateIdBackPhotoName(id, name),
+          "back.jpg"
+        );
+
       } catch (e) {
         console.error("Base64 decode error:", e);
+        return res.end(JSON.stringify({ error: "Image processing failed" }));
       }
 
       try {
