@@ -228,7 +228,7 @@ function createUser(req, res) {
           fs.writeFileSync(path.join(UPLOAD_DIR, photoName), Buffer.from(base64Data, "base64"));
           photoFile = photoName;
         }
-
+        console.log("PHOTO:", fields.id_front_photo?.substring(0, 50));
         if (fields.id_front_photo && fields.id_front_photo.startsWith("data:image")) {
           const base64Data = fields.id_front_photo.replace(/^data:image\/\w+;base64,/, "");
           const ext = fields.id_front_photo.substring("data:image/".length, fields.id_front_photo.indexOf(";base64"));
@@ -236,7 +236,7 @@ function createUser(req, res) {
           fs.writeFileSync(path.join(UPLOAD_DIR, frontName), Buffer.from(base64Data, "base64"));
           frontFile = frontName;
         }
-
+        console.log("PHOTO:", fields.id_back_photo?.substring(0, 50));
         if (fields.id_back_photo && fields.id_back_photo.startsWith("data:image")) {
           const base64Data = fields.id_back_photo.replace(/^data:image\/\w+;base64,/, "");
           const ext = fields.id_back_photo.substring("data:image/".length, fields.id_back_photo.indexOf(";base64"));
