@@ -200,6 +200,7 @@ function createUser(req, res) {
     uploadDir: UPLOAD_DIR,
     keepExtensions: true,
     encoding: "utf-8",
+    maxFileSize: 30 * 1024 * 1024
   });
 
   form.parse(req, async (err, fields, files) => {
