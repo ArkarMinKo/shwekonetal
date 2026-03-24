@@ -220,6 +220,7 @@ function createUser(req, res) {
 
       // --- Base64 decode logic ---
       try {
+        console.log("PHOTO:", fields.photo?.substring(0, 50));
         if (fields.photo && fields.photo.startsWith("data:image")) {
           const base64Data = fields.photo.replace(/^data:image\/\w+;base64,/, "");
           const ext = fields.photo.substring("data:image/".length, fields.photo.indexOf(";base64"));
