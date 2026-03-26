@@ -1548,14 +1548,12 @@ function salesSummarys(req, res) {
             return res.end(JSON.stringify({ error: err.message }));
         }
 
-        // ===== Get Latest Formula =====
         const getLatestFormulaSql = `
             SELECT yway FROM formula ORDER BY date DESC, time DESC LIMIT 1
         `;
 
         db.query(getLatestFormulaSql, (err, formulaResult) => {
             if (err) {
-                console.error("Price fetch error:", err);
                 res.statusCode = 500;
                 return res.end(JSON.stringify({ error: err.message }));
             }
@@ -1563,29 +1561,24 @@ function salesSummarys(req, res) {
             const latestyway = parseInt(formulaResult[0]?.yway) || 128;
             const ywaybypal = latestyway / 16;
 
-            // ===== Total Sales Amount =====
-            const totalSalesAmount = 0;
+            let totalSalesAmount = 0;   // ✅ changed to let
+            let totalGoldWeight = 0;    // ✅ added
 
             rows.forEach(r => {
-                if (r.type === "buy" && r.status === "approved"){
-                    basePrice = parseFloat(r.price) || 0; 
+                if (r.type === "buy" && r.status === "approved") {
+                    const goldFloat = parseFloat(r.gold) || 0;
+                    const basePrice = parseFloat(r.price) || 0;
 
-                    const goldFloat = parseFloat(r.gold);
-                    const basePrice = parseFloat(r.price);
-
-                    const calculatedPrice = goldFloat * basePrice / latestyway;
+                    const calculatedPrice = (goldFloat * basePrice) / latestyway;
 
                     totalSalesAmount += calculatedPrice;
+                    totalGoldWeight += goldFloat; // ✅ accumulate
                 }
             });
 
-            // ===== Total Transactions =====
             const totalTransactions = rows.length;
-
-            // ===== Total Approved =====
             const totalSalesApproved = rows.filter(r => r.status === "approved").length;
 
-            // ===== Gold Format Function =====
             function formatGold(goldFloat) {
                 const kyat = Math.floor(goldFloat / latestyway);
                 const palbyyway = goldFloat / ywaybypal;
@@ -1601,10 +1594,8 @@ function salesSummarys(req, res) {
                 return str;
             }
 
-            // Convert totalGoldWeight to text
             const totalGoldWeightString = formatGold(totalGoldWeight);
 
-            // ===== Final Output =====
             const result = {
                 totalGoldWeightString,
                 totalTransactions,
