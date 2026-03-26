@@ -1563,24 +1563,21 @@ function salesSummarys(req, res) {
             const latestyway = parseInt(formulaResult[0]?.yway) || 128;
             const ywaybypal = latestyway / 16;
 
-            // ===== Calculate Totals =====
-            let buyGold = 0;
-            let sellGold = 0;
-            let basePrice = 0;
+            // ===== Total Sales Amount =====
+            const totalSalesAmount = 0;
 
             rows.forEach(r => {
-                const g = parseFloat(r.gold) || 0;
+                if (r.type === "buy" && r.status === "approved"){
+                    basePrice = parseFloat(r.price) || 0; 
 
-                if (r.type === "buy" && r.status === "approved") buyGold += g;
-                if (r.type === "sell" && r.status === "approved") sellGold += g;
+                    const goldFloat = parseFloat(r.gold);
+                    const basePrice = parseFloat(r.price);
 
-                basePrice = parseFloat(r.price) || 0; 
+                    const calculatedPrice = goldFloat * basePrice / latestyway;
+
+                    totalSalesAmount += calculatedPrice;
+                }
             });
-
-            const totalGoldWeight = buyGold;
-
-            // ===== Total Sales Amount =====
-            const totalSalesAmount = parseInt(totalGoldWeight * basePrice / latestyway);
 
             // ===== Total Transactions =====
             const totalTransactions = rows.length;
